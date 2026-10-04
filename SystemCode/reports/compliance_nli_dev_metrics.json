@@ -1,0 +1,58 @@
+{
+  "accuracy": 0.9325,
+  "macro_precision": 0.8679,
+  "macro_recall": 0.9118,
+  "macro_f1": 0.8855,
+  "micro_f1": 0.9325,
+  "confusion_matrix": [
+    [
+      484,
+      35,
+      0
+    ],
+    [
+      14,
+      81,
+      0
+    ],
+    [
+      14,
+      7,
+      402
+    ]
+  ],
+  "classification_report": {
+    "Entailment (Pass)": {
+      "precision": 0.9453125,
+      "recall": 0.9325626204238922,
+      "f1-score": 0.938894277400582,
+      "support": 519.0
+    },
+    "Contradiction (Conflict)": {
+      "precision": 0.6585365853658537,
+      "recall": 0.8526315789473684,
+      "f1-score": 0.7431192660550459,
+      "support": 95.0
+    },
+    "NotMentioned (Not Found)": {
+      "precision": 1.0,
+      "recall": 0.950354609929078,
+      "f1-score": 0.9745454545454545,
+      "support": 423.0
+    },
+    "accuracy": 0.9324975891996142,
+    "macro avg": {
+      "precision": 0.8679496951219513,
+      "recall": 0.9118496031001128,
+      "f1-score": 0.8855196660003607,
+      "support": 1037.0
+    },
+    "weighted avg": {
+      "precision": 0.9413482768657242,
+      "recall": 0.9324975891996142,
+      "f1-score": 0.9355016273084461,
+      "support": 1037.0
+    }
+  },
+  "formatted_report": "                          precision    recall  f1-score   support\n\n       Entailment (Pass)     0.9453    0.9326    0.9389       519\nContradiction (Conflict)     0.6585    0.8526    0.7431        95\nNotMentioned (Not Found)     1.0000    0.9504    0.9745       423\n\n                accuracy                         0.9325      1037\n               macro avg     0.8679    0.9118    0.8855      1037\n            weighted avg     0.9413    0.9325    0.9355      1037\n"
+}

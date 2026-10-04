@@ -1,0 +1,79 @@
+# ==========================================
+# TenderCheck Project Git Ignore Configuration
+# ==========================================
+
+# 1. Real-World Engineering Data & Raw Datasets (Confidential / Large Volume)
+/data_extracted/
+/samples/
+/SystemCode/data/raw/
+*.zip
+*.rar
+*.7z
+*.dwg
+
+# 2. Proprietary Engineering Platform Packages
+*.etbp
+*.hfzf
+*.nhftf
+*.hftf
+*.maszf
+*.nmastf
+*.mastf
+*.masslzb
+*.massltb
+*.whzf
+*.18whzf
+*.whslzb
+*.whsltb
+*.18whcf
+*.n18whtf
+*.18whtf
+*.nxctf
+*.xctf
+*.xcglzb
+*.xczf
+*.emahx
+
+# 3. Python Environment & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 4. Virtual Environments
+venv/
+env/
+.venv/
+ENV/
+
+# 5. IDE & Operating System Noise
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+~$*
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 6. Logs & Scratch Artifacts
+*.log
+scratch/
+.system_generated/

@@ -1,0 +1,27 @@
+{
+  "dataset_summary": {
+    "total_samples": 1245,
+    "train_samples": 874,
+    "dev_samples": 190,
+    "test_samples": 181,
+    "categories": [
+      "资格与资质",
+      "商务与报价",
+      "进度与工期",
+      "形式与提交",
+      "技术与方案",
+      "其他与通用"
+    ]
+  },
+  "logistic_regression": {
+    "dev_macro_f1": 0.9596,
+    "test_macro_f1": 0.9695,
+    "test_accuracy": 0.9834
+  },
+  "linear_svm": {
+    "dev_macro_f1": 0.9773,
+    "test_macro_f1": 0.9814,
+    "test_accuracy": 0.9945
+  },
+  "best_model": "Linear SVM"
+}

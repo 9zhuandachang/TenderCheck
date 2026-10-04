@@ -1,0 +1,9 @@
+# Core dependencies for TenderCheck Baseline
+numpy>=1.22.0
+pandas>=1.4.0
+scikit-learn>=1.0.0
+torch>=1.12.0
+transformers>=4.20.0
+tqdm>=4.64.0
+joblib>=1.1.0
+pymupdf>=1.20.0
