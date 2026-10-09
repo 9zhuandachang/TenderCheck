@@ -1,0 +1,30 @@
+Previous ID,Decision,Page,Reason
+NEW,REMOVE_EXACT_DUPLICATE,48,Same-page identical normalized requirement
+NEW,REMOVE_EXACT_DUPLICATE,50,Same-page identical normalized requirement
+NEW,REMOVE_EXACT_DUPLICATE,53,Same-page identical normalized requirement
+T016,DELETE,9,"Future approval of subcontracting, not current bid evidence"
+T020,DELETE,10,Future invoice type; no explicit bid response requested
+T106,DELETE,35,"Encryption procedure, not document-content compliance"
+T124-T132 (old),DELETE,42,Cross-bid comparisons; superseded numbering in later batch
+T130-T133,MERGE,43,One grouped company basic-information authenticity check
+T139,DELETE,15,File-size/upload limit rather than bid-content requirement
+T238-T244,DELETE,110,Future contract personnel and subcontractor obligations
+T245,DELETE,140,Act of checking BOQ is not bid-reviewable; retain concrete consistency checks
+T376-T377,RETYPE,182,"Evidence submission for scoring is Document, scoring criterion itself is Scoring"
+T105,KEEP,35,Signature / stamp observable in submitted documents
+T237,KEEP,67,Patent licensing fee explicitly included in bid quotation
+T302-T308,KEEP,167,Bid submission components; conditional items remain conditional
+1.4.4(2) 正文修改一览表,REVISE,26,"原 NEW-04-10 必须包含骗取中标、串通投标、严重违约、重大工程质量事故、重大生产安全事故及信用修复例外。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+1.4.3(3)-(4),EXCLUDE CROSS-BID,28,"同一负责人、控股/管理关系均需比较其他竞争投标人；排除。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+1.4.3(5)-(10),KEEP,28,"与招标人/监理人/代建人/代理机构关联，可通过企业与授权外部资料核验；保留。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+1.11,KEEP,30,"拟分包的资质、业绩、人员、设备、资金与提交证明属于投标阶段条件项。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+3.3.1,KEEP PROJECT OVERRIDE,33,"通用正文90日与前附表120日冲突，采用120日。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+3.5.2,EXCLUDE,34,"财务证明通用模板不适用；前附表明确不要求。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+3.7.3,FLAG INPUT CAPABILITY,35,"电子签章的真实性需保留文件原始数字签名信息；PDF视觉印章不足以确认。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+9.2,EXCLUDE BEHAVIOUR,40,"向评委行贿/干扰评标为行为约束，不单独提取；以他人名义/虚假资料可审查。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+9.2.2(11),EXCLUDE FUTURE,41,"项目资金专户与财务人员条款是施工阶段，不能仅凭企业DB可查就纳入。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+9.2.3,KEEP DUPLICATES,42,"同义重复要求保留，禁止删除跨条款重复。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+9.2.4,EXCLUDE CROSS-BID,43,"不同竞争投标人的串通证据需要多Bid，不纳入当前scope。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+9.2.5,KEEP,43,"虚假证明/人员/业绩应保留，但无法自动证明真实性时标注人工核验。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+附件第七条,REMOVE RULE FROM GOLD,45,"主体库文字与扫描件不一致时以扫描件为准，属于证据优先级规则，而非新增Bid义务。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."
+附件第十四条,FLAG INPUT CAPABILITY,46,"电子签章可由原生文件核验；加密/上传/解密是平台事件，排除。 | Compared directly against original PDF text; this is a targeted independent pass, not complete coverage certification."

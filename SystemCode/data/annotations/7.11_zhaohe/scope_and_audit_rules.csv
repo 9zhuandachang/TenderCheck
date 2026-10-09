@@ -1,0 +1,9 @@
+Rule/Item,Action/Principle,Location,Note/Pitfall
+Scope: financial templates,Follow project-specific no-financial-requirement rule,p12 / p179,False mandatory document
+90 vs 120 day validity,Specific front-table 120 days overrides default 90,p10 / p33,Contradictory duration
+Scoring evidence type,Scoring only for point-awarding criterion; evidence=Document,p53 / p182,Scoring vs Document ambiguity
+Future obligations,"Keep only explicit bid-time submission, commitment or price constraints",p63-139,False positives
+Reference table,Do not treat for-reference list as compulsory,p188,False mandatory items
+Document PDF signature,Check only if original digital signature data available,p34-35,Unsupported signature claims
+Atomic split/merge,"Adjudicate independently checkable conditions, record decisions",all chapters,Metric validity
+Legacy IDs,Use provisional source IDs; renumber only after certification,Batch01-07,Duplicate IDs possible
