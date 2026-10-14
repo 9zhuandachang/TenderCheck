@@ -7,6 +7,10 @@
 /samples/
 /SystemCode/data/raw/
 /SystemCode/data/annotations/
+/SystemCode/data/processed/
+/SystemCode/data/rag_index/
+/SystemCode/data/vision_cache/
+/SystemCode/models/
 *.zip
 *.rar
 *.7z

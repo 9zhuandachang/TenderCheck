@@ -1,0 +1,247 @@
+"""
+Command-Line Entrypoint for TenderCheck Dual-Index & 8-Category Routed RAG Pipeline.
+
+Supports:
+1. `ingest`: Parse a bid PDF or `02_投标文件` directory (automatically leveraging
+   `分章节文件/` when present), build the 4-table Structured Entity Ledger
+   (`ledger.json` & `ledger.db`), and construct the Hybrid Dense + BM25 Index.
+2. `query`: Route single or batch tender requirements across the 8 categories
+   and output structured evidence bundles with page provenance.
+
+Usage Examples:
+    # 1. Ingest a project's 02_投标文件 directory (CPU fast mode or RTX 5080 VLM mode)
+    python SystemCode/run_rag_pipeline.py --mode ingest \\
+        --bid_input "data_extracted/2022年投标项目/11.11-S604.../02_投标文件" \\
+        --index_dir "SystemCode/data/rag_index/S604"
+
+    # 2. Ingest on teammate's RTX 5080 with Qwen2.5-VL-7B + BGE-M3 + Reranker
+    python SystemCode/run_rag_pipeline.py --mode ingest \\
+        --bid_input "path/to/02_投标文件" \\
+        --index_dir "SystemCode/data/rag_index/S604" \\
+        --vision_backend qwen_vl --use_neural_dense
+
+    # 3. Query the built dual-index by Requirement Type
+    python SystemCode/run_rag_pipeline.py --mode query \\
+        --index_dir "SystemCode/data/rag_index/S604" \\
+        --req_type Consistency \\
+        --query "投标函与开标一览表中的项目经理姓名及投标总价应保持一致。"
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import sys
+from pathlib import Path
+
+from src.rag import (
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_RERANKER_MODEL,
+    BidDocumentParser,
+    CategoryRouterRetriever,
+    DiskCachedVisionBackend,
+    EntityLedgerBuilder,
+    HybridBidIndex,
+    LocalHeuristicOCRBackend,
+    QwenVLBackend,
+)
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger("run_rag_pipeline")
+
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="TenderCheck Multimodal Dual-Index RAG Pipeline"
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["ingest", "query"],
+        default="ingest",
+        help="Execution mode: 'ingest' to parse & index bid files, 'query' to retrieve evidence.",
+    )
+    parser.add_argument(
+        "--bid_input",
+        type=Path,
+        default=None,
+        help="Path to a bid PDF file or a project's '02_投标文件' directory.",
+    )
+    parser.add_argument(
+        "--index_dir",
+        type=Path,
+        default=BASE_DIR / "data" / "rag_index" / "default_bid",
+        help="Directory to save/load the built Hybrid Index and Entity Ledger.",
+    )
+    parser.add_argument(
+        "--vision_cache_dir",
+        type=Path,
+        default=BASE_DIR / "data" / "vision_cache",
+        help="Shared directory for caching page-level VLM/OCR PageVisionResult JSONs.",
+    )
+    parser.add_argument(
+        "--vision_backend",
+        choices=["heuristic", "qwen_vl"],
+        default="heuristic",
+        help="Vision backend for scanned/certificate pages (use 'qwen_vl' on RTX 5080).",
+    )
+    parser.add_argument(
+        "--vlm_mode",
+        choices=["transformers", "openai_compatible"],
+        default="transformers",
+        help="How Qwen2.5-VL is served when --vision_backend=qwen_vl.",
+    )
+    parser.add_argument(
+        "--vlm_model",
+        type=str,
+        default="Qwen/Qwen2.5-VL-7B-Instruct",
+        help="HuggingFace model ID or path for VLM.",
+    )
+    parser.add_argument(
+        "--vlm_api_base",
+        type=str,
+        default="http://localhost:8000/v1",
+        help="API base URL when --vlm_mode=openai_compatible.",
+    )
+    parser.add_argument(
+        "--use_neural_dense",
+        action="store_true",
+        help="Use pretrained neural embedding model (e.g. BAAI/bge-m3) instead of fast char-TFIDF.",
+    )
+    parser.add_argument(
+        "--embedding_model",
+        type=str,
+        default=DEFAULT_EMBEDDING_MODEL,
+        help=f"Dense embedding model name (default: {DEFAULT_EMBEDDING_MODEL}).",
+    )
+    parser.add_argument(
+        "--reranker_model",
+        type=str,
+        default=None,
+        help=f"Optional cross-encoder reranker model (e.g. {DEFAULT_RERANKER_MODEL}).",
+    )
+    parser.add_argument(
+        "--max_pages",
+        type=int,
+        default=None,
+        help="Optional limit on pages parsed per PDF for rapid testing.",
+    )
+
+    # Query mode options
+    parser.add_argument(
+        "--query",
+        type=str,
+        default="",
+        help="Requirement clause text to retrieve evidence for.",
+    )
+    parser.add_argument(
+        "--section",
+        type=str,
+        default="",
+        help="Optional section header of the requirement clause.",
+    )
+    parser.add_argument(
+        "--req_type",
+        type=str,
+        default="Technical",
+        help="One of the 8 Requirement Types (Qualification, Document, Technical, Commercial, Schedule, Consistency, Integrity, Scoring).",
+    )
+    parser.add_argument(
+        "--top_k",
+        type=int,
+        default=4,
+        help="Number of top evidence chunks to retrieve.",
+    )
+
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+
+    if args.mode == "ingest":
+        if args.bid_input is None or not args.bid_input.exists():
+            raise FileNotFoundError(
+                f"Please specify a valid --bid_input path (got: {args.bid_input})"
+            )
+
+        if args.vision_backend == "qwen_vl":
+            raw_vision = QwenVLBackend(
+                model_name_or_path=args.vlm_model,
+                mode=args.vlm_mode,
+                api_base_url=args.vlm_api_base,
+            )
+        else:
+            raw_vision = LocalHeuristicOCRBackend()
+
+        cached_vision = DiskCachedVisionBackend(
+            delegate=raw_vision,
+            cache_dir=args.vision_cache_dir,
+        )
+        parser = BidDocumentParser(vision_backend=cached_vision)
+
+        logger.info("Parsing bid input: %s ...", args.bid_input)
+        parent_chunks, child_chunks, parse_stats = parser.parse_bid_directory(
+            bid_dir=args.bid_input,
+            prefer_subchapters=True,
+            max_pages_per_pdf=args.max_pages,
+        )
+        logger.info(
+            "Parsed %d Parent Chunks and %d Child Chunks.",
+            len(parent_chunks),
+            len(child_chunks),
+        )
+
+        # Build and save Structured Entity Ledger (JSON + SQLite)
+        doc_id = parent_chunks[0].document_id if parent_chunks else args.bid_input.stem
+        ledger = EntityLedgerBuilder.build_from_chunks(
+            document_id=doc_id,
+            parent_chunks=parent_chunks,
+            child_chunks=child_chunks,
+        )
+        ledger_json, ledger_db = EntityLedgerBuilder.save_ledger(ledger, args.index_dir)
+        logger.info("Saved Structured Entity Ledger to %s and %s", ledger_json, ledger_db)
+
+        # Build and save Hybrid Dense + BM25 Index
+        index = HybridBidIndex(
+            embedding_model_name=args.embedding_model,
+            reranker_model_name=args.reranker_model,
+            use_neural_dense=args.use_neural_dense,
+        )
+        index.build(parent_chunks=parent_chunks, child_chunks=child_chunks)
+        index.save(args.index_dir)
+
+        with open(args.index_dir / "ingest_stats.json", "w", encoding="utf-8") as f:
+            json.dump(parse_stats, f, ensure_ascii=False, indent=2)
+
+        print(json.dumps(parse_stats, ensure_ascii=False, indent=2))
+        return
+
+    # Mode: query
+    if not args.query:
+        raise ValueError("--query is required when --mode=query.")
+
+    index = HybridBidIndex.load(args.index_dir)
+    ledger = EntityLedgerBuilder.load_ledger(args.index_dir / "ledger.json")
+    retriever = CategoryRouterRetriever(index=index, ledger=ledger)
+
+    bundle = retriever.retrieve(
+        requirement_text=args.query,
+        section_text=args.section,
+        requirement_type=args.req_type,
+        top_k=args.top_k,
+    )
+    print(json.dumps(bundle.to_dict(), ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

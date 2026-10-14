@@ -1,4 +1,13 @@
-"""
-evaluation module - 端到端系统基准评测模块
-负责对接 03_参考与归档 中的真实专家评审单金标（Ground Truth），自动化评估整个审查系统的准确率、召回率与合规一致性。
-"""
+"""Evaluation and reporting utilities for TenderCheck."""
+
+from .evaluator import (
+    evaluate_predictions,
+    format_metrics_table,
+    save_evaluation_report,
+)
+
+__all__ = [
+    "evaluate_predictions",
+    "format_metrics_table",
+    "save_evaluation_report",
+]
