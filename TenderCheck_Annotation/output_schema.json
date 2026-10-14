@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/tendercheck/atomic-requirements-v1.2.schema.json",
+  "title": "TenderCheck Five-Column Atomic Requirement Dataset",
+  "description": "Top-level array of positively identified requirements. Empty array is valid. No audit fields in primary output.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "ID",
+      "Page",
+      "Section",
+      "Requirement Type",
+      "Requirement"
+    ],
+    "properties": {
+      "ID": {
+        "type": "string",
+        "pattern": "^T[0-9]{4,}$",
+        "description": "Unique sequential identifier in document order, starting T0001"
+      },
+      "Page": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "1-based physical PDF page"
+      },
+      "Section": {
+        "type": "string",
+        "minLength": 1
+      },
+      "Requirement Type": {
+        "type": "string",
+        "enum": [
+          "Qualification",
+          "Document",
+          "Technical",
+          "Commercial",
+          "Schedule",
+          "Consistency",
+          "Integrity",
+          "Scoring"
+        ]
+      },
+      "Requirement": {
+        "type": "string",
+        "minLength": 3
+      }
+    }
+  }
+}

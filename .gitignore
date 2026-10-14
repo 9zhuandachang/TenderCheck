@@ -6,6 +6,7 @@
 /data_extracted/
 /samples/
 /SystemCode/data/raw/
+/SystemCode/data/annotations/
 *.zip
 *.rar
 *.7z

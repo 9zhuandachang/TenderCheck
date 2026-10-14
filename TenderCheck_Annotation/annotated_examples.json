@@ -1,0 +1,495 @@
+{
+  "metadata": {
+    "version": "1.2",
+    "purpose": "few-shot teaching, not certified gold",
+    "source": "招标文件正文.pdf",
+    "warning": "These are curated teaching examples, not full Gold; EX01 contains a deliberately abbreviated third item and must not be copied verbatim into Gold."
+  },
+  "examples": [
+    {
+      "example_id": "EX01",
+      "category": "atomic_split",
+      "source_document": "招标文件正文.pdf",
+      "page": 4,
+      "section": "3.3 项目经理资格要求",
+      "source_text": "项目经理资格要求：具有水利水电工程专业一级注册建造师证书，持有水利行业行政主管部门颁发的 B 类安全生产考核合格证书，且具有类似项目施工业绩。",
+      "annotations": [
+        {
+          "Requirement Type": "Qualification",
+          "Requirement": "项目经理须具有水利水电工程专业一级注册建造师证书。"
+        },
+        {
+          "Requirement Type": "Qualification",
+          "Requirement": "项目经理须持有水利行业行政主管部门颁发的 B 类安全生产考核合格证书。"
+        },
+        {
+          "Requirement Type": "Qualification",
+          "Requirement": "项目经理须具有符合招标文件定义的类似项目施工业绩。"
+        }
+      ],
+      "reason": "三项可以分别合规/不合规，必须拆分。",
+      "notes": "第三条需结合相邻原文补齐类似项目的时间、金额、地域与排除项；此示例展示拆分，不是最终 Gold 文本。"
+    },
+    {
+      "example_id": "EX02",
+      "category": "qualification",
+      "source_document": "招标文件正文.pdf",
+      "page": 4,
+      "section": "3.1",
+      "source_text": "投标人资质要求：水利水电工程施工总承包贰级及以上资质；",
+      "annotations": [
+        {
+          "Requirement Type": "Qualification",
+          "Requirement": "投标人须具有水利水电工程施工总承包贰级及以上资质。"
+        }
+      ],
+      "reason": "标题与值组合成完整要求。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX03",
+      "category": "schedule",
+      "source_document": "招标文件正文.pdf",
+      "page": 3,
+      "section": "2.8",
+      "source_text": "计划工期：540 日历天",
+      "annotations": [
+        {
+          "Requirement Type": "Schedule",
+          "Requirement": "计划工期为 540 日历天。"
+        }
+      ],
+      "reason": "虽然无“必须”，结合投标响应条款构成投标工期约束。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX04",
+      "category": "qualification",
+      "source_document": "招标文件正文.pdf",
+      "page": 4,
+      "section": "3.5",
+      "source_text": "本次招标不接受联合体投标。",
+      "annotations": [
+        {
+          "Requirement Type": "Qualification",
+          "Requirement": "本次招标不接受联合体投标。"
+        }
+      ],
+      "reason": "投标资格限制。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX05",
+      "category": "background_negative",
+      "source_document": "招标文件正文.pdf",
+      "page": 3,
+      "section": "1.6",
+      "source_text": "资金来源：财政拨款",
+      "annotations": [],
+      "reason": "项目背景，不是当前 Bid 可审查要求。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX06",
+      "category": "background_negative",
+      "source_document": "招标文件正文.pdf",
+      "page": 3,
+      "section": "1.4",
+      "source_text": "招标人：合肥环巢湖水环境建设有限公司",
+      "annotations": [],
+      "reason": "招标方信息，不构成投标人义务。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX07",
+      "category": "platform_negative",
+      "source_document": "招标文件正文.pdf",
+      "page": 5,
+      "section": "5",
+      "source_text": "投标文件递交的截止时间为 2022 年 07 月 11 日 10 时 00 分，投标人应在截止时间前通过安徽公共资源交易集团电子交易系统递交电子投标文件。",
+      "annotations": [],
+      "reason": "是否按时递交须依赖平台事件日志，不是 Bid 内容审查。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX08",
+      "category": "conditional_document",
+      "source_document": "招标文件正文.pdf",
+      "page": 172,
+      "section": "四、投标保证金",
+      "source_text": "如采用前附表中第二类形式的银行保函，投标人应在此提供基本账户开户许可证扫描件，同时将银行保函扫描件提供在投标文件中，格式见投标保函示范文本。",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "如采用银行保函，投标文件应提供基本账户开户许可证扫描件。"
+        },
+        {
+          "Requirement Type": "Document",
+          "Requirement": "如采用银行保函，投标文件应提供银行保函扫描件。"
+        }
+      ],
+      "reason": "两份材料可分别缺失；两条均保留条件。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX09",
+      "category": "conditional_exclusion",
+      "source_document": "招标文件正文.pdf",
+      "page": 171,
+      "section": "三、联合体协议书",
+      "source_text": "三、联合体协议书（如采用联合体投标）",
+      "annotations": [],
+      "reason": "本项目明确不接受联合体；该通用模板当前不适用。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX10",
+      "category": "reference_negative",
+      "source_document": "招标文件正文.pdf",
+      "page": 8,
+      "section": "1.4.1",
+      "source_text": "（1）资质条件：见附录 1",
+      "annotations": [],
+      "reason": "纯交叉引用；在附录1标注实质要求。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX11",
+      "category": "non_applicable_template",
+      "source_document": "招标文件正文.pdf",
+      "page": 12,
+      "section": "3.5.2",
+      "source_text": "近年财务状况的年份要求 不要求",
+      "annotations": [],
+      "reason": "明确无财务要求；不可据后面的财务模板生成必交项。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX12",
+      "category": "document",
+      "source_document": "招标文件正文.pdf",
+      "page": 170,
+      "section": "法定代表人身份证明",
+      "source_text": "附：法定代表人身份证扫描件",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "法定代表人身份证明应附法定代表人身份证扫描件。"
+        }
+      ],
+      "reason": "证明材料提交义务。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX13",
+      "category": "document_and_qualification",
+      "source_document": "招标文件正文.pdf",
+      "page": 178,
+      "section": "投标人基本情况表",
+      "source_text": "注：附营业执照、资质证书、安全生产许可证、企业主要负责人安全生产考核合格证书，联合体（如有）的有关证明材料。",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "投标人基本情况表应附营业执照。"
+        },
+        {
+          "Requirement Type": "Document",
+          "Requirement": "投标人基本情况表应附资质证书。"
+        },
+        {
+          "Requirement Type": "Document",
+          "Requirement": "投标人基本情况表应附安全生产许可证。"
+        },
+        {
+          "Requirement Type": "Document",
+          "Requirement": "投标人基本情况表应附企业主要负责人安全生产考核合格证书。"
+        }
+      ],
+      "reason": "每项证明独立核验；联合体当前不适用，不产生标注。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX14",
+      "category": "technical",
+      "source_document": "招标文件正文.pdf",
+      "page": 188,
+      "section": "混凝土工程质量保证措施",
+      "source_text": "选用质量稳定并利于改善混凝土抗裂性能的原材料、合理的水胶比和可靠的温控防裂措施及养护措施",
+      "annotations": [
+        {
+          "Requirement Type": "Technical",
+          "Requirement": "混凝土工程质量保证措施应说明选用质量稳定且有利于改善抗裂性能的原材料。"
+        },
+        {
+          "Requirement Type": "Technical",
+          "Requirement": "混凝土工程质量保证措施应说明合理的水胶比。"
+        },
+        {
+          "Requirement Type": "Technical",
+          "Requirement": "混凝土工程质量保证措施应说明可靠的温控防裂及养护措施。"
+        }
+      ],
+      "reason": "可独立审查的材料、水胶比、温控养护内容；保持原文限定。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX15",
+      "category": "reference_list_negative",
+      "source_document": "招标文件正文.pdf",
+      "page": 188,
+      "section": "施工组织设计",
+      "source_text": "施工组织设计应附的文字说明及附图见下表（不限于，仅供参考）：",
+      "annotations": [],
+      "reason": "参考目录本身不能逐项转化为强制必交要求；本页其他明确“应”要求另标。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX16",
+      "category": "document_mandatory",
+      "source_document": "招标文件正文.pdf",
+      "page": 189,
+      "section": "施工组织设计附件",
+      "source_text": "施工组织设计除采用文字表述外应附下列图表，图表及格式要求附后。附件一：拟投入本标段的主要施工设备表 附件二：拟投入本标段的试验和检测仪器设备表 附件三：拟投入本标段的劳动力计划表",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "施工组织设计应附拟投入本标段的主要施工设备表。"
+        },
+        {
+          "Requirement Type": "Document",
+          "Requirement": "施工组织设计应附拟投入本标段的试验和检测仪器设备表。"
+        },
+        {
+          "Requirement Type": "Document",
+          "Requirement": "施工组织设计应附拟投入本标段的劳动力计划表。"
+        }
+      ],
+      "reason": "明确“应附”，每种表格可独立核验。",
+      "notes": "原文还有附件四至六，实际标注必须继续读取并全部标注。"
+    },
+    {
+      "example_id": "EX17",
+      "category": "commercial",
+      "source_document": "招标文件正文.pdf",
+      "page": 143,
+      "section": "2.2 投标报价说明",
+      "source_text": "施工安全措施费应单独计列，并按投标文件中承诺的相应具体安全措施列出费用清单。",
+      "annotations": [
+        {
+          "Requirement Type": "Commercial",
+          "Requirement": "施工安全措施费应单独计列。"
+        },
+        {
+          "Requirement Type": "Document",
+          "Requirement": "施工安全措施费应按照投标文件承诺的具体安全措施列出费用清单。"
+        }
+      ],
+      "reason": "分别检查费用列项和费用清单内容。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX18",
+      "category": "consistency",
+      "source_document": "招标文件正文.pdf",
+      "page": 142,
+      "section": "2.2 工程量清单报价表填写规定",
+      "source_text": "投标总价应按工程项目总价表合计金额填写。",
+      "annotations": [
+        {
+          "Requirement Type": "Consistency",
+          "Requirement": "投标总价应与工程项目总价表合计金额一致。"
+        }
+      ],
+      "reason": "跨表金额一致性。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX19",
+      "category": "commercial",
+      "source_document": "招标文件正文.pdf",
+      "page": 141,
+      "section": "2.2 工程量清单报价表填写规定",
+      "source_text": "工程量清单中列明的所有需要填报的单价和合价，投标人均应填写；",
+      "annotations": [
+        {
+          "Requirement Type": "Commercial",
+          "Requirement": "工程量清单中列明的所有需要填报的单价，投标人均应填写。"
+        },
+        {
+          "Requirement Type": "Commercial",
+          "Requirement": "工程量清单中列明的所有需要填报的合价，投标人均应填写。"
+        }
+      ],
+      "reason": "单价与合价可以分别缺失，按原子标准拆分。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX20",
+      "category": "integrity",
+      "source_document": "招标文件正文.pdf",
+      "page": 168,
+      "section": "投标函",
+      "source_text": "我方在此声明，所递交的投标文件及有关资料内容完整、真实和准确",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "投标函应包含对所递交投标文件及有关资料完整、真实、准确的声明。"
+        }
+      ],
+      "reason": "此处模板规定“作出声明”属于 Document；真正不得伪造/虚报的实体义务应从独立实质条款标 Integrity。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX21",
+      "category": "future_negative",
+      "source_document": "招标文件正文.pdf",
+      "page": 112,
+      "section": "4.6.5",
+      "source_text": "投标文件承诺的项目部主要管理人员在主体工程施工期间原则上不得更换。",
+      "annotations": [],
+      "reason": "限制未来施工期间人员更换；当前无独立可检查的人员变更行为。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX22",
+      "category": "future_negative",
+      "source_document": "招标文件正文.pdf",
+      "page": 113,
+      "section": "4.6.11",
+      "source_text": "承包人项目经理、技术负责人每月驻工地天数不得少于 22 天",
+      "annotations": [],
+      "reason": "中标后实际考勤义务，不因存在企业数据库而纳入。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX23",
+      "category": "future_commitment_positive",
+      "source_document": "招标文件正文.pdf",
+      "page": 181,
+      "section": "八、关于不拖欠农民工工资的承诺",
+      "source_text": "八、关于不拖欠农民工工资的承诺",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "投标文件应包含关于不拖欠农民工工资的承诺。"
+        }
+      ],
+      "reason": "虽然承诺针对未来行为，但当前 Bid 必须提交承诺文本。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX24",
+      "category": "conditional_subcontract",
+      "source_document": "招标文件正文.pdf",
+      "page": 177,
+      "section": "六、拟分包项目情况表",
+      "source_text": "六、拟分包项目情况表（如有分包）",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "如拟进行分包，投标文件应填写拟分包项目情况表。"
+        }
+      ],
+      "reason": "条件性表格，不能写成无条件必交。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX25",
+      "category": "technical_document",
+      "source_document": "招标文件正文.pdf",
+      "page": 193,
+      "section": "附件五 施工总平面图",
+      "source_text": "投标人应递交一份施工总平面图，绘出现场临时设施布置图及表并附文字说明，说明临时设施、加工车间、现场办公、设备及仓储、供电、供水、卫生、生活、道路、消防等设施的情况和布置。",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "投标人应提交施工总平面图。"
+        },
+        {
+          "Requirement Type": "Technical",
+          "Requirement": "施工总平面图及文字说明应展示现场临时设施、加工车间、办公、仓储、供电、供水、卫生、生活、道路和消防等设施的情况与布置。"
+        }
+      ],
+      "reason": "文件存在性与技术内容完整性可分别检查。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX26",
+      "category": "document_signed",
+      "source_document": "招标文件正文.pdf",
+      "page": 176,
+      "section": "项目经理承诺书",
+      "source_text": "项目经理： （签字） 身份证号： 日期：_____年_____月_____日 注：项目经理承诺书通过“其他材料”窗口上传。",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "项目经理承诺书应由拟任项目经理签字。"
+        },
+        {
+          "Requirement Type": "Document",
+          "Requirement": "投标文件应通过其他材料部分提交项目经理承诺书。"
+        }
+      ],
+      "reason": "可核验的签字与提交要求；不要把上传窗口操作误标为平台日志行为。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX27",
+      "category": "pricing_negative",
+      "source_document": "招标文件正文.pdf",
+      "page": 140,
+      "section": "工程量清单说明",
+      "source_text": "开标前，投标人应认真对照招标图纸等文件核对招标人提供的工程量清单",
+      "annotations": [],
+      "reason": "“认真核对”是不可从投标内容证明的行为；具体 BOQ 一致性另由后文规则标注。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX28",
+      "category": "scoring_boundary",
+      "source_document": "招标文件正文.pdf",
+      "page": 180,
+      "section": "类似项目情况表",
+      "source_text": "备注 □资格审查用业绩 □商务文件评分用业绩",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "类似项目情况表应注明该业绩用于资格审查还是商务文件评分。"
+        }
+      ],
+      "reason": "该表格字段不直接规定得分，不是 Scoring；具体得分条件应去第三章。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX29",
+      "category": "external_reference_negative",
+      "source_document": "招标文件正文.pdf",
+      "page": 164,
+      "section": "第七章 技术标准和要求",
+      "source_text": "本章参照《水利水电工程标准施工招标文件》（技术标准和要求）（合同技术条款）（2009年版），并根据招标工程具体情况编制。",
+      "annotations": [],
+      "reason": "仅引用外部技术标准，没有具体可从当前页抽取的技术条款。",
+      "notes": ""
+    },
+    {
+      "example_id": "EX30",
+      "category": "schedule_document",
+      "source_document": "招标文件正文.pdf",
+      "page": 193,
+      "section": "附件四 进度网络图",
+      "source_text": "投标人应递交施工进度网络图或施工进度表，说明按招标文件要求的计划工期进行施工的各个关键日期。",
+      "annotations": [
+        {
+          "Requirement Type": "Document",
+          "Requirement": "投标人应递交施工进度网络图或施工进度表。"
+        },
+        {
+          "Requirement Type": "Schedule",
+          "Requirement": "施工进度网络图或施工进度表应说明满足招标文件计划工期的各个关键日期。"
+        }
+      ],
+      "reason": "OR 是允许的提交形式，不应拆成两个同时必交的表；关键日期是独立进度内容。",
+      "notes": ""
+    }
+  ]
+}
