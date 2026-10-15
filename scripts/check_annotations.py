@@ -1,9 +1,8 @@
 import json, sys, os, collections
 sys.stdout.reconfigure(encoding='utf-8')
 
-LOCAL_ANNOTATIONS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'SystemCode', 'data', 'annotations')
-GDRIVE = LOCAL_ANNOTATIONS if os.path.exists(LOCAL_ANNOTATIONS) else r'G:\我的云端硬盘\tender system'
-FOLDERS = ['2022', '2025', '2026-03', '2026_01']
+GDRIVE = r'G:\我的云端硬盘\tender system'
+FOLDERS = ['2022', '2023', '2024', '2025', '2026_01', '2026_02', '2026-03', '2026_04']
 REQUIRED_KEYS = ['ID', 'Page', 'Section', 'Requirement Type', 'Requirement']
 
 # Valid types per TenderCheck_Annotation_Guideline_v1_3.md Section 2 (8 types)

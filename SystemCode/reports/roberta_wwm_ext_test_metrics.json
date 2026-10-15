@@ -1,0 +1,164 @@
+{
+  "model_name": "roberta_wwm_ext",
+  "split": "test",
+  "num_samples": 5756,
+  "accuracy": 0.9821,
+  "macro_precision": 0.9694,
+  "macro_recall": 0.977,
+  "macro_f1": 0.9728,
+  "weighted_precision": 0.9825,
+  "weighted_recall": 0.9821,
+  "weighted_f1": 0.9822,
+  "per_class": {
+    "Qualification": {
+      "cn_name": "资格与资质要求",
+      "precision": 0.9941,
+      "recall": 0.9941,
+      "f1": 0.9941,
+      "support": 845
+    },
+    "Document": {
+      "cn_name": "文件组成与格式",
+      "precision": 0.9908,
+      "recall": 0.9818,
+      "f1": 0.9863,
+      "support": 2423
+    },
+    "Technical": {
+      "cn_name": "技术与施工要求",
+      "precision": 0.9772,
+      "recall": 0.9798,
+      "f1": 0.9785,
+      "support": 744
+    },
+    "Commercial": {
+      "cn_name": "商务与报价要求",
+      "precision": 0.9641,
+      "recall": 0.9881,
+      "f1": 0.9759,
+      "support": 923
+    },
+    "Schedule": {
+      "cn_name": "时间与工期节点",
+      "precision": 0.8527,
+      "recall": 0.9483,
+      "f1": 0.898,
+      "support": 116
+    },
+    "Consistency": {
+      "cn_name": "一致性与唯一性",
+      "precision": 0.9931,
+      "recall": 0.9412,
+      "f1": 0.9664,
+      "support": 306
+    },
+    "Integrity": {
+      "cn_name": "廉洁与合规底线",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 163
+    },
+    "Scoring": {
+      "cn_name": "评标与打分规则",
+      "precision": 0.9831,
+      "recall": 0.9831,
+      "f1": 0.9831,
+      "support": 236
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "Qualification",
+      "Document",
+      "Technical",
+      "Commercial",
+      "Schedule",
+      "Consistency",
+      "Integrity",
+      "Scoring"
+    ],
+    "matrix": [
+      [
+        840,
+        4,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        2,
+        2379,
+        16,
+        16,
+        7,
+        0,
+        0,
+        3
+      ],
+      [
+        3,
+        9,
+        729,
+        1,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        912,
+        8,
+        2,
+        0,
+        1
+      ],
+      [
+        0,
+        4,
+        0,
+        2,
+        110,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        15,
+        2,
+        288,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        163,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        232
+      ]
+    ]
+  }
+}

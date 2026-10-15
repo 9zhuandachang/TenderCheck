@@ -20,7 +20,16 @@ from .schema import LABEL2ID, REQUIREMENT_TYPES, RequirementSample
 logger = logging.getLogger(__name__)
 
 # Default subfolders containing v1.3 standard JSON annotation files
-DEFAULT_ANNOTATION_FOLDERS: Tuple[str, ...] = ("2022", "2025", "2026-03", "2026_01")
+DEFAULT_ANNOTATION_FOLDERS: Tuple[str, ...] = (
+    "2022",
+    "2023",
+    "2024",
+    "2025",
+    "2026_01",
+    "2026_02",
+    "2026-03",
+    "2026_04",
+)
 
 
 def load_annotations_from_dir(

@@ -1,0 +1,164 @@
+{
+  "model_name": "tfidf_svm",
+  "split": "holdout_2_projects",
+  "num_samples": 581,
+  "accuracy": 0.9621,
+  "macro_precision": 0.9412,
+  "macro_recall": 0.9398,
+  "macro_f1": 0.9386,
+  "weighted_precision": 0.9637,
+  "weighted_recall": 0.9621,
+  "weighted_f1": 0.9622,
+  "per_class": {
+    "Qualification": {
+      "cn_name": "资格与资质要求",
+      "precision": 0.9519,
+      "recall": 1.0,
+      "f1": 0.9754,
+      "support": 99
+    },
+    "Document": {
+      "cn_name": "文件组成与格式",
+      "precision": 0.9759,
+      "recall": 0.9605,
+      "f1": 0.9681,
+      "support": 253
+    },
+    "Technical": {
+      "cn_name": "技术与施工要求",
+      "precision": 0.88,
+      "recall": 0.88,
+      "f1": 0.88,
+      "support": 25
+    },
+    "Commercial": {
+      "cn_name": "商务与报价要求",
+      "precision": 0.9717,
+      "recall": 0.981,
+      "f1": 0.9763,
+      "support": 105
+    },
+    "Schedule": {
+      "cn_name": "时间与工期节点",
+      "precision": 0.75,
+      "recall": 0.8824,
+      "f1": 0.8108,
+      "support": 17
+    },
+    "Consistency": {
+      "cn_name": "一致性与唯一性",
+      "precision": 1.0,
+      "recall": 0.8148,
+      "f1": 0.898,
+      "support": 27
+    },
+    "Integrity": {
+      "cn_name": "廉洁与合规底线",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 20
+    },
+    "Scoring": {
+      "cn_name": "评标与打分规则",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 35
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "Qualification",
+      "Document",
+      "Technical",
+      "Commercial",
+      "Schedule",
+      "Consistency",
+      "Integrity",
+      "Scoring"
+    ],
+    "matrix": [
+      [
+        99,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        2,
+        243,
+        3,
+        2,
+        3,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        22,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        103,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        0,
+        0,
+        15,
+        0,
+        0,
+        0
+      ],
+      [
+        2,
+        2,
+        0,
+        1,
+        0,
+        22,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        20,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        35
+      ]
+    ]
+  }
+}

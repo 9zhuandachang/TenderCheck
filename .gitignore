@@ -7,6 +7,7 @@
 /samples/
 /SystemCode/data/raw/
 /SystemCode/data/annotations/
+/SystemCode/data/holdout_eval/
 /SystemCode/data/processed/
 /SystemCode/data/rag_index/
 /SystemCode/data/vision_cache/

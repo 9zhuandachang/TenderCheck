@@ -36,39 +36,38 @@ DEFAULT_PRETRAINED_MODEL = "hfl/chinese-roberta-wwm-ext"
 
 
 class _TenderTextDataset(Dataset):
-    """Internal PyTorch Dataset wrapping tokenized requirement texts and labels."""
+    """Internal PyTorch Dataset wrapping pre-tokenized requirement texts and labels."""
 
     def __init__(
         self,
         texts: Sequence[str],
         labels: Optional[Sequence[int]],
         tokenizer,
-        max_length: int = 256,
+        max_length: int = 160,
     ) -> None:
-        self.texts = list(texts)
-        self.labels = list(labels) if labels is not None else None
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-
-    def __len__(self) -> int:
-        return len(self.texts)
-
-    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        encoding = self.tokenizer(
-            self.texts[idx],
+        self.encodings = tokenizer(
+            list(texts),
             truncation=True,
-            max_length=self.max_length,
+            max_length=max_length,
             padding="max_length",
             return_tensors="pt",
         )
+        self.labels = (
+            torch.tensor(list(labels), dtype=torch.long) if labels is not None else None
+        )
+
+    def __len__(self) -> int:
+        return self.encodings["input_ids"].size(0)
+
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         item = {
-            "input_ids": encoding["input_ids"].squeeze(0),
-            "attention_mask": encoding["attention_mask"].squeeze(0),
+            "input_ids": self.encodings["input_ids"][idx],
+            "attention_mask": self.encodings["attention_mask"][idx],
         }
-        if "token_type_ids" in encoding:
-            item["token_type_ids"] = encoding["token_type_ids"].squeeze(0)
+        if "token_type_ids" in self.encodings:
+            item["token_type_ids"] = self.encodings["token_type_ids"][idx]
         if self.labels is not None:
-            item["labels"] = torch.tensor(self.labels[idx], dtype=torch.long)
+            item["labels"] = self.labels[idx]
         return item
 
 

@@ -1,19 +1,21 @@
 """
 Lightweight Statistical Baseline Classifier for Chinese Tender Requirements.
 
-Combines character-level (1-4 gram) and word-level (1-2 gram) sublinear TF-IDF
-features with class-balanced LinearSVC (Platt-calibrated for probability output)
-or Logistic Regression. Trains in seconds on CPU and provides a strong baseline
-for ablation studies against pretrained language models.
+Combines character-level (1-4 gram) and word-boundary (2-4 gram) sublinear TF-IDF
+features on the requirement body with a down-weighted section-header TF-IDF channel
+(`transformer_weights={"req_char": 1.0, "req_word": 0.8, "sec_char": 0.2}`),
+preventing broad chapter titles from diluting short atomic clause keywords.
 """
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import joblib
 import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -26,15 +28,39 @@ from .base import BaseRequirementClassifier
 
 logger = logging.getLogger(__name__)
 
+_SEP_PATTERN = re.compile(r"^\[Section\]\s*(.*?)\s*\[SEP\]\s*(.*)$", flags=re.DOTALL)
+
+
+class _PartExtractor(BaseEstimator, TransformerMixin):
+    """Extract either the `'requirement'` body or the `'section'` header from formatted input."""
+
+    def __init__(self, part: str = "requirement") -> None:
+        self.part = part
+
+    def fit(self, x, y=None):
+        return self
+
+    def transform(self, x: Sequence[str]) -> List[str]:
+        out: List[str] = []
+        for text in x:
+            m = _SEP_PATTERN.match(text or "")
+            if m:
+                sec_part, req_part = m.group(1).strip(), m.group(2).strip()
+            else:
+                sec_part, req_part = "", (text or "").strip()
+            out.append(sec_part if self.part == "section" else req_part)
+        return out
+
 
 class TfidfRequirementClassifier(BaseRequirementClassifier):
     """
-    Hybrid Char+Word N-gram TF-IDF classifier with balanced class weights.
+    Multi-Channel Char+Word N-gram TF-IDF classifier with balanced class weights.
     """
 
     def __init__(
         self,
         use_section_context: bool = True,
+        section_weight: float = 0.20,
         classifier_type: str = "svm",
         char_ngram_range: Tuple[int, int] = (1, 4),
         max_features: int = 60000,
@@ -42,18 +68,8 @@ class TfidfRequirementClassifier(BaseRequirementClassifier):
         class_weight: Optional[str] = "balanced",
         random_state: int = 42,
     ) -> None:
-        """
-        Args:
-            use_section_context: Whether to prepend `[Section] <section> [SEP]`.
-            classifier_type: `"svm"` (Calibrated LinearSVC) or `"logreg"` (LogisticRegression).
-            char_ngram_range: Character n-gram range for Chinese text representation.
-            max_features: Maximum vocabulary size per vectorizer.
-            c_value: Regularization strength parameter `C`.
-            class_weight: `"balanced"` to counter label imbalance across the 8 types,
-                or `None` for uniform sample weighting.
-            random_state: Random seed for reproducibility.
-        """
         super().__init__(use_section_context=use_section_context)
+        self.section_weight = section_weight
         self.classifier_type = classifier_type.lower()
         self.char_ngram_range = char_ngram_range
         self.max_features = max_features
@@ -63,26 +79,69 @@ class TfidfRequirementClassifier(BaseRequirementClassifier):
         self.pipeline: Optional[Pipeline] = None
 
     def _build_pipeline(self) -> Pipeline:
-        """Construct the scikit-learn FeatureUnion + Linear Classifier pipeline."""
-        char_vectorizer = TfidfVectorizer(
-            analyzer="char",
-            ngram_range=self.char_ngram_range,
-            max_features=self.max_features,
-            sublinear_tf=True,
-            min_df=2,
-        )
-        word_vectorizer = TfidfVectorizer(
-            analyzer="char_wb",
-            ngram_range=(2, 4),
-            max_features=self.max_features // 2,
-            sublinear_tf=True,
-            min_df=2,
-        )
-        features = FeatureUnion(
-            transformer_list=[
-                ("char_tfidf", char_vectorizer),
-                ("word_wb_tfidf", word_vectorizer),
+        """Construct the multi-channel scikit-learn FeatureUnion + Linear Classifier pipeline."""
+        req_char_pipe = Pipeline(
+            [
+                ("extract_req", _PartExtractor("requirement")),
+                (
+                    "tfidf",
+                    TfidfVectorizer(
+                        analyzer="char",
+                        ngram_range=self.char_ngram_range,
+                        max_features=self.max_features,
+                        sublinear_tf=True,
+                        min_df=2,
+                    ),
+                ),
             ]
+        )
+        req_word_pipe = Pipeline(
+            [
+                ("extract_req", _PartExtractor("requirement")),
+                (
+                    "tfidf",
+                    TfidfVectorizer(
+                        analyzer="char_wb",
+                        ngram_range=(2, 4),
+                        max_features=self.max_features // 2,
+                        sublinear_tf=True,
+                        min_df=2,
+                    ),
+                ),
+            ]
+        )
+
+        transformer_list = [
+            ("req_char", req_char_pipe),
+            ("req_word", req_word_pipe),
+        ]
+        transformer_weights = {
+            "req_char": 1.0,
+            "req_word": 0.8,
+        }
+
+        if self.use_section_context and self.section_weight > 0:
+            sec_char_pipe = Pipeline(
+                [
+                    ("extract_sec", _PartExtractor("section")),
+                    (
+                        "tfidf",
+                        TfidfVectorizer(
+                            analyzer="char",
+                            ngram_range=(2, 4),
+                            max_features=10000,
+                            sublinear_tf=True,
+                            min_df=2,
+                        ),
+                    ),
+                ]
+            )
+            transformer_list.append(("sec_char", sec_char_pipe))
+            transformer_weights["sec_char"] = self.section_weight
+
+        features = FeatureUnion(
+            transformer_list=transformer_list,
+            transformer_weights=transformer_weights,
         )
 
         if self.classifier_type == "svm":
@@ -102,7 +161,7 @@ class TfidfRequirementClassifier(BaseRequirementClassifier):
                 random_state=self.random_state,
             )
         else:
-            raise ValueError(f"Unsupported classifier_type='{self.classifier_type}'. Choose 'svm' or 'logreg'.")
+            raise ValueError(f"Unsupported classifier_type='{self.classifier_type}'.")
 
         return Pipeline(
             steps=[
@@ -116,9 +175,6 @@ class TfidfRequirementClassifier(BaseRequirementClassifier):
         train_samples: Sequence[RequirementSample],
         val_samples: Optional[Sequence[RequirementSample]] = None,
     ) -> Dict[str, object]:
-        """
-        Fit the TF-IDF + Linear model on `train_samples`.
-        """
         if not train_samples:
             raise ValueError("Training sample list cannot be empty.")
 
@@ -126,8 +182,9 @@ class TfidfRequirementClassifier(BaseRequirementClassifier):
         y_train = [s.label_id for s in train_samples]
 
         logger.info(
-            "Fitting TfidfRequirementClassifier (%s) on %d samples...",
+            "Fitting Multi-Channel TfidfRequirementClassifier (%s, sec_weight=%.2f) on %d samples...",
             self.classifier_type,
+            self.section_weight if self.use_section_context else 0.0,
             len(x_train),
         )
         self.pipeline = self._build_pipeline()
@@ -165,15 +222,11 @@ class TfidfRequirementClassifier(BaseRequirementClassifier):
         self,
         inputs: Sequence[Union[RequirementSample, str, Dict[str, str]]],
     ) -> np.ndarray:
-        """
-        Predict `(N, 8)` class probabilities.
-        """
         if self.pipeline is None:
             raise RuntimeError("Model has not been fitted or loaded yet.")
         texts = self._prepare_texts(inputs)
         probs = self.pipeline.predict_proba(texts)
 
-        # Ensure full 8-column probability array even if a tiny subset missed a class
         clf_classes = self.pipeline.named_steps["clf"].classes_
         if len(clf_classes) == NUM_LABELS:
             return probs
@@ -184,9 +237,6 @@ class TfidfRequirementClassifier(BaseRequirementClassifier):
         return full_probs
 
     def save(self, model_dir: Union[str, Path]) -> Path:
-        """
-        Save fitted scikit-learn pipeline and metadata config to `model_dir`.
-        """
         if self.pipeline is None:
             raise RuntimeError("Cannot save an unfitted TfidfRequirementClassifier.")
 
@@ -200,6 +250,7 @@ class TfidfRequirementClassifier(BaseRequirementClassifier):
         config = {
             "model_type": "tfidf",
             "use_section_context": self.use_section_context,
+            "section_weight": self.section_weight,
             "classifier_type": self.classifier_type,
             "char_ngram_range": list(self.char_ngram_range),
             "max_features": self.max_features,
@@ -215,9 +266,6 @@ class TfidfRequirementClassifier(BaseRequirementClassifier):
 
     @classmethod
     def load(cls, model_dir: Union[str, Path]) -> "TfidfRequirementClassifier":
-        """
-        Load a saved `TfidfRequirementClassifier` from `model_dir`.
-        """
         model_dir = Path(model_dir)
         config_path = model_dir / "config.json"
         pipeline_path = model_dir / "tfidf_pipeline.joblib"
@@ -230,6 +278,7 @@ class TfidfRequirementClassifier(BaseRequirementClassifier):
 
         instance = cls(
             use_section_context=bool(config.get("use_section_context", True)),
+            section_weight=float(config.get("section_weight", 0.20)),
             classifier_type=str(config.get("classifier_type", "svm")),
             char_ngram_range=tuple(config.get("char_ngram_range", [1, 4])),
             max_features=int(config.get("max_features", 60000)),
