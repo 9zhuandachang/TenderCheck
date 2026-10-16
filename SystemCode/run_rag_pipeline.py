@@ -195,6 +195,8 @@ def main() -> None:
             prefer_subchapters=True,
             max_pages_per_pdf=args.max_pages,
         )
+        if hasattr(raw_vision, "unload"):
+            raw_vision.unload()
         logger.info(
             "Parsed %d Parent Chunks and %d Child Chunks.",
             len(parent_chunks),

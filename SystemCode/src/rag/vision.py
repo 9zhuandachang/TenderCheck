@@ -316,16 +316,42 @@ class QwenVLBackend(BaseVisionBackend):
         if self._hf_model is not None:
             return
         import torch
-        from transformers import AutoProcessor, AutoModelForVision2Seq
+        import transformers
+        from transformers import AutoProcessor
 
         logger.info("Loading VLM %s on GPU...", self.model_name_or_path)
-        self._hf_processor = AutoProcessor.from_pretrained(self.model_name_or_path)
-        self._hf_model = AutoModelForVision2Seq.from_pretrained(
+        # Limit max image pixels so high-DPI A4 scans don't cause excessive visual token memory
+        self._hf_processor = AutoProcessor.from_pretrained(
             self.model_name_or_path,
-            torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto",
+            min_pixels=256 * 28 * 28,
+            max_pixels=1280 * 28 * 28,
         )
+        model_cls = getattr(
+            transformers,
+            "Qwen2_5_VLForConditionalGeneration",
+            getattr(transformers, "AutoModelForImageTextToText", None),
+        )
+        load_kwargs: Dict[str, Any] = {
+            "torch_dtype": torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+            "device_map": "auto",
+        }
+        self._hf_model = model_cls.from_pretrained(self.model_name_or_path, **load_kwargs)
         self._hf_model.eval()
+
+    def unload(self) -> None:
+        """Release VLM weights from GPU VRAM so subsequent BGE-M3 indexing has full 16GB VRAM."""
+        if self._hf_model is not None:
+            import gc
+            import torch
+
+            del self._hf_model
+            del self._hf_processor
+            self._hf_model = None
+            self._hf_processor = None
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            logger.info("Unloaded VLM from GPU VRAM.")
 
     @staticmethod
     def _parse_vlm_json(raw_output: str, pdf_page: int, fallback_seal: bool) -> PageVisionResult:
