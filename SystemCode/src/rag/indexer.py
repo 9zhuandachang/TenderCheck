@@ -397,7 +397,12 @@ class HybridBidIndex:
         return index_dir
 
     @classmethod
-    def load(cls, index_dir: Path, device: Optional[str] = None) -> "HybridBidIndex":
+    def load(
+        cls,
+        index_dir: Path,
+        device: Optional[str] = None,
+        reranker_model_name: Optional[str] = None,
+    ) -> "HybridBidIndex":
         """Reload a persisted `HybridBidIndex` from `index_dir`."""
         index_dir = Path(index_dir)
         with open(index_dir / "index_meta.json", "r", encoding="utf-8") as f:
@@ -405,7 +410,7 @@ class HybridBidIndex:
 
         instance = cls(
             embedding_model_name=str(meta.get("embedding_model_name", DEFAULT_EMBEDDING_MODEL)),
-            reranker_model_name=meta.get("reranker_model_name"),
+            reranker_model_name=reranker_model_name or meta.get("reranker_model_name"),
             use_neural_dense=bool(meta.get("use_neural_dense", False)),
             device=device,
         )

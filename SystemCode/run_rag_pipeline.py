@@ -84,6 +84,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--vision_cache_dir",
+        "--cache_dir",
+        dest="vision_cache_dir",
         type=Path,
         default=BASE_DIR / "data" / "vision_cache",
         help="Shared directory for caching page-level VLM/OCR PageVisionResult JSONs.",
@@ -119,6 +121,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--embedding_model",
+        "--dense_model",
+        dest="embedding_model",
         type=str,
         default=DEFAULT_EMBEDDING_MODEL,
         help=f"Dense embedding model name (default: {DEFAULT_EMBEDDING_MODEL}).",
@@ -141,7 +145,7 @@ def parse_args() -> argparse.Namespace:
         "--query",
         type=str,
         default="",
-        help="Requirement clause text to retrieve evidence for.",
+        help="Requirement clause text to retrieve evidence for (if omitted, runs an 8-category demo query suite).",
     )
     parser.add_argument(
         "--section",
@@ -229,20 +233,37 @@ def main() -> None:
         return
 
     # Mode: query
-    if not args.query:
-        raise ValueError("--query is required when --mode=query.")
-
-    index = HybridBidIndex.load(args.index_dir)
+    index = HybridBidIndex.load(args.index_dir, reranker_model_name=args.reranker_model)
     ledger = EntityLedgerBuilder.load_ledger(args.index_dir / "ledger.json")
     retriever = CategoryRouterRetriever(index=index, ledger=ledger)
 
-    bundle = retriever.retrieve(
-        requirement_text=args.query,
-        section_text=args.section,
-        requirement_type=args.req_type,
-        top_k=args.top_k,
-    )
-    print(json.dumps(bundle.to_dict(), ensure_ascii=False, indent=2))
+    if args.query:
+        bundle = retriever.retrieve(
+            requirement_text=args.query,
+            section_text=args.section,
+            requirement_type=args.req_type,
+            top_k=args.top_k,
+        )
+        print(json.dumps(bundle.to_dict(), ensure_ascii=False, indent=2))
+        return
+
+    # Default 8-category smoke test when --query is omitted
+    demo_queries = [
+        ("Qualification", "第一章 招标公告", "投标人须具备公路工程施工总承包三级及以上资质，项目经理须具备公路工程专业二级及以上注册建造师执业资格。"),
+        ("Commercial", "第二章 投标人须知", "投标总价不得超过最高投标限价，并按招标文件要求足额缴纳投标保证金。"),
+        ("Schedule", "第二章 投标人须知", "计划工期不超过日历天要求，投标有效期为90日历天。"),
+        ("Consistency", "第三章 评标办法", "投标函与开标一览表中的投标总价大小写、工期及项目经理姓名必须完全一致。"),
+    ]
+    results = []
+    for req_type, sec, q_text in demo_queries:
+        b = retriever.retrieve(
+            requirement_text=q_text,
+            section_text=sec,
+            requirement_type=req_type,
+            top_k=args.top_k,
+        )
+        results.append(b.to_dict())
+    print(json.dumps(results, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

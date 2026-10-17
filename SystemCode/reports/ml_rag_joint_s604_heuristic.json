@@ -1,0 +1,448 @@
+{
+  "ml_classification_summary": {
+    "num_clauses": 359,
+    "accuracy": 0.9471,
+    "macro_f1": 0.9159,
+    "weighted_f1": 0.9468
+  },
+  "ledger_completeness": {
+    "company_name": "",
+    "qualifications": [
+      "公路路基工程专业承包一级",
+      "公路路面工程专业承包一级",
+      "建筑装饰工程专业承包一级",
+      "公路工程施工总承包特级",
+      "建筑工程施工总承包一级",
+      "市政公用工程施工总承包一级",
+      "桥梁工程专业承包一级",
+      "港口与航道工程施工总承包二级"
+    ],
+    "company_filled_slots": 3,
+    "company_filled_field_names": [
+      "credit_code",
+      "qualifications",
+      "safety_permit_valid"
+    ],
+    "commercial_filled_slots": 1,
+    "commercial_filled_field_names": [
+      "duration_days"
+    ],
+    "personnel_records_count": 7,
+    "performance_records_count": 94,
+    "seal_registry_categories_count": 11,
+    "field_mentions_count": 11
+  },
+  "ml_rag_routing_consistency": {
+    "evaluated_clauses": 359,
+    "top1_evidence_agreement_rate": 0.9666,
+    "mean_topk_evidence_overlap": 0.9738
+  },
+  "per_category_rag_performance": {
+    "Qualification": {
+      "count": 59,
+      "ml_correct": 59,
+      "structured_hit": 59,
+      "chunk_hit": 59,
+      "top1_routing_match": 59,
+      "mean_topk_overlap": 1.0,
+      "mean_top1_score": 0.0163,
+      "ml_accuracy": 1.0,
+      "structured_hit_rate": 1.0,
+      "chunk_hit_rate": 1.0,
+      "top1_routing_agreement": 1.0
+    },
+    "Document": {
+      "count": 154,
+      "ml_correct": 147,
+      "structured_hit": 154,
+      "chunk_hit": 154,
+      "top1_routing_match": 150,
+      "mean_topk_overlap": 0.987,
+      "mean_top1_score": 0.016,
+      "ml_accuracy": 0.9545,
+      "structured_hit_rate": 1.0,
+      "chunk_hit_rate": 1.0,
+      "top1_routing_agreement": 0.974
+    },
+    "Technical": {
+      "count": 20,
+      "ml_correct": 15,
+      "structured_hit": 20,
+      "chunk_hit": 20,
+      "top1_routing_match": 17,
+      "mean_topk_overlap": 0.88,
+      "mean_top1_score": 0.0161,
+      "ml_accuracy": 0.75,
+      "structured_hit_rate": 1.0,
+      "chunk_hit_rate": 1.0,
+      "top1_routing_agreement": 0.85
+    },
+    "Commercial": {
+      "count": 63,
+      "ml_correct": 61,
+      "structured_hit": 63,
+      "chunk_hit": 63,
+      "top1_routing_match": 61,
+      "mean_topk_overlap": 0.9714,
+      "mean_top1_score": 0.0162,
+      "ml_accuracy": 0.9683,
+      "structured_hit_rate": 1.0,
+      "chunk_hit_rate": 1.0,
+      "top1_routing_agreement": 0.9683
+    },
+    "Schedule": {
+      "count": 10,
+      "ml_correct": 9,
+      "structured_hit": 10,
+      "chunk_hit": 10,
+      "top1_routing_match": 9,
+      "mean_topk_overlap": 0.92,
+      "mean_top1_score": 0.0144,
+      "ml_accuracy": 0.9,
+      "structured_hit_rate": 1.0,
+      "chunk_hit_rate": 1.0,
+      "top1_routing_agreement": 0.9
+    },
+    "Consistency": {
+      "count": 18,
+      "ml_correct": 14,
+      "structured_hit": 18,
+      "chunk_hit": 18,
+      "top1_routing_match": 16,
+      "mean_topk_overlap": 0.8667,
+      "mean_top1_score": 0.0158,
+      "ml_accuracy": 0.7778,
+      "structured_hit_rate": 1.0,
+      "chunk_hit_rate": 1.0,
+      "top1_routing_agreement": 0.8889
+    },
+    "Integrity": {
+      "count": 17,
+      "ml_correct": 17,
+      "structured_hit": 17,
+      "chunk_hit": 17,
+      "top1_routing_match": 17,
+      "mean_topk_overlap": 1.0,
+      "mean_top1_score": 0.0155,
+      "ml_accuracy": 1.0,
+      "structured_hit_rate": 1.0,
+      "chunk_hit_rate": 1.0,
+      "top1_routing_agreement": 1.0
+    },
+    "Scoring": {
+      "count": 18,
+      "ml_correct": 18,
+      "structured_hit": 18,
+      "chunk_hit": 18,
+      "top1_routing_match": 18,
+      "mean_topk_overlap": 1.0,
+      "mean_top1_score": 0.0157,
+      "ml_accuracy": 1.0,
+      "structured_hit_rate": 1.0,
+      "chunk_hit_rate": 1.0,
+      "top1_routing_agreement": 1.0
+    }
+  },
+  "case_studies": {
+    "Schedule": [
+      {
+        "clause_id": "T0037",
+        "section": "招标文件正文.pdf / 第二章前附表3.3.1",
+        "clause_text": "投标有效期自投标文件递交截止日起90日。",
+        "gold_category": "Schedule",
+        "ml_predicted_category": "Schedule",
+        "routing_strategy": "ScheduleLedger(duration_days/validity_days) + ProgressPlan Hybrid Search",
+        "ledger_keys": [
+          "duration_days",
+          "validity_days",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub19_C000351",
+        "top1_page": "p.90",
+        "top1_section": "第三节路基工程施工方案 > 3.2 施工进度计划",
+        "top1_score": 0.0152,
+        "top1_snippet": "[第三节路基工程施工方案 > 3.2 施工进度计划 | 第90页] 施工段: 第二施工区 (毕桥镇-飞鲤镇）；工序: 全幅路基工程；工期: 80；计划开工日期: 2023.3.31；计划完工日期: 2022.6.18"
+      },
+      {
+        "clause_id": "T0136",
+        "section": "招标文件正文.pdf / 第二章3.3.1",
+        "clause_text": "除前附表另有规定外，投标有效期为90日。",
+        "gold_category": "Schedule",
+        "ml_predicted_category": "Schedule",
+        "routing_strategy": "ScheduleLedger(duration_days/validity_days) + ProgressPlan Hybrid Search",
+        "ledger_keys": [
+          "duration_days",
+          "validity_days",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub19_C000825",
+        "top1_page": "p.264",
+        "top1_section": "第三节施工进度计划 > 3.1 施工进度计划表",
+        "top1_score": 0.014,
+        "top1_snippet": "[第三节施工进度计划 > 3.1 施工进度计划表 | 第264页] 序号: 7；名称: 景观和便民、安防施工 （第三工程区）；工作 类型: 实工作；开始时间: 2023-01-05；完成时间: 2023-04-04；工期: 90；备注: /"
+      }
+    ],
+    "Commercial": [
+      {
+        "clause_id": "T0002",
+        "section": "招标文件正文.pdf / 第一章2.10",
+        "clause_text": "项目招标控制价115046243.64元，含暂列金8000000.00元。",
+        "gold_category": "Commercial",
+        "ml_predicted_category": "Commercial",
+        "routing_strategy": "CommercialScheduleLedger Lookup + BidLetter/BOQ Table Search",
+        "ledger_keys": [
+          "commercial_summary",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub12_C000001",
+        "top1_page": "p.1",
+        "top1_section": "四、投标保证金",
+        "top1_score": 0.0164,
+        "top1_snippet": "四、投标保证金 S604皖南交旅融合（飞毕路美丽公路）项目 商务文件"
+      },
+      {
+        "clause_id": "T0024",
+        "section": "招标文件正文.pdf / 第一章7.3",
+        "clause_text": "投标保证金可采用银行保函、保证保险、担保保函等保函形式，或电汇、转账。",
+        "gold_category": "Commercial",
+        "ml_predicted_category": "Commercial",
+        "routing_strategy": "CommercialScheduleLedger Lookup + BidLetter/BOQ Table Search",
+        "ledger_keys": [
+          "commercial_summary",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub12_C000001",
+        "top1_page": "p.1",
+        "top1_section": "四、投标保证金",
+        "top1_score": 0.0164,
+        "top1_snippet": "四、投标保证金 S604皖南交旅融合（飞毕路美丽公路）项目 商务文件"
+      }
+    ],
+    "Qualification": [
+      {
+        "clause_id": "T0004",
+        "section": "招标文件正文.pdf / 第一章3.1",
+        "clause_text": "投标人须具备公路工程施工总承包三级及以上资质。",
+        "gold_category": "Qualification",
+        "ml_predicted_category": "Qualification",
+        "routing_strategy": "EntityLedger(Company+Personnel+Performance) + Certificate/Table Hybrid Search",
+        "ledger_keys": [
+          "company_profile",
+          "personnel_ledger",
+          "performance_ledger",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub16_C000002",
+        "top1_page": "p.1",
+        "top1_section": "七、资格审查资料 > （一）投标人基本情况表",
+        "top1_score": 0.0164,
+        "top1_snippet": "称正高级工程师电话0552-3950279成立时间2018年3月7日员工总人数：7192企业资质等级公路路基工程专业承包一级公路路面工程专业承包一级建筑装饰工程专业承包一级公路工程施工总承包特级水利水电施工总承包一级建筑工程施工总承包一级市政公用工程施工总承包一级桥梁工程专业承包一级港口与航道工程施工总承包二级公路交通工程（公路安全设施分项）专业承包二级其中"
+      },
+      {
+        "clause_id": "T0005",
+        "section": "招标文件正文.pdf / 第一章3.1",
+        "clause_text": "投标人须具有有效安全生产许可证。",
+        "gold_category": "Qualification",
+        "ml_predicted_category": "Qualification",
+        "routing_strategy": "EntityLedger(Company+Personnel+Performance) + Certificate/Table Hybrid Search",
+        "ledger_keys": [
+          "company_profile",
+          "personnel_ledger",
+          "performance_ledger",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub16_C000008",
+        "top1_page": "p.5",
+        "top1_section": "七、资格审查资料 > （一）投标人基本情况表",
+        "top1_score": 0.0164,
+        "top1_snippet": "安全生产许可证 S604皖南交旅融合（飞毕路美丽公路）项目"
+      }
+    ],
+    "Document": [
+      {
+        "clause_id": "T0013",
+        "section": "招标文件正文.pdf / 第一章3.4",
+        "clause_text": "项目经理业绩须提供中标通知书。",
+        "gold_category": "Document",
+        "ml_predicted_category": "Document",
+        "routing_strategy": "DocumentSealRegistry Lookup + BM25-Weighted Form/Seal Search",
+        "ledger_keys": [
+          "document_seal_registry",
+          "matched_chunks_with_seal",
+          "matched_chunks_with_signature",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub06_C000017",
+        "top1_page": "p.2",
+        "top1_section": "（六）项目经理近年完成的类似项目情况表",
+        "top1_score": 0.0164,
+        "top1_snippet": "1.中标通知书"
+      },
+      {
+        "clause_id": "T0014",
+        "section": "招标文件正文.pdf / 第一章3.4",
+        "clause_text": "项目经理业绩须提供交工或竣工验收证明，须有建设、设计、监理、施工单位等盖章确认。",
+        "gold_category": "Document",
+        "ml_predicted_category": "Document",
+        "routing_strategy": "DocumentSealRegistry Lookup + BM25-Weighted Form/Seal Search",
+        "ledger_keys": [
+          "document_seal_registry",
+          "matched_chunks_with_seal",
+          "matched_chunks_with_signature",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03_C000021",
+        "top1_page": "p.6",
+        "top1_section": "（三）投标人近年完成的类似项目情况表01",
+        "top1_score": 0.0156,
+        "top1_snippet": "3.交工验收证书"
+      }
+    ],
+    "Consistency": [
+      {
+        "clause_id": "T0022",
+        "section": "招标文件正文.pdf / 第一章3.15",
+        "clause_text": "一级建造师电子证书本人手写签名须与签名图像笔迹一致。",
+        "gold_category": "Consistency",
+        "ml_predicted_category": "Consistency",
+        "routing_strategy": "Cross-Document Entity Mention Aggregation (All-Equal Check) + Hybrid Search",
+        "ledger_keys": [
+          "cross_page_consistency_report",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub16_C000002",
+        "top1_page": "p.1",
+        "top1_section": "七、资格审查资料 > （一）投标人基本情况表",
+        "top1_score": 0.0164,
+        "top1_snippet": "称正高级工程师电话0552-3950279成立时间2018年3月7日员工总人数：7192企业资质等级公路路基工程专业承包一级公路路面工程专业承包一级建筑装饰工程专业承包一级公路工程施工总承包特级水利水电施工总承包一级建筑工程施工总承包一级市政公用工程施工总承包一级桥梁工程专业承包一级港口与航道工程施工总承包二级公路交通工程（公路安全设施分项）专业承包二级其中"
+      },
+      {
+        "clause_id": "T0069",
+        "section": "招标文件正文.pdf / 第二章附录5 项目经理",
+        "clause_text": "项目经理注册证书注册单位须与投标人名称一致。",
+        "gold_category": "Consistency",
+        "ml_predicted_category": "Consistency",
+        "routing_strategy": "Cross-Document Entity Mention Aggregation (All-Equal Check) + Hybrid Search",
+        "ledger_keys": [
+          "cross_page_consistency_report",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub06_C000011",
+        "top1_page": "p.1",
+        "top1_section": "（六）项目经理近年完成的类似项目情况表",
+        "top1_score": 0.0161,
+        "top1_snippet": "[（六）项目经理近年完成的类似项目情况表 | 第1页] 序号: 项目经理（或注册建 造师）；01: 王文年"
+      }
+    ],
+    "Technical": [
+      {
+        "clause_id": "T0028",
+        "section": "招标文件正文.pdf / 第二章前附表1.3.3",
+        "clause_text": "标段交工验收质量评定须为合格。",
+        "gold_category": "Technical",
+        "ml_predicted_category": "Technical",
+        "routing_strategy": "VolumeFilter(技术标) + Dense/BM25 Hybrid RRF + Reranker",
+        "ledger_keys": [
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub20_C000156",
+        "top1_page": "p.29",
+        "top1_section": "第三节施工总体筹划 > 3.1.1 质量目标",
+        "top1_score": 0.0163,
+        "top1_snippet": "[第三节施工总体筹划 > 3.1.1 质量目标 | 第29页] 序号: 1；项目阶段: 交工验收；质量标准: 质量评定为合格"
+      },
+      {
+        "clause_id": "T0030",
+        "section": "招标文件正文.pdf / 第二章前附表1.3.4",
+        "clause_text": "安全目标为无生产安全责任事故。",
+        "gold_category": "Technical",
+        "ml_predicted_category": "Technical",
+        "routing_strategy": "VolumeFilter(技术标) + Dense/BM25 Hybrid RRF + Reranker",
+        "ledger_keys": [
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub19_C001169",
+        "top1_page": "p.339",
+        "top1_section": "第一节安全管理目标及组织体系",
+        "top1_score": 0.015,
+        "top1_snippet": "安全生产管理手段职工安全教育群众活动安全生产监察手段五同时职工上岗安全教育百日安全无事故安全生产制度特殊工程安全措施、安全合格制新项目重点工程安全教育安全生产三检制各项安全管理制度“三不放过”的分级事故调查处理安全生产群管网各级人员安全生产岗位责任制安全日志挂牌单位工程安全负责人制安全奖惩兑现制度总目标：安全生产零事故图1.2-1 安全生产保证体系框架图规范"
+      }
+    ],
+    "Integrity": [
+      {
+        "clause_id": "T0057",
+        "section": "招标文件正文.pdf / 第二章前附表10.6（二）",
+        "clause_text": "拟派经理已任其他项目经理时，不得虚假承诺未在其他项目任项目经理。",
+        "gold_category": "Integrity",
+        "ml_predicted_category": "Integrity",
+        "routing_strategy": "Integrity Commitment Retrieval + Corporate Seal Identity Verification",
+        "ledger_keys": [
+          "company_profile",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub04_C000007",
+        "top1_page": "p.2",
+        "top1_section": "（四）投标人信誉情况表",
+        "top1_score": 0.0157,
+        "top1_snippet": "[（四）投标人信誉情况表 | 第2页] 在 “ 信 用 中 国 ” 网 站 （http://www.creditchina.gov.cn/）中被列 入失信被执行人名单；: 在近三年内（自投标截止之日向前追溯3年） 投标人或其法定代表人、拟委任的项目经理有 行贿犯罪行为的；；我 公 司 在 “ 信 用 中 国 ” 网 站 （http://www.creditc"
+      },
+      {
+        "clause_id": "T0152",
+        "section": "招标文件正文.pdf / 第二章3.5.4",
+        "clause_text": "信誉情况说明须与实际相符，不得弄虚作假。",
+        "gold_category": "Integrity",
+        "ml_predicted_category": "Integrity",
+        "routing_strategy": "Integrity Commitment Retrieval + Corporate Seal Identity Verification",
+        "ledger_keys": [
+          "company_profile",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub04_C000009",
+        "top1_page": "p.2",
+        "top1_section": "（四）投标人信誉情况表",
+        "top1_score": 0.0164,
+        "top1_snippet": "[（四）投标人信誉情况表 | 第2页] 在 “ 信 用 中 国 ” 网 站 （http://www.creditchina.gov.cn/）中被列 入失信被执行人名单；: 法律法规或投标人须知前附表规定的其他情 形。；我 公 司 在 “ 信 用 中 国 ” 网 站 （http://www.creditchina.gov.cn/）中未被 列入失信被执行人名单；"
+      }
+    ],
+    "Scoring": [
+      {
+        "clause_id": "T0209",
+        "section": "招标文件正文.pdf / 第三章2.2.4（1）项目经理（1）",
+        "clause_text": "拟任项目经理业绩满足招标最低要求得6分。",
+        "gold_category": "Scoring",
+        "ml_predicted_category": "Scoring",
+        "routing_strategy": "Multi-Hop Scoring Evidence Retrieval (Performance/Awards + Technical Plan)",
+        "ledger_keys": [
+          "performance_count",
+          "performance_ledger",
+          "personnel_ledger",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub05_C000001",
+        "top1_page": "p.1",
+        "top1_section": "（五）拟委任的项目经理简历表",
+        "top1_score": 0.0153,
+        "top1_snippet": "[（五）拟委任的项目经理简历表 | 第1页] 姓 名: 职 称；王文年: 高级；年龄: 单位 职务；41: 项目经理；学历: 拟在本标段 工程担任职务；本科: 项目经理"
+      },
+      {
+        "clause_id": "T0210",
+        "section": "招标文件正文.pdf / 第三章2.2.4（1）项目经理（2）",
+        "clause_text": "2017年1月1日以来以交工日为准，项目经理以项目经理身份完成一个单合同含长度超过15公里或金额≥5000万元的新建、改建或扩建三级及以上公路施工项目，含路基、路面及桥涵，得4分，本项最高4分。",
+        "gold_category": "Scoring",
+        "ml_predicted_category": "Scoring",
+        "routing_strategy": "Multi-Hop Scoring Evidence Retrieval (Performance/Awards + Technical Plan)",
+        "ledger_keys": [
+          "performance_count",
+          "performance_ledger",
+          "personnel_ledger",
+          "referenced_pages"
+        ],
+        "top1_chunk_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub19_C000167",
+        "top1_page": "p.32",
+        "top1_section": "第三节施工总体筹划 > 3.2.1 项目管理施工",
+        "top1_score": 0.0153,
+        "top1_snippet": "质量、安全、费用等建设目标。3.2 施工管理模式3.2.1 项目管理施工我单位根据本工程的特点及实际需要，本项目采用施工管理模式，成立现场项目经理部，直属公司总部管理。项目经理代表企业法人直接向发包人负责，现场成立以项目经理为中心的决策与管理组织，项目所需生产力要素及资源由公司总部根据项目经理部需要及时统一计划调配，以公司资源保证本项目按合同目标顺利实施。3"
+      }
+    ]
+  }
+}
