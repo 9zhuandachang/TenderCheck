@@ -253,10 +253,20 @@ class EntityLedgerBuilder:
                     "简历表",
                     "情况表",
                     "职称",
+                    "岗位",
                 }:
-                    role = kv.get("person_role") or (
-                        "项目经理" if "项目经理" in text or "项目经理" in chunk.section_path else "核心管理人员"
-                    )
+                    if (
+                        p_name == company_info.get("legal_representative")
+                        or "法定代表人" in chunk.section_path
+                        or "基本情况表" in chunk.section_path
+                    ):
+                        role = "法定代表人"
+                    else:
+                        role = kv.get("person_role") or (
+                            "项目经理"
+                            if "项目经理" in text or "项目经理" in chunk.section_path
+                            else "核心管理人员"
+                        )
                     ledger.personnel_ledger.append(
                         {
                             "name": p_name,
