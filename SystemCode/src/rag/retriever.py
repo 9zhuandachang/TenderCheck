@@ -256,7 +256,7 @@ class CategoryRouterRetriever:
         """
         strategy = "ScheduleLedger(duration_days/validity_days) + BidLetter/ProgressPlan Search"
         hits = self.index.search(
-            query=f"工期 360日历天 投标有效期 进度计划 {req_text}",
+            query=f"工期 日历天 投标有效期 进度计划 {req_text}",
             top_k=top_k,
             filter_fn=lambda c: (
                 c.doc_category == "投标函与承诺书"
