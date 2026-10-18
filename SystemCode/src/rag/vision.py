@@ -135,18 +135,18 @@ def infer_doc_category_from_text(text: str, heading_hint: str = "") -> str:
     """Infer standardized `doc_category` from page text and section headings."""
     combined = f"{heading_hint}\n{text}"
     rules: List[Tuple[str, Tuple[str, ...]]] = [
-        ("投标函与承诺书", ("投标函", "投标函附录", "承诺函", "我方承诺", "投标承诺书")),
+        ("投标函与承诺书", ("投标函", "投标函附录", "承诺函", "我方承诺", "投标承诺书", "投标诚信承诺书")),
         ("法定代表人身份证明与授权委托书", ("法定代表人身份证明", "授权委托书", "委托代理人")),
         ("联合体协议书", ("联合体协议书", "联合体投标")),
         ("投标保证金证明", ("投标保证金", "银行保函", "保证保险", "基本账户开户许可证", "转账凭证")),
         ("安全生产许可证", ("安全生产许可证", "安许证")),
         ("营业执照与企业资质证书", ("营业执照", "统一社会信用代码", "建筑业企业资质证书", "资质等级", "基本情况表")),
         ("社保证明材料", ("社会保险", "社保证明", "参保缴费", "养老保险")),
-        ("项目管理机构与人员简历证书", ("项目经理", "技术负责人", "建造师", "安全生产考核合格证", "职称证", "简历表", "项目管理机构")),
+        ("项目管理机构与人员简历证书", ("项目经理", "技术负责人", "其他管理和技术人员", "建造师", "安全生产考核合格证", "职称证", "简历表", "项目管理机构")),
         ("近年类似工程业绩证明", ("类似项目情况表", "类似工程业绩", "中标通知书", "施工合同", "合同协议书", "竣工验收")),
         ("财务状况与审计报告", ("财务状况", "审计报告", "资产负债表", "利润表", "现金流量表")),
         ("企业信誉与无违法承诺", ("信誉情况表", "无重大违法", "无行贿犯罪", "信用中国", "不良行为记录")),
-        ("报价文件与工程量清单", ("已标价工程量清单", "投标总价", "开标一览表", "计价表", "单价分析表", "汇总表")),
+        ("报价文件与工程量清单", ("已标价工程量清单", "工程量清单", "投标报价汇总表", "投标总价", "开标一览表", "计价表", "单价分析表", "汇总表")),
         ("施工组织设计与技术方案", ("施工组织设计", "施工方案", "施工进度计划", "质量保证措施", "安全文明施工")),
     ]
     for category, keywords in rules:
@@ -163,6 +163,21 @@ def extract_kv_heuristically(text: str) -> Dict[str, Any]:
     kv: Dict[str, Any] = {}
     compact = re.sub(r"[ \t]+", " ", text)
 
+    # 0. Bidder Company Name & Legal Representative
+    m_comp = re.search(
+        r"(?:投标人|投标人名称|企业名称)[（(盖单位电子印章）)\s：:]*([\u4e00-\u9fa5]{4,28}(?:有限责任公司|股份有限公司|有限公司|集团|工程局))",
+        compact,
+    )
+    if m_comp:
+        kv["company_name"] = m_comp.group(1).strip()
+
+    m_legal = re.search(
+        r"法定代表人[：:\s]*([\u4e00-\u9fa5]{2,4})(?:\s|[（(]|$)",
+        compact,
+    )
+    if m_legal and m_legal.group(1) not in {"身份证明", "或授权", "签字或"}:
+        kv["legal_representative"] = m_legal.group(1).strip()
+
     # 1. Unified Social Credit Code (18 chars)
     m_code = re.search(r"(?:统一社会信用代码|信用代码|注册号)[：:\s]*([0-9A-HJ-NPQRTUWXY]{18})", compact)
     if m_code:
@@ -173,31 +188,61 @@ def extract_kv_heuristically(text: str) -> Dict[str, Any]:
     if m_id:
         kv["id_card"] = m_id.group(1).upper()
 
-    # 3. Bid Total Price (Lower-case numeric)
+    # 3. Bid Total Price (Lower-case numeric: both '投标报价：97984949.58' and '（￥97984949.58元）的投标总报价')
     m_price = re.search(
-        r"(?:投标总报价|投标报价|总报价|小写)[（(]?[^）)\n]{0,10}[)）]?[：:\s¥￥]*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)\s*(万元|元)?",
+        r"[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]{5,}(?:\.[0-9]+)?)\s*(万元|元)?[)）]?\s*的?(?:投标总报价|投标报价)"
+        r"|(?:投标总报价|投标报价|投标总价|小写)[（(]?[^）)\n]{0,12}[)）]?[：:\s¥￥]+([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]{5,}(?:\.[0-9]+)?)\s*(万元|元)?",
         compact,
     )
     if m_price:
-        raw_val = float(m_price.group(1).replace(",", ""))
-        unit = m_price.group(2) or "元"
-        kv["bid_price_yuan"] = round(raw_val * 10000.0, 2) if unit == "万元" else raw_val
+        num_str = m_price.group(1) or m_price.group(3)
+        unit = m_price.group(2) or m_price.group(4) or "元"
+        if num_str:
+            raw_val = float(num_str.replace(",", ""))
+            if raw_val >= 1000:
+                kv["bid_price_yuan"] = round(raw_val * 10000.0, 2) if unit == "万元" else raw_val
 
-    # 4. Bid Total Price (Upper-case Chinese numerals)
-    m_upper = re.search(r"大写[：:\s]*([壹贰叁肆伍陆柒捌玖拾佰仟万亿零元圆角分整正]+)", compact)
+    # 4. Bid Total Price (Upper-case Chinese numerals across line wraps)
+    m_upper = re.search(
+        r"大写[)）：:\s]*([壹贰叁肆伍陆柒捌玖拾佰仟万亿零元圆角分整正\s]{5,40})",
+        compact,
+    )
     if m_upper:
-        kv["bid_price_upper"] = m_upper.group(1)
+        cleaned_upper = re.sub(r"\s+", "", m_upper.group(1))
+        if len(cleaned_upper) >= 5:
+            kv["bid_price_upper"] = cleaned_upper
 
-    # 5. Project Duration (Days / Months)
-    m_dur = re.search(r"工期[：:\s]*(\d{1,4})\s*(日历天|天|个月)", compact)
+    # 5. Project Duration & Quality Target
+    m_dur = re.search(r"工期[：:\s]*(\d{2,4})\s*(日历天|天|个月)", compact)
     if m_dur:
         kv["duration_days"] = f"{m_dur.group(1)}{m_dur.group(2)}"
 
-    # 6. Project Manager / Person Name
-    m_pm = re.search(r"(?:项目经理|项目负责人|姓名)[：:\s]+([\u4e00-\u9fa5]{2,4})(?:\s|$|[，。；|])", compact)
+    m_qual = re.search(r"工程质量[：:\s]*([^\n；;。]{2,40})", compact)
+    if m_qual:
+        kv["quality_target"] = m_qual.group(1).strip()
+
+    # 6. Project Manager / Person Name (require explicit colon or table delimiter)
+    m_pm = re.search(
+        r"(?:项目经理(?:\s*签字)?|项目负责人|姓\s*名)\s*[：:]\s*([\u4e00-\u9fa5]{2,4})(?:\s|$|[，,。；|])",
+        compact,
+    )
     if m_pm:
-        candidate = m_pm.group(1)
-        if candidate not in {"拟委任", "投标人", "技术标", "商务标", "身份证", "建造师"}:
+        candidate = m_pm.group(1).strip()
+        if candidate not in {
+            "拟委任",
+            "投标人",
+            "技术标",
+            "商务标",
+            "身份证",
+            "建造师",
+            "近年完",
+            "到岗履",
+            "承诺书",
+            "简历表",
+            "情况表",
+            "职称",
+            "岗位",
+        }:
             kv["person_name"] = candidate
 
     # 7. Certificate Validity Date

@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 from .parser import BidChunk
+from .vision import extract_kv_heuristically
 
 logger = logging.getLogger(__name__)
 
@@ -151,13 +152,23 @@ class EntityLedgerBuilder:
             if chunk.page_start not in cat_entry["pages"]:
                 cat_entry["pages"].append(chunk.page_start)
 
-            kv = chunk.extracted_kv or {}
             text = chunk.text
+            kv = dict(chunk.extracted_kv or {})
+            kv.update(extract_kv_heuristically(text))
 
             # 2. Populate Company Profile
+            if kv.get("company_name") and not company_info["company_name"]:
+                company_info["company_name"] = kv["company_name"]
+                if chunk.page_start not in company_info["evidence_pages"]:
+                    company_info["evidence_pages"].append(chunk.page_start)
+
+            if kv.get("legal_representative") and not company_info.get("legal_representative"):
+                company_info["legal_representative"] = kv["legal_representative"]
+
             if kv.get("credit_code") and not company_info["credit_code"]:
                 company_info["credit_code"] = kv["credit_code"]
-                company_info["evidence_pages"].append(chunk.page_start)
+                if chunk.page_start not in company_info["evidence_pages"]:
+                    company_info["evidence_pages"].append(chunk.page_start)
 
             if "安全生产许可证" in text or chunk.doc_category == "安全生产许可证":
                 company_info["safety_permit_valid"] = True
@@ -189,7 +200,9 @@ class EntityLedgerBuilder:
 
             if kv.get("bid_price_upper"):
                 val_up = kv["bid_price_upper"]
-                if not commercial_info["bid_price_upper"]:
+                if not commercial_info["bid_price_upper"] or len(val_up) > len(
+                    commercial_info["bid_price_upper"]
+                ):
                     commercial_info["bid_price_upper"] = val_up
                 ledger.field_mentions.append(
                     FieldMention(
@@ -215,14 +228,32 @@ class EntityLedgerBuilder:
                     )
                 )
 
-            m_val_days = re.search(r"投标有效期[为：:\s]*(\d{2,3})\s*(?:日历天|天)", text)
+            if kv.get("quality_target") and not commercial_info["quality_target"]:
+                commercial_info["quality_target"] = kv["quality_target"]
+
+            m_val_days = re.search(r"投标有效期[为：:\s]*(\d{2,3})\s*(?:日历天|天|日)", text)
             if m_val_days and commercial_info["validity_days"] is None:
                 commercial_info["validity_days"] = int(m_val_days.group(1))
+            elif "投标有效期内不撤销" in text and commercial_info["validity_days"] is None:
+                commercial_info["validity_days"] = "响应招标文件规定"
 
             # 4. Populate Personnel Ledger
             if kv.get("person_name") or chunk.doc_category == "项目管理机构与人员简历证书":
                 p_name = kv.get("person_name")
-                if p_name:
+                if p_name and p_name not in {
+                    "拟委任",
+                    "投标人",
+                    "技术标",
+                    "商务标",
+                    "身份证",
+                    "建造师",
+                    "近年完",
+                    "到岗履",
+                    "承诺书",
+                    "简历表",
+                    "情况表",
+                    "职称",
+                }:
                     role = kv.get("person_role") or (
                         "项目经理" if "项目经理" in text or "项目经理" in chunk.section_path else "核心管理人员"
                     )

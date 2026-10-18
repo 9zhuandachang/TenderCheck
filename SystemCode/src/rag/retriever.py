@@ -168,9 +168,15 @@ class CategoryRouterRetriever:
         signatures, and corporate stamps, plus BM25-weighted search.
         """
         strategy = "DocumentSealRegistry Lookup + BM25-Weighted Form/Seal Search"
+        wants_tech_doc = any(k in req_text for k in ("施工组织设计", "暗标", "技术文件"))
         hits = self.index.search(
             query=req_text,
             top_k=top_k,
+            filter_fn=(
+                None
+                if wants_tech_doc
+                else lambda c: c.volume_type != "技术标"
+            ),
             dense_weight=0.35,
             sparse_weight=0.65,
         )
@@ -189,19 +195,36 @@ class CategoryRouterRetriever:
         self, req_text: str, sec_text: str, top_k: int
     ) -> tuple[str, Dict[str, Any], List[RetrievedChunkHit]]:
         """
-        3. Technical: Filter to Technical Volume (`技术标` / `施工组织设计与技术方案`)
-        and run Dense + BM25 hybrid retrieval with reranking.
+        3. Technical: Filter to Technical Volume (`技术标` / `施工组织设计与技术方案`),
+        plus Bid Letter / Subcontracting tables when querying quality/safety targets or subcontracting.
         """
-        strategy = "VolumeFilter(技术标) + Dense/BM25 Hybrid RRF + Reranker"
+        strategy = "VolumeFilter(技术标+投标函承诺) + Dense/BM25 Hybrid RRF + Reranker"
+        wants_bid_letter_or_subcontract = any(
+            k in req_text for k in ("质量评定", "安全目标", "分包", "实质性要求")
+        )
         hits = self.index.search(
             query=req_text,
             top_k=top_k,
-            filter_fn=lambda c: c.volume_type == "技术标"
-            or c.doc_category == "施工组织设计与技术方案",
-            dense_weight=0.6,
-            sparse_weight=0.4,
+            filter_fn=lambda c: (
+                c.volume_type == "技术标"
+                or c.doc_category == "施工组织设计与技术方案"
+                or (
+                    wants_bid_letter_or_subcontract
+                    and c.doc_category in {"投标函与承诺书", "其他投标材料"}
+                )
+            ),
+            dense_weight=0.5,
+            sparse_weight=0.5,
         )
-        return strategy, {"referenced_pages": []}, hits
+        comm_ledger = self.ledger.commercial_schedule_ledger
+        return (
+            strategy,
+            {
+                "quality_target": comm_ledger.get("quality_target"),
+                "referenced_pages": comm_ledger.get("evidence_pages", []),
+            },
+            hits,
+        )
 
     def _route_commercial(
         self, req_text: str, sec_text: str, top_k: int
@@ -231,10 +254,16 @@ class CategoryRouterRetriever:
         5. Schedule: Query Duration & Validity days from Commercial/Schedule Ledger +
         retrieve Bid Letter and Construction Schedule Plan chunks.
         """
-        strategy = "ScheduleLedger(duration_days/validity_days) + ProgressPlan Hybrid Search"
+        strategy = "ScheduleLedger(duration_days/validity_days) + BidLetter/ProgressPlan Search"
         hits = self.index.search(
-            query=f"工期 投标有效期 进度计划 {req_text}",
+            query=f"工期 360日历天 投标有效期 进度计划 {req_text}",
             top_k=top_k,
+            filter_fn=lambda c: (
+                c.doc_category == "投标函与承诺书"
+                or "进度" in c.section_path
+                or "工期" in c.text
+                or "有效期" in c.text
+            ),
         )
         comm_ledger = self.ledger.commercial_schedule_ledger
         ledger_ev = {
@@ -265,9 +294,15 @@ class CategoryRouterRetriever:
                 if isinstance(pno, int) and pno not in ref_pages:
                     ref_pages.append(pno)
 
-        hits = self.index.search(query=req_text, top_k=top_k)
+        hits = self.index.search(
+            query=req_text,
+            top_k=top_k,
+            filter_fn=lambda c: c.volume_type != "技术标",
+        )
         ledger_ev = {
             "cross_page_consistency_report": consistency_checks,
+            "company_profile": self.ledger.company_profile,
+            "commercial_summary": self.ledger.commercial_schedule_ledger,
             "referenced_pages": ref_pages,
         }
         return strategy, ledger_ev, hits
@@ -281,7 +316,7 @@ class CategoryRouterRetriever:
         """
         strategy = "Integrity Commitment Retrieval + Corporate Seal Identity Verification"
         hits = self.index.search(
-            query=f"承诺函 弄虚作假 串通投标 信誉 {req_text}",
+            query=f"投标诚信承诺书 承诺函 弄虚作假 串通投标 信誉情况表 {req_text}",
             top_k=top_k,
             filter_fn=lambda c: c.doc_category
             in {"投标函与承诺书", "企业信誉与无违法承诺", "营业执照与企业资质证书"},
@@ -297,12 +332,31 @@ class CategoryRouterRetriever:
     ) -> tuple[str, Dict[str, Any], List[RetrievedChunkHit]]:
         """
         8. Scoring: Multi-source retrieval combining Performance/Personnel Ledgers
-        with full-corpus hybrid search across Technical and Qualification volumes.
+        with targeted hybrid search across Technical or Qualification/Financial volumes.
         """
         strategy = "Multi-Hop Scoring Evidence Retrieval (Performance/Awards + Technical Plan)"
+        wants_tech_plan = any(
+            k in req_text
+            for k in (
+                "施工组织",
+                "施工方案",
+                "保证体系",
+                "管理体系",
+                "技术措施",
+                "环保",
+                "文明施工",
+                "风险",
+                "资源计划",
+            )
+        )
         hits = self.index.search(
             query=req_text,
-            top_k=max(top_k, 6),
+            top_k=max(top_k, 5),
+            filter_fn=(
+                (lambda c: c.volume_type == "技术标")
+                if wants_tech_plan
+                else (lambda c: c.volume_type != "技术标")
+            ),
             dense_weight=0.55,
             sparse_weight=0.45,
         )

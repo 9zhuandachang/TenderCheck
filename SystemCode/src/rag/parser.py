@@ -548,6 +548,115 @@ class BidDocumentParser:
         }
         return parent_chunks, child_chunks, stats
 
+    @staticmethod
+    def _deduplicate_subchapter_pdfs(sub_pdfs: Sequence[Path]) -> List[Path]:
+        """
+        Deduplicate subchapter PDFs on Windows:
+        1. Case-insensitive path deduplication.
+        2. Fullwidth/ASCII parenthesis normalization (e.g. '技术标(终).pdf' vs '技术标（终）.pdf').
+        3. Compressed duplicate suffix filtering (e.g. 'xxx120.pdf', 'xxx6.0.pdf', 'xxx10.pdf'
+           when 'xxx.pdf' already exists in the same folder).
+        """
+        seen_resolved = set()
+        candidates: List[Path] = []
+        for p in sub_pdfs:
+            norm = str(p.resolve()).lower()
+            if norm not in seen_resolved:
+                seen_resolved.add(norm)
+                candidates.append(p)
+
+        def _canon_stem(stem: str) -> str:
+            return stem.replace("（", "(").replace("）", ")").strip().lower()
+
+        canon_stems = {_canon_stem(p.stem) for p in candidates}
+        kept: List[Path] = []
+        seen_canon = set()
+        for p in candidates:
+            c_stem = _canon_stem(p.stem)
+            if c_stem in seen_canon:
+                continue
+            # Check if this is a DPI-compressed duplicate (e.g. stem ends with '120', '6.0', '10')
+            m_comp = re.match(r"^(.+?)(?:120|6\.0|10)$", c_stem)
+            if m_comp and m_comp.group(1).strip() in canon_stems:
+                continue
+            seen_canon.add(c_stem)
+            kept.append(p)
+        return kept
+
+    def _extract_system_pages_from_merged_pdf(
+        self,
+        merged_pdf: Path,
+        doc_id: str,
+    ) -> Tuple[List[BidChunk], List[BidChunk]]:
+        """
+        Extract system-generated pages from the root merged bid PDF that are NOT
+        saved as separate files in `分章节文件/` (e.g., electronic Bid Letter `投标函`,
+        `投标诚信承诺书`, `项目经理到岗履约承诺函`, `报价文件投标函`, `投标报价汇总表`,
+        `工程量清单总说明`, `第100章 总则`, `异常低价评审表`).
+        """
+        doc = fitz.open(str(merged_pdf))
+        total_pages = len(doc)
+        target_pages: List[int] = []
+
+        # 1. Front-matter system pages (pages 1..6: Cover, TOC, Bid Letter, Integrity Commitment)
+        for pno in range(1, min(7, total_pages + 1)):
+            target_pages.append(pno)
+
+        # 2. Scan native text across remaining pages for Commercial/Price volume header & summary pages
+        boq_detail_count = 0
+        for idx in range(6, total_pages):
+            txt = doc[idx].get_text("text") or ""
+            if not txt.strip():
+                continue
+            if any(
+                kw in txt
+                for kw in (
+                    "（报价文件）",
+                    "投标总报价",
+                    "投标报价汇总表",
+                    "建设项目投标报价汇总表",
+                    "工程量清单总说明",
+                    "异常低价评审表",
+                    "投标总价扉页",
+                )
+            ):
+                target_pages.append(idx + 1)
+            elif "工程量清单表" in txt and "第100章 总则" in txt and boq_detail_count < 3:
+                target_pages.append(idx + 1)
+                boq_detail_count += 1
+        doc.close()
+
+        # Group contiguous target pages into ranges and parse via self.parse_pdf
+        sys_parents: List[BidChunk] = []
+        sys_children: List[BidChunk] = []
+        if not target_pages:
+            return sys_parents, sys_children
+
+        sorted_pages = sorted(set(target_pages))
+        ranges: List[Tuple[int, int]] = []
+        r_start = sorted_pages[0]
+        r_prev = sorted_pages[0]
+        for pno in sorted_pages[1:]:
+            if pno == r_prev + 1:
+                r_prev = pno
+            else:
+                ranges.append((r_start, r_prev))
+                r_start = pno
+                r_prev = pno
+        ranges.append((r_start, r_prev))
+
+        for r_idx, (sp, ep) in enumerate(ranges, start=1):
+            p_chunks, c_chunks, _ = self.parse_pdf(
+                merged_pdf,
+                document_id=f"{doc_id}_sys{r_idx:02d}",
+                start_page=sp,
+                end_page=ep,
+            )
+            sys_parents.extend(p_chunks)
+            sys_children.extend(c_chunks)
+
+        return sys_parents, sys_children
+
     def parse_bid_directory(
         self,
         bid_dir: Path,
@@ -560,8 +669,9 @@ class BidDocumentParser:
 
         Automatically detects whether `分章节文件/` exists:
         - If `prefer_subchapters=True` and `分章节文件/*.pdf` exist, parses each
-          sub-chapter PDF with its exact filename-derived `doc_category` and
-          section heading, guaranteeing 100% accurate section attribution.
+          deduplicated sub-chapter PDF with its exact filename-derived `doc_category`,
+          AND supplements with system-generated front-matter & commercial summary
+          pages from the top-level merged PDF (`投标函`, `投标报价汇总表`, etc.).
         - Otherwise, parses the merged top-level bid PDF file.
         """
         bid_dir = Path(bid_dir)
@@ -574,21 +684,26 @@ class BidDocumentParser:
 
         doc_id = document_id or bid_dir.parent.name
         subchapter_dir = bid_dir / "分章节文件"
+        top_pdfs = list(bid_dir.glob("*.pdf")) + list(bid_dir.glob("*.PDF"))
 
         if prefer_subchapters and subchapter_dir.exists():
-            sub_pdfs = sorted(subchapter_dir.glob("*.pdf")) + sorted(subchapter_dir.glob("*.PDF"))
-            # Deduplicate case-insensitive paths on Windows
-            seen_paths = set()
-            unique_sub_pdfs: List[Path] = []
-            for p in sub_pdfs:
-                norm = str(p.resolve()).lower()
-                if norm not in seen_paths:
-                    seen_paths.add(norm)
-                    unique_sub_pdfs.append(p)
+            raw_sub_pdfs = sorted(subchapter_dir.glob("*.pdf")) + sorted(
+                subchapter_dir.glob("*.PDF")
+            )
+            unique_sub_pdfs = self._deduplicate_subchapter_pdfs(raw_sub_pdfs)
 
             if unique_sub_pdfs:
                 all_parents: List[BidChunk] = []
                 all_children: List[BidChunk] = []
+
+                # Supplement with system-generated Bid Letter & Price Summary pages from merged PDF
+                if top_pdfs:
+                    sys_p, sys_c = self._extract_system_pages_from_merged_pdf(
+                        top_pdfs[0], doc_id=doc_id
+                    )
+                    all_parents.extend(sys_p)
+                    all_children.extend(sys_c)
+
                 for idx, sub_pdf in enumerate(unique_sub_pdfs, start=1):
                     sub_cat = infer_doc_category_from_text(sub_pdf.stem)
                     sub_vol = "技术标" if "技术标" in sub_pdf.stem else "商务与资信标"
@@ -604,7 +719,7 @@ class BidDocumentParser:
 
                 stats = {
                     "source_dir": str(bid_dir),
-                    "mode": "subchapters",
+                    "mode": "subchapters_plus_system_pages",
                     "subchapter_files_parsed": len(unique_sub_pdfs),
                     "parent_chunk_count": len(all_parents),
                     "child_chunk_count": len(all_children),
@@ -612,7 +727,6 @@ class BidDocumentParser:
                 return all_parents, all_children, stats
 
         # Fallback: parse top-level merged PDF
-        top_pdfs = list(bid_dir.glob("*.pdf")) + list(bid_dir.glob("*.PDF"))
         if not top_pdfs:
             raise FileNotFoundError(f"No bid PDF found in {bid_dir}")
         return self.parse_pdf(
