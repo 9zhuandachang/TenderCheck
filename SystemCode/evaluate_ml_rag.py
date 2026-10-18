@@ -295,19 +295,21 @@ def evaluate_gold_retrieval_ablation(
         pred_res = clf.predict_single(requirement_text=req_text, section_text=sec_text)
         pred_cat = str(pred_res["label"])
 
-        # 1. Exp 1: Unrouted BM25 only
+        # 1. Exp 1: Unrouted BM25 only (no dense, no reranker)
         hits_bm25 = index.search(
             query=req_text,
             top_k=top_k,
             dense_weight=0.0,
             sparse_weight=1.0,
+            use_reranker=False,
         )
-        # 2. Exp 2: Unrouted Hybrid
+        # 2. Exp 2: Unrouted Hybrid RRF (BM25 + Dense, no category router, no reranker)
         hits_hyb = index.search(
             query=req_text,
             top_k=top_k,
             dense_weight=0.55,
             sparse_weight=0.45,
+            use_reranker=False,
         )
         # 3 & 4. Exp 3 & 4: ML-Routed Category Retriever
         bundle = router.retrieve(
@@ -703,8 +705,8 @@ def main() -> None:
     parser.add_argument(
         "--reranker_model",
         type=str,
-        default=None,
-        help="Optional Cross-Encoder reranker model (e.g., BAAI/bge-reranker-v2-m3).",
+        default="BAAI/bge-reranker-v2-m3",
+        help="Cross-Encoder reranker model (default: BAAI/bge-reranker-v2-m3).",
     )
     parser.add_argument(
         "--top_k",

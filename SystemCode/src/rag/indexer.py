@@ -4,10 +4,8 @@ Hybrid Dense + Sparse (BM25) Indexer & Cross-Encoder Reranker for TenderCheck RA
 Supports:
 1. Sparse Retrieval: Built-in Okapi BM25 over Chinese character 1-3 grams and
    alphanumeric tokens (exact matching for standard codes like `C40`, `GB50204`).
-2. Dense Retrieval: Pretrained Chinese embedding models (`BAAI/bge-m3` on RTX 5080
-   or `BAAI/bge-small-zh-v1.5` on CPU) with automatic fallback to sublinear TF-IDF
-   cosine similarity when running offline without local weights.
-3. Reciprocal Rank Fusion (RRF) + Optional Cross-Encoder Reranker (`BAAI/bge-reranker-v2-m3`).
+2. Dense Retrieval: Pretrained Chinese neural embedding model (`BAAI/bge-m3`).
+3. Reciprocal Rank Fusion (RRF) + Cross-Encoder Reranker (`BAAI/bge-reranker-v2-m3`).
 4. Parent-Child Resolution: Searches fine-grained `Child Chunks` and automatically
    attaches the full `Parent Chunk` context.
 """
@@ -25,7 +23,6 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import joblib
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 from .parser import BidChunk, load_chunks_jsonl, save_chunks_jsonl
 
@@ -153,23 +150,17 @@ class HybridBidIndex:
     def __init__(
         self,
         embedding_model_name: str = DEFAULT_EMBEDDING_MODEL,
-        reranker_model_name: Optional[str] = None,
-        use_neural_dense: bool = True,
+        reranker_model_name: Optional[str] = DEFAULT_RERANKER_MODEL,
         device: Optional[str] = None,
     ) -> None:
         self.embedding_model_name = embedding_model_name
         self.reranker_model_name = reranker_model_name
-        self.use_neural_dense = use_neural_dense
         self.device = device
 
         self.parent_map: Dict[str, BidChunk] = {}
         self.child_chunks: List[BidChunk] = []
         self.bm25 = OkapiBM25Index()
-
-        # Neural dense embeddings or TF-IDF fallback matrix
         self.dense_embeddings: Optional[np.ndarray] = None
-        self.tfidf_fallback: Optional[TfidfVectorizer] = None
-        self.tfidf_matrix = None
 
         self._hf_embed_tokenizer = None
         self._hf_embed_model = None
@@ -211,7 +202,7 @@ class HybridBidIndex:
         parent_chunks: Sequence[BidChunk],
         child_chunks: Sequence[BidChunk],
     ) -> "HybridBidIndex":
-        """Build BM25 and Dense vector indices over `child_chunks`."""
+        """Build BM25 and neural Dense vector indices over `child_chunks`."""
         self.parent_map = {p.chunk_id: p for p in parent_chunks}
         self.child_chunks = list(child_chunks)
         corpus = [c.embedding_text for c in self.child_chunks]
@@ -219,35 +210,16 @@ class HybridBidIndex:
         logger.info("Building Okapi BM25 sparse index over %d child chunks...", len(corpus))
         self.bm25.fit(corpus)
 
-        if self.use_neural_dense and corpus:
-            try:
-                self.dense_embeddings = self._encode_neural(corpus)
-            except Exception as exc:
-                logger.warning(
-                    "Neural embedding model '%s' unavailable (%s); falling back to char-ngram TF-IDF dense representation.",
-                    self.embedding_model_name,
-                    exc,
-                )
-                self.use_neural_dense = False
-
-        if not self.use_neural_dense and corpus:
-            self.tfidf_fallback = TfidfVectorizer(
-                analyzer="char", ngram_range=(1, 4), max_features=50000, sublinear_tf=True
-            )
-            self.tfidf_matrix = self.tfidf_fallback.fit_transform(corpus)
+        if corpus:
+            self.dense_embeddings = self._encode_neural(corpus)
 
         return self
 
     def _compute_dense_scores(self, query: str) -> np.ndarray:
-        if not self.child_chunks:
-            return np.zeros(0, dtype=np.float32)
-        if self.use_neural_dense and self.dense_embeddings is not None:
-            q_vec = self._encode_neural([query])[0]
-            return np.dot(self.dense_embeddings, q_vec).astype(np.float32)
-        if self.tfidf_fallback is not None and self.tfidf_matrix is not None:
-            q_vec = self.tfidf_fallback.transform([query])
-            return (self.tfidf_matrix @ q_vec.T).toarray().ravel().astype(np.float32)
-        return np.zeros(len(self.child_chunks), dtype=np.float32)
+        if not self.child_chunks or self.dense_embeddings is None:
+            return np.zeros(len(self.child_chunks), dtype=np.float32)
+        q_vec = self._encode_neural([query])[0]
+        return np.dot(self.dense_embeddings, q_vec).astype(np.float32)
 
     def _rerank_candidates(
         self,
@@ -302,6 +274,7 @@ class HybridBidIndex:
         dense_weight: float = 0.5,
         sparse_weight: float = 0.5,
         rrf_k: int = 60,
+        use_reranker: bool = True,
     ) -> List[RetrievedChunkHit]:
         """
         Execute Hybrid Dense + Sparse search with optional metadata filter and
@@ -316,11 +289,18 @@ class HybridBidIndex:
         )
         valid_indices = np.nonzero(valid_mask)[0]
         if len(valid_indices) == 0:
-            # Fallback to unfiltered search if metadata filter was overly restrictive
             valid_indices = np.arange(len(self.child_chunks))
 
-        dense_all = self._compute_dense_scores(query)
-        sparse_all = self.bm25.score_all(query)
+        dense_all = (
+            self._compute_dense_scores(query)
+            if dense_weight > 0.0
+            else np.zeros(len(self.child_chunks), dtype=np.float32)
+        )
+        sparse_all = (
+            self.bm25.score_all(query)
+            if sparse_weight > 0.0
+            else np.zeros(len(self.child_chunks), dtype=np.float32)
+        )
 
         sub_dense = dense_all[valid_indices]
         sub_sparse = sparse_all[valid_indices]
@@ -342,7 +322,7 @@ class HybridBidIndex:
         sorted_sub_pos = np.argsort(-rrf_scores)
         seen_parents = set()
         candidates: List[RetrievedChunkHit] = []
-        pool_limit = max(top_k * 3, 15)
+        pool_limit = max(top_k * 3, 15) if (use_reranker and self.reranker_model_name) else top_k
 
         for sub_pos in sorted_sub_pos:
             global_idx = int(valid_indices[sub_pos])
@@ -365,10 +345,12 @@ class HybridBidIndex:
             if len(candidates) >= pool_limit:
                 break
 
+        if not use_reranker:
+            return candidates[:top_k]
         return self._rerank_candidates(query, candidates, top_k=top_k)
 
     def save(self, index_dir: Path) -> Path:
-        """Persist parent chunks, child chunks, BM25, and dense representations to disk."""
+        """Persist parent chunks, child chunks, BM25, and neural dense embeddings to disk."""
         index_dir = Path(index_dir)
         index_dir.mkdir(parents=True, exist_ok=True)
 
@@ -378,16 +360,10 @@ class HybridBidIndex:
 
         if self.dense_embeddings is not None:
             np.save(index_dir / "dense_embeddings.npy", self.dense_embeddings)
-        if self.tfidf_fallback is not None and self.tfidf_matrix is not None:
-            joblib.dump(
-                {"vectorizer": self.tfidf_fallback, "matrix": self.tfidf_matrix},
-                index_dir / "tfidf_fallback.joblib",
-            )
 
         meta = {
             "embedding_model_name": self.embedding_model_name,
             "reranker_model_name": self.reranker_model_name,
-            "use_neural_dense": self.use_neural_dense,
             "num_parents": len(self.parent_map),
             "num_children": len(self.child_chunks),
         }
@@ -401,7 +377,7 @@ class HybridBidIndex:
         cls,
         index_dir: Path,
         device: Optional[str] = None,
-        reranker_model_name: Optional[str] = None,
+        reranker_model_name: Optional[str] = DEFAULT_RERANKER_MODEL,
     ) -> "HybridBidIndex":
         """Reload a persisted `HybridBidIndex` from `index_dir`."""
         index_dir = Path(index_dir)
@@ -410,8 +386,7 @@ class HybridBidIndex:
 
         instance = cls(
             embedding_model_name=str(meta.get("embedding_model_name", DEFAULT_EMBEDDING_MODEL)),
-            reranker_model_name=reranker_model_name or meta.get("reranker_model_name"),
-            use_neural_dense=bool(meta.get("use_neural_dense", False)),
+            reranker_model_name=reranker_model_name or meta.get("reranker_model_name", DEFAULT_RERANKER_MODEL),
             device=device,
         )
         parents = load_chunks_jsonl(index_dir / "parent_chunks.jsonl")
@@ -422,11 +397,5 @@ class HybridBidIndex:
         dense_path = index_dir / "dense_embeddings.npy"
         if dense_path.exists():
             instance.dense_embeddings = np.load(dense_path)
-
-        tfidf_path = index_dir / "tfidf_fallback.joblib"
-        if tfidf_path.exists():
-            blob = joblib.load(tfidf_path)
-            instance.tfidf_fallback = blob["vectorizer"]
-            instance.tfidf_matrix = blob["matrix"]
 
         return instance

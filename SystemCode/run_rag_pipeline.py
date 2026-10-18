@@ -92,9 +92,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--vision_backend",
-        choices=["heuristic", "qwen_vl"],
-        default="heuristic",
-        help="Vision backend for scanned/certificate pages (use 'qwen_vl' on RTX 5080).",
+        choices=["qwen_vl", "heuristic"],
+        default="qwen_vl",
+        help="Vision backend for scanned/certificate pages (default: 'qwen_vl' on RTX 5080).",
     )
     parser.add_argument(
         "--vlm_mode",
@@ -115,11 +115,6 @@ def parse_args() -> argparse.Namespace:
         help="API base URL when --vlm_mode=openai_compatible.",
     )
     parser.add_argument(
-        "--use_neural_dense",
-        action="store_true",
-        help="Use pretrained neural embedding model (e.g. BAAI/bge-m3) instead of fast char-TFIDF.",
-    )
-    parser.add_argument(
         "--embedding_model",
         "--dense_model",
         dest="embedding_model",
@@ -130,8 +125,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--reranker_model",
         type=str,
-        default=None,
-        help=f"Optional cross-encoder reranker model (e.g. {DEFAULT_RERANKER_MODEL}).",
+        default=DEFAULT_RERANKER_MODEL,
+        help=f"Cross-encoder reranker model (default: {DEFAULT_RERANKER_MODEL}).",
     )
     parser.add_argument(
         "--max_pages",
@@ -221,7 +216,6 @@ def main() -> None:
         index = HybridBidIndex(
             embedding_model_name=args.embedding_model,
             reranker_model_name=args.reranker_model,
-            use_neural_dense=args.use_neural_dense,
         )
         index.build(parent_chunks=parent_chunks, child_chunks=child_chunks)
         index.save(args.index_dir)
