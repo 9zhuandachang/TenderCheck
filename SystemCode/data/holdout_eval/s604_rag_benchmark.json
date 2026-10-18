@@ -1,0 +1,419 @@
+{
+  "benchmark_name": "S604_Holdout_Gold_RAG_Benchmark_v1",
+  "project_id": "2022/11.11-S604皖南交旅融合（飞毕路美丽公路）项目",
+  "description": "Ground-Truth RAG Evaluation Dataset for TenderCheck (Entity Ledger Slot Accuracy + Clause-to-Evidence Retrieval Hit@1/3/5 & MRR@5 across all 8 Requirement Categories).",
+  "gold_ledger_facts": {
+    "company_name": "安徽水利开发有限公司",
+    "legal_representative": "张晓林",
+    "credit_code": "91340300MA2RJ2XJXJ",
+    "required_qualification": "公路工程施工总承包特级",
+    "safety_permit_valid": true,
+    "project_manager_name": "王文年",
+    "bid_price_yuan": 97984949.58,
+    "bid_price_upper": "玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分",
+    "duration_days": "360日历天",
+    "quality_target": "合格"
+  },
+  "gold_retrieval_queries": [
+    {
+      "clause_id": "T0001",
+      "section": "招标文件正文.pdf / 第一章2.8",
+      "requirement": "计划工期为360日历天。",
+      "gold_category": "Schedule",
+      "target_doc_categories": ["投标函与承诺书", "施工组织设计与技术方案"],
+      "target_keywords": ["360日历天", "工期：360", "施工进度计划"]
+    },
+    {
+      "clause_id": "T0002",
+      "section": "招标文件正文.pdf / 第一章2.10",
+      "requirement": "项目招标控制价115046243.64元，含暂列金8000000.00元。",
+      "gold_category": "Commercial",
+      "target_doc_categories": ["报价文件与工程量清单", "投标函与承诺书"],
+      "target_keywords": ["97984949.58", "8000000", "暂列金额", "投标报价汇总表"]
+    },
+    {
+      "clause_id": "T0003",
+      "section": "招标文件正文.pdf / 第一章3.1",
+      "requirement": "投标人须具有独立法人资格。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["营业执照与企业资质证书", "法定代表人身份证明与授权委托书"],
+      "target_keywords": ["安徽水利开发有限公司", "有限责任公司", "统一社会信用代码", "91340300MA2RJ2XJXJ"]
+    },
+    {
+      "clause_id": "T0004",
+      "section": "招标文件正文.pdf / 第一章3.1",
+      "requirement": "投标人须具备公路工程施工总承包三级及以上资质。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["营业执照与企业资质证书"],
+      "target_keywords": ["公路工程施工总承包特级", "公路路基工程专业承包一级", "企业资质等级"]
+    },
+    {
+      "clause_id": "T0005",
+      "section": "招标文件正文.pdf / 第一章3.1",
+      "requirement": "投标人须具有有效安全生产许可证。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["营业执照与企业资质证书", "安全生产许可证"],
+      "target_keywords": ["安全生产许可证"]
+    },
+    {
+      "clause_id": "T0007",
+      "section": "招标文件正文.pdf / 第一章3.3",
+      "requirement": "项目经理须具有公路工程专业一级注册建造师资格。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["项目管理机构与人员简历证书"],
+      "target_keywords": ["王文年", "项目经理", "一级注册建造师", "建造师"]
+    },
+    {
+      "clause_id": "T0009",
+      "section": "招标文件正文.pdf / 第一章3.3",
+      "requirement": "项目经理须具有有效安全生产考核合格证书。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["项目管理机构与人员简历证书"],
+      "target_keywords": ["王文年", "安全生产考核合格证", "交安B", "皖交安"]
+    },
+    {
+      "clause_id": "T0010",
+      "section": "招标文件正文.pdf / 第一章3.3",
+      "requirement": "项目经理须未在其他项目任职，或虽任职但本项目中标后能够从原项目撤离。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["投标函与承诺书", "项目管理机构与人员简历证书"],
+      "target_keywords": ["拟派项目经理到岗履约承诺", "G345来安至釜山段", "变更至本项目", "王文年"]
+    },
+    {
+      "clause_id": "T0011",
+      "section": "招标文件正文.pdf / 第一章3.4",
+      "requirement": "拟派项目经理须于2017年1月1日至投标截止时间以项目经理身份至少完成一个新建、改建或扩建三级及以上公路施工项目，单合同含长度≥15公里或金额≥5000万元，内容包括路基、路面及桥涵，时间以交工或竣工验收时间为准。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["项目管理机构与人员简历证书", "近年类似工程业绩证明"],
+      "target_keywords": ["王文年", "类似项目情况表", "一级公路"]
+    },
+    {
+      "clause_id": "T0012",
+      "section": "招标文件正文.pdf / 第一章3.4",
+      "requirement": "项目经理业绩须提供合同。",
+      "gold_category": "Document",
+      "target_doc_categories": ["项目管理机构与人员简历证书", "近年类似工程业绩证明"],
+      "target_keywords": ["合同协议书", "施工合同", "项目经理", "王文年"]
+    },
+    {
+      "clause_id": "T0013",
+      "section": "招标文件正文.pdf / 第一章3.4",
+      "requirement": "项目经理业绩须提供中标通知书。",
+      "gold_category": "Document",
+      "target_doc_categories": ["项目管理机构与人员简历证书", "近年类似工程业绩证明"],
+      "target_keywords": ["中标通知书"]
+    },
+    {
+      "clause_id": "T0014",
+      "section": "招标文件正文.pdf / 第一章3.4",
+      "requirement": "项目经理业绩须提供交工或竣工验收证明，须有建设、设计、监理、施工单位等盖章确认。",
+      "gold_category": "Document",
+      "target_doc_categories": ["项目管理机构与人员简历证书", "近年类似工程业绩证明"],
+      "target_keywords": ["交工验收", "竣工验收", "工程交工验收证书"]
+    },
+    {
+      "clause_id": "T0015",
+      "section": "招标文件正文.pdf / 第一章3.5",
+      "requirement": "项目总工须具有公路工程相关专业中级及以上职称，相关专业包括公路工程、桥梁、公路与桥梁、交通土建、隧道（地下结构）、交通工程等。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["项目管理机构与人员简历证书"],
+      "target_keywords": ["项目总工", "高级工程师", "职称"]
+    },
+    {
+      "clause_id": "T0016",
+      "section": "招标文件正文.pdf / 第一章3.10",
+      "requirement": "本次招标不接受联合体投标。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["联合体协议书", "营业执照与企业资质证书"],
+      "target_keywords": ["联合体协议书", "无", "安徽水利开发有限公司"]
+    },
+    {
+      "clause_id": "T0018",
+      "section": "招标文件正文.pdf / 第一章3.13.1",
+      "requirement": "投标人不得被宣城市工程建设行业行政主管部门或集中处罚部门记不良行为且截止日仍在披露期内。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["企业信誉与无违法承诺", "投标函与承诺书"],
+      "target_keywords": ["不良行为", "信誉情况表", "投标诚信承诺书"]
+    },
+    {
+      "clause_id": "T0023",
+      "section": "招标文件正文.pdf / 第一章7.1",
+      "requirement": "投标保证金为人民币50万元。",
+      "gold_category": "Commercial",
+      "target_doc_categories": ["投标保证金证明", "投标函与承诺书"],
+      "target_keywords": ["投标保证金", "基本账户", "徽商银行"]
+    },
+    {
+      "clause_id": "T0024",
+      "section": "招标文件正文.pdf / 第一章7.3",
+      "requirement": "投标保证金可采用银行保函、保证保险、担保保函等保函形式，或电汇、转账。",
+      "gold_category": "Commercial",
+      "target_doc_categories": ["投标保证金证明", "投标函与承诺书"],
+      "target_keywords": ["投标保证金", "基本账户", "徽商银行"]
+    },
+    {
+      "clause_id": "T0027",
+      "section": "招标文件正文.pdf / 第二章前附表1.3.2",
+      "requirement": "计划工期360日历天。",
+      "gold_category": "Schedule",
+      "target_doc_categories": ["投标函与承诺书", "施工组织设计与技术方案"],
+      "target_keywords": ["360日历天", "工期：360", "施工进度计划"]
+    },
+    {
+      "clause_id": "T0028",
+      "section": "招标文件正文.pdf / 第二章前附表1.3.3",
+      "requirement": "标段交工验收质量评定须为合格。",
+      "gold_category": "Technical",
+      "target_doc_categories": ["投标函与承诺书", "施工组织设计与技术方案"],
+      "target_keywords": ["交工验收的质量评定：合格", "质量目标", "合格"]
+    },
+    {
+      "clause_id": "T0030",
+      "section": "招标文件正文.pdf / 第二章前附表1.3.4",
+      "requirement": "安全目标为无生产安全责任事故。",
+      "gold_category": "Technical",
+      "target_doc_categories": ["投标函与承诺书", "施工组织设计与技术方案"],
+      "target_keywords": ["无生产安全责任事故", "安全目标", "安全生产"]
+    },
+    {
+      "clause_id": "T0033",
+      "section": "招标文件正文.pdf / 第二章前附表1.11.1",
+      "requirement": "本项目不允许分包。",
+      "gold_category": "Technical",
+      "target_doc_categories": ["其他投标材料", "施工组织设计与技术方案"],
+      "target_keywords": ["拟分包项目情况表", "分包", "无"]
+    },
+    {
+      "clause_id": "T0034",
+      "section": "招标文件正文.pdf / 第二章前附表3.2.1",
+      "requirement": "增值税税率须按国家规定执行。",
+      "gold_category": "Commercial",
+      "target_doc_categories": ["投标函与承诺书", "报价文件与工程量清单"],
+      "target_keywords": ["增值税税率按国家规定", "97984949.58", "税金"]
+    },
+    {
+      "clause_id": "T0037",
+      "section": "招标文件正文.pdf / 第二章前附表3.3.1",
+      "requirement": "投标有效期自投标文件递交截止日起90日。",
+      "gold_category": "Schedule",
+      "target_doc_categories": ["投标函与承诺书", "施工组织设计与技术方案"],
+      "target_keywords": ["投标有效期内不撤销", "90"]
+    },
+    {
+      "clause_id": "T0040",
+      "section": "招标文件正文.pdf / 第二章前附表3.4.4",
+      "requirement": "不得挂靠投标。",
+      "gold_category": "Integrity",
+      "target_doc_categories": ["投标函与承诺书", "企业信誉与无违法承诺"],
+      "target_keywords": ["挂靠", "投标诚信承诺书", "串标"]
+    },
+    {
+      "clause_id": "T0054",
+      "section": "招标文件正文.pdf / 第二章前附表10.3（3）",
+      "requirement": "招投标活动中不得弄虚作假。",
+      "gold_category": "Integrity",
+      "target_doc_categories": ["投标函与承诺书", "企业信誉与无违法承诺"],
+      "target_keywords": ["真实、准确、完整", "虚假", "信誉情况表"]
+    },
+    {
+      "clause_id": "T0056",
+      "section": "招标文件正文.pdf / 第二章前附表10.6（一）（1）",
+      "requirement": "拟派经理已任其他项目经理的，须在投标文件承诺本项目中标后签合同前能够变更至本项目全面履约。",
+      "gold_category": "Document",
+      "target_doc_categories": ["投标函与承诺书"],
+      "target_keywords": ["拟派项目经理到岗履约承诺", "G345来安至釜山段", "变更至本项目"]
+    },
+    {
+      "clause_id": "T0057",
+      "section": "招标文件正文.pdf / 第二章前附表10.6（二）",
+      "requirement": "拟派经理已任其他项目经理时，不得虚假承诺未在其他项目任项目经理。",
+      "gold_category": "Integrity",
+      "target_doc_categories": ["投标函与承诺书", "企业信誉与无违法承诺"],
+      "target_keywords": ["项目经理", "真实", "虚假", "承诺"]
+    },
+    {
+      "clause_id": "T0059",
+      "section": "招标文件正文.pdf / 第二章前附表10.8三",
+      "requirement": "安全生产费为第100—700章合计报价总额的1.5%，基数不含安全生产费、建筑工程一切险及第三者责任险保险费。",
+      "gold_category": "Commercial",
+      "target_doc_categories": ["报价文件与工程量清单"],
+      "target_keywords": ["安全生产费", "1324528.73", "建筑工程一切险", "第三者责任险"]
+    },
+    {
+      "clause_id": "T0069",
+      "section": "招标文件正文.pdf / 第二章附录5 项目经理",
+      "requirement": "项目经理注册证书注册单位须与投标人名称一致。",
+      "gold_category": "Consistency",
+      "target_doc_categories": ["项目管理机构与人员简历证书", "营业执照与企业资质证书"],
+      "target_keywords": ["王文年", "安徽水利开发有限公司", "项目经理"]
+    },
+    {
+      "clause_id": "T0078",
+      "section": "招标文件正文.pdf / 第二章附录6 道路工程师",
+      "requirement": "须配备道路工程师1人，具公路工程相关专业中级工程师及以上职称。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["项目管理机构与人员简历证书", "报价文件与工程量清单"],
+      "target_keywords": ["道路工程师", "其他管理和技术人员", "项目管理机构人员组成表"]
+    },
+    {
+      "clause_id": "T0079",
+      "section": "招标文件正文.pdf / 第二章附录6 桥梁工程师",
+      "requirement": "须配备桥梁工程师1人，具公路工程相关专业中级工程师及以上职称。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["项目管理机构与人员简历证书", "报价文件与工程量清单"],
+      "target_keywords": ["桥梁工程师", "其他管理和技术人员", "项目管理机构人员组成表"]
+    },
+    {
+      "clause_id": "T0081",
+      "section": "招标文件正文.pdf / 第二章附录6 安全员",
+      "requirement": "须配备专职安全员1人，具省级及以上交通运输主管部门核发的专职安全员C证。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["项目管理机构与人员简历证书", "报价文件与工程量清单"],
+      "target_keywords": ["安全员", "安全生产考核合格证", "其他管理和技术人员"]
+    },
+    {
+      "clause_id": "T0099",
+      "section": "招标文件正文.pdf / 第二章1.4.4（5）",
+      "requirement": "投标人不得被信用中国列入失信被执行人名单。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["企业信誉与无违法承诺"],
+      "target_keywords": ["失信被执行人名单", "信用中国", "信誉情况表"]
+    },
+    {
+      "clause_id": "T0101",
+      "section": "招标文件正文.pdf / 第二章1.4.4（7）",
+      "requirement": "投标人自投标截止日追溯3年内不得有行贿犯罪行为。",
+      "gold_category": "Qualification",
+      "target_doc_categories": ["企业信誉与无违法承诺"],
+      "target_keywords": ["行贿犯罪行为", "信誉情况表"]
+    },
+    {
+      "clause_id": "T0106",
+      "section": "招标文件正文.pdf / 第二章1.4.5",
+      "requirement": "投标人名称须与交通运输部施工资质企业名录相应企业名称完全一致。",
+      "gold_category": "Consistency",
+      "target_doc_categories": ["营业执照与企业资质证书", "投标函与承诺书"],
+      "target_keywords": ["安徽水利开发有限公司", "公路工程施工总承包特级"]
+    },
+    {
+      "clause_id": "T0112",
+      "section": "招标文件正文.pdf / 第二章3.1.1.1（1）",
+      "requirement": "商务文件须包括不含报价的投标函。",
+      "gold_category": "Document",
+      "target_doc_categories": ["投标函与承诺书"],
+      "target_keywords": ["投标函（不含报价）", "愿以报价文件投标函中的", "360日历天"]
+    },
+    {
+      "clause_id": "T0113",
+      "section": "招标文件正文.pdf / 第二章3.1.1.1（2）",
+      "requirement": "须提交法定代表人身份证明或授权委托书。",
+      "gold_category": "Document",
+      "target_doc_categories": ["法定代表人身份证明与授权委托书"],
+      "target_keywords": ["法定代表人身份证明", "授权委托书", "张晓林"]
+    },
+    {
+      "clause_id": "T0118",
+      "section": "招标文件正文.pdf / 第二章3.1.1.3（1）",
+      "requirement": "报价文件须包括含报价的投标函。",
+      "gold_category": "Document",
+      "target_doc_categories": ["投标函与承诺书", "报价文件与工程量清单"],
+      "target_keywords": ["玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分", "97984949.58", "投标总报价"]
+    },
+    {
+      "clause_id": "T0127",
+      "section": "招标文件正文.pdf / 第二章3.2.1（1）",
+      "requirement": "采用固化清单时，已标价清单投标报价须与投标函大写报价一致。",
+      "gold_category": "Consistency",
+      "target_doc_categories": ["投标函与承诺书", "报价文件与工程量清单"],
+      "target_keywords": ["97984949.58", "玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分", "投标报价汇总表"]
+    },
+    {
+      "clause_id": "T0133",
+      "section": "招标文件正文.pdf / 第二章3.2.5",
+      "requirement": "投标总价须计入安全生产费，按招标规定填写清单第100章安全生产费总额价。",
+      "gold_category": "Commercial",
+      "target_doc_categories": ["报价文件与工程量清单"],
+      "target_keywords": ["安全生产费", "1324528.73", "第100章"]
+    },
+    {
+      "clause_id": "T0135",
+      "section": "招标文件正文.pdf / 第二章3.2.8",
+      "requirement": "投标报价不得超过最高投标限价。",
+      "gold_category": "Commercial",
+      "target_doc_categories": ["投标函与承诺书", "报价文件与工程量清单"],
+      "target_keywords": ["97984949.58", "玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分", "投标报价"]
+    },
+    {
+      "clause_id": "T0137",
+      "section": "招标文件正文.pdf / 第二章3.3.2",
+      "requirement": "投标有效期内不得撤销投标文件。",
+      "gold_category": "Schedule",
+      "target_doc_categories": ["投标函与承诺书"],
+      "target_keywords": ["投标有效期内不撤销投标文件", "投标函"]
+    },
+    {
+      "clause_id": "T0152",
+      "section": "招标文件正文.pdf / 第二章3.5.4",
+      "requirement": "信誉情况说明须与实际相符，不得弄虚作假。",
+      "gold_category": "Integrity",
+      "target_doc_categories": ["企业信誉与无违法承诺", "投标函与承诺书"],
+      "target_keywords": ["信誉情况表", "失信被执行人", "真实"]
+    },
+    {
+      "clause_id": "T0204",
+      "section": "招标文件正文.pdf / 第三章2.1.3 不可竞争内容（2）",
+      "requirement": "不得更改招标文件暂列金额。",
+      "gold_category": "Commercial",
+      "target_doc_categories": ["报价文件与工程量清单"],
+      "target_keywords": ["暂列金额", "8000000", "投标报价汇总表"]
+    },
+    {
+      "clause_id": "T0209",
+      "section": "招标文件正文.pdf / 第三章2.2.4（1）项目经理（1）",
+      "requirement": "拟任项目经理业绩满足招标最低要求得6分。",
+      "gold_category": "Scoring",
+      "target_doc_categories": ["项目管理机构与人员简历证书", "近年类似工程业绩证明"],
+      "target_keywords": ["王文年", "项目经理", "类似项目情况表"]
+    },
+    {
+      "clause_id": "T0214",
+      "section": "招标文件正文.pdf / 第三章2.2.4（3）",
+      "requirement": "资产负债率75%以下得6分，75%（含）—80%（含）得4分，80%—85%（含）得2分，85%以上不得分；按原文档位保留。",
+      "gold_category": "Scoring",
+      "target_doc_categories": ["财务状况与审计报告"],
+      "target_keywords": ["财务状况", "注册资本", "资产", "负债"]
+    },
+    {
+      "clause_id": "T0216",
+      "section": "招标文件正文.pdf / 第三章2.2.4（4）",
+      "requirement": "2017年1月1日以来以交工或竣工时间为准，每增加一个单合同含长度≥15公里或金额≥5000万元的新建、改建或扩建三级及以上公路施工业绩，含路基、路面及桥涵，得4分，最高12分。",
+      "gold_category": "Scoring",
+      "target_doc_categories": ["近年类似工程业绩证明"],
+      "target_keywords": ["类似项目情况表", "一级公路", "合同协议书"]
+    },
+    {
+      "clause_id": "T0222",
+      "section": "招标文件正文.pdf / 第三章2.2.4（7）总体",
+      "requirement": "总体施工组织布置规划按工程特点、总体筹划、目标节点、关键工序、工期保障及场地布置评审：优良0.75≤F≤1分，一般0.5≤F＜0.75分，差0≤F＜0.5分。",
+      "gold_category": "Scoring",
+      "target_doc_categories": ["施工组织设计与技术方案"],
+      "target_keywords": ["总体施工组织布置", "施工管理", "项目经理部"]
+    },
+    {
+      "clause_id": "T0225",
+      "section": "招标文件正文.pdf / 第三章2.2.4（7）质量",
+      "requirement": "结合工程特点评审质量管理体系及措施：优良1≤F≤1.5分，一般0.5≤F＜1分，差按原文0≤F＜1分。",
+      "gold_category": "Scoring",
+      "target_doc_categories": ["施工组织设计与技术方案"],
+      "target_keywords": ["质量管理体系", "质量保证", "质量目标"]
+    },
+    {
+      "clause_id": "T0226",
+      "section": "招标文件正文.pdf / 第三章2.2.4（7）安全",
+      "requirement": "结合工程特点评审安全生产管理体系及措施：优良1≤F≤1.5分，一般0.5≤F＜1分，差按原文0≤F＜1分。",
+      "gold_category": "Scoring",
+      "target_doc_categories": ["施工组织设计与技术方案"],
+      "target_keywords": ["安全生产管理体系", "安全保证", "安全目标"]
+    }
+  ]
+}
