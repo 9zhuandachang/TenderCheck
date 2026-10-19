@@ -85,3 +85,6 @@ scratch/
 .system_generated/
 # Full experiment outputs contain tender text, field values and local paths.
 /SystemCode/reports/rag_experiments/
+
+# Review workspace runtime data (uploaded project files, SQLite database)
+/SystemCode/data/app/
