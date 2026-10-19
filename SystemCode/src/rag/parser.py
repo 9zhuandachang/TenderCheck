@@ -480,6 +480,12 @@ class BidDocumentParser:
                     target_chars=self.child_target_chars,
                     overlap_chars=self.child_overlap_chars,
                 )
+                merged_kv = dict(vision_res.extracted_kv or {})
+                if clean_text:
+                    for k_native, v_native in extract_kv_heuristically(clean_text).items():
+                        if v_native is not None and v_native != "":
+                            merged_kv[k_native] = v_native
+
                 _emit_parent_and_children(
                     content_type=c_type,
                     doc_category=doc_cat,
@@ -491,7 +497,7 @@ class BidDocumentParser:
                     has_seal=vision_res.has_official_seal,
                     seal_name=vision_res.seal_company_name,
                     has_sig=vision_res.has_signature,
-                    kv=vision_res.extracted_kv,
+                    kv=merged_kv,
                 )
                 continue
 

@@ -71,5 +71,40 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(ledger.commercial_schedule_ledger['bid_price_upper'],'壹佰元整')
         self.assertTrue(all(isinstance(x.value,str) for x in ledger.field_mentions if x.field_name=='bid_price_upper'))
 
+    def test_entity_attribution_blocks_third_party_and_historical_overwrites(self):
+        from src.rag.ledger import EntityLedgerBuilder
+        from src.rag.parser import BidChunk
+        chunks = [
+            BidChunk.from_dict(dict(
+                chunk_id='p31', parent_id='p31', document_id='test', is_parent=True,
+                section_path='一、商务文件 > （四）投标保证金', doc_category='投标保证金证明',
+                text='银行保函 保证人统一社会信用代码：91330000THIRD_PARTY_BANK',
+                extracted_kv={'credit_code': '91330000THIRD_PARTY_BANK'}
+            )),
+            BidChunk.from_dict(dict(
+                chunk_id='p40', parent_id='p40', document_id='test', is_parent=True,
+                section_path='一、商务文件 > （六）投标人基本情况表', doc_category='企业营业执照与资质证书',
+                text='投标人基本情况表 统一社会信用代码：91330100BIDDER_REAL_CODE',
+                extracted_kv={'credit_code': '91330100BIDDER_REAL_CODE', 'company_name': '测试投标建设集团有限公司'}
+            )),
+            BidChunk.from_dict(dict(
+                chunk_id='p180', parent_id='p180', document_id='test', is_parent=True,
+                section_path='一、商务文件 > （十）投标人近年完成的类似项目情况表', doc_category='近年类似工程业绩证明',
+                text='近年完成的类似项目情况表 合同价格：叁亿捌仟玖佰万元整（¥389000000.00）',
+                extracted_kv={'bid_price_upper': '叁亿捌仟玖佰万元整（¥389000000.00）', 'bid_price_yuan': '389000000'}
+            )),
+            BidChunk.from_dict(dict(
+                chunk_id='p565', parent_id='p565', document_id='test', is_parent=True,
+                section_path='三、报价文件 > （一）报价文件投标函', doc_category='报价文件与工程量清单',
+                text='报价文件投标函 投标总报价大写：壹亿陆仟陆佰玖拾叁万肆仟捌佰伍拾柒元整',
+                extracted_kv={'bid_price_upper': '壹亿陆仟陆佰玖拾叁万肆仟捌佰伍拾柒元整', 'bid_price_yuan': '166934857'}
+            )),
+        ]
+        ledger = EntityLedgerBuilder.build_from_chunks('test', chunks)
+        self.assertEqual(ledger.company_profile['credit_code'], '91330100BIDDER_REAL_CODE')
+        self.assertEqual(ledger.commercial_schedule_ledger['bid_price_upper'], '壹亿陆仟陆佰玖拾叁万肆仟捌佰伍拾柒元整')
+        self.assertEqual(ledger.commercial_schedule_ledger['bid_price_yuan'], '166934857')
+
 if __name__ == '__main__':
     unittest.main()
+

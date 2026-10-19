@@ -153,41 +153,77 @@ class EntityLedgerBuilder:
                 cat_entry["pages"].append(chunk.page_start)
 
             text = chunk.text
-            kv = dict(chunk.extracted_kv or {})
-            kv.update(extract_kv_heuristically(text))
+            kv = dict(extract_kv_heuristically(text))
+            for k_ext, v_ext in (chunk.extracted_kv or {}).items():
+                if v_ext is not None and v_ext != "":
+                    kv[k_ext] = v_ext
 
-            # 2. Populate Company Profile
-            if kv.get("company_name") and not company_info["company_name"]:
-                company_info["company_name"] = kv["company_name"]
-                if chunk.page_start not in company_info["evidence_pages"]:
-                    company_info["evidence_pages"].append(chunk.page_start)
+            is_third_party_or_historical = (
+                chunk.doc_category
+                in {
+                    "近年类似工程业绩证明",
+                    "投标保证金证明",
+                    "财务状况与审计报告",
+                    "社保证明材料",
+                }
+                or "类似项目" in chunk.section_path
+                or "业绩" in chunk.section_path
+                or "财务" in chunk.section_path
+                or "保证金" in chunk.section_path
+            )
+            is_authoritative_profile = (
+                "基本情况表" in chunk.section_path or "投标人基本情况表" in text
+            )
 
-            if kv.get("legal_representative") and not company_info.get("legal_representative"):
-                company_info["legal_representative"] = kv["legal_representative"]
+            # 2. Populate Company Profile (only from bidder's own identity/qualification pages)
+            if not is_third_party_or_historical:
+                if kv.get("company_name") and (
+                    not company_info["company_name"] or is_authoritative_profile
+                ):
+                    company_info["company_name"] = kv["company_name"]
+                    if chunk.page_start not in company_info["evidence_pages"]:
+                        company_info["evidence_pages"].append(chunk.page_start)
 
-            if kv.get("credit_code") and not company_info["credit_code"]:
-                company_info["credit_code"] = kv["credit_code"]
-                if chunk.page_start not in company_info["evidence_pages"]:
-                    company_info["evidence_pages"].append(chunk.page_start)
+                if kv.get("legal_representative") and (
+                    not company_info.get("legal_representative") or is_authoritative_profile
+                ):
+                    company_info["legal_representative"] = kv["legal_representative"]
 
-            if "安全生产许可证" in text or chunk.doc_category == "安全生产许可证":
-                company_info["safety_permit_valid"] = True
-                if chunk.page_start not in company_info["evidence_pages"]:
-                    company_info["evidence_pages"].append(chunk.page_start)
+                if kv.get("credit_code"):
+                    code_cand = str(kv["credit_code"]).strip().upper()
+                    if code_cand and (
+                        not company_info["credit_code"] or is_authoritative_profile
+                    ):
+                        company_info["credit_code"] = code_cand
+                        if chunk.page_start not in company_info["evidence_pages"]:
+                            company_info["evidence_pages"].append(chunk.page_start)
 
-            for qual_match in re.findall(
-                r"([\u4e00-\u9fa5]{2,12}工程施工总承包[特一二三壹贰叁]级|[\u4e00-\u9fa5]{2,12}专业承包[一二三壹贰叁]级)",
-                text,
-            ):
-                if qual_match not in company_info["qualifications"]:
-                    company_info["qualifications"].append(qual_match)
+                if "安全生产许可证" in text or chunk.doc_category == "安全生产许可证":
+                    company_info["safety_permit_valid"] = True
+                    if chunk.page_start not in company_info["evidence_pages"]:
+                        company_info["evidence_pages"].append(chunk.page_start)
 
-            # 3. Populate Commercial & Schedule Summary + Mentions
-            if kv.get("bid_price_yuan") is not None:
+                for qual_match in re.findall(
+                    r"([\u4e00-\u9fa5]{2,12}工程施工总承包[特一二三壹贰叁]级|[\u4e00-\u9fa5]{2,12}专业承包[一二三壹贰叁]级)",
+                    text,
+                ):
+                    if qual_match not in company_info["qualifications"]:
+                        company_info["qualifications"].append(qual_match)
+
+            # 3. Populate Commercial & Schedule Summary + Mentions (only from current project pages, never historical contracts)
+            is_current_bid_pricing = not is_third_party_or_historical
+            is_authoritative_bid_letter = is_current_bid_pricing and (
+                "投标总报价" in text
+                or "报价文件投标函" in text
+                or chunk.doc_category in {"报价文件与工程量清单", "投标函与承诺书"}
+            )
+
+            if is_current_bid_pricing and kv.get("bid_price_yuan") is not None:
                 val = kv["bid_price_yuan"]
-                if commercial_info["bid_price_yuan"] is None:
+                if commercial_info["bid_price_yuan"] is None or is_authoritative_bid_letter:
                     commercial_info["bid_price_yuan"] = val
-                commercial_info["evidence_pages"].append(chunk.page_start)
+                if chunk.page_start not in commercial_info["evidence_pages"]:
+                    commercial_info["evidence_pages"].append(chunk.page_start)
                 ledger.field_mentions.append(
                     FieldMention(
                         field_name="bid_price_yuan",
@@ -198,10 +234,11 @@ class EntityLedgerBuilder:
                     )
                 )
 
-            if isinstance(kv.get("bid_price_upper"), str) and kv["bid_price_upper"].strip():
-                val_up = kv["bid_price_upper"]
-                if not commercial_info["bid_price_upper"] or len(val_up) > len(
-                    commercial_info["bid_price_upper"]
+            if is_current_bid_pricing and isinstance(kv.get("bid_price_upper"), str) and kv["bid_price_upper"].strip():
+                val_up = kv["bid_price_upper"].strip()
+                if (
+                    not commercial_info["bid_price_upper"]
+                    or is_authoritative_bid_letter
                 ):
                     commercial_info["bid_price_upper"] = val_up
                 ledger.field_mentions.append(
@@ -213,13 +250,15 @@ class EntityLedgerBuilder:
                         chunk_id=chunk.chunk_id,
                     )
                 )
+            elif kv.get("bid_price_upper") is not None and not isinstance(kv.get("bid_price_upper"), str):
+                logger.warning(
+                    "Ignoring non-text bid_price_upper in chunk %s; original value remains in source chunk.",
+                    chunk.chunk_id,
+                )
 
-            elif kv.get("bid_price_upper") is not None:
-                logger.warning("Ignoring non-text bid_price_upper in chunk %s; original value remains in source chunk.", chunk.chunk_id)
-
-            if kv.get("duration_days"):
+            if not is_third_party_or_historical and kv.get("duration_days"):
                 dur = kv["duration_days"]
-                if not commercial_info["duration_days"]:
+                if not commercial_info["duration_days"] or chunk.doc_category == "投标函与承诺书":
                     commercial_info["duration_days"] = dur
                 ledger.field_mentions.append(
                     FieldMention(
@@ -231,13 +270,13 @@ class EntityLedgerBuilder:
                     )
                 )
 
-            if kv.get("quality_target") and not commercial_info["quality_target"]:
+            if not is_third_party_or_historical and kv.get("quality_target") and not commercial_info["quality_target"]:
                 commercial_info["quality_target"] = kv["quality_target"]
 
             m_val_days = re.search(r"投标有效期[为：:\s]*(\d{2,3})\s*(?:日历天|天|日)", text)
-            if m_val_days and commercial_info["validity_days"] is None:
+            if not is_third_party_or_historical and m_val_days and commercial_info["validity_days"] is None:
                 commercial_info["validity_days"] = int(m_val_days.group(1))
-            elif "投标有效期内不撤销" in text and commercial_info["validity_days"] is None:
+            elif not is_third_party_or_historical and "投标有效期内不撤销" in text and commercial_info["validity_days"] is None:
                 commercial_info["validity_days"] = "响应招标文件规定"
 
             # 4. Populate Personnel Ledger
