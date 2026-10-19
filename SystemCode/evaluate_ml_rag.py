@@ -94,7 +94,11 @@ def resolve_model_dir(models_dir: Path, preferred: Optional[Path] = None) -> Pat
     if preferred and preferred.exists():
         return preferred
     roberta_dir = models_dir / "roberta_wwm_ext"
-    if (roberta_dir / "model.safetensors").exists() or (roberta_dir / "pytorch_model.bin").exists():
+    if (
+        (roberta_dir / "model.safetensors").exists()
+        or (roberta_dir / "model.safetensors.part0").exists()
+        or (roberta_dir / "pytorch_model.bin").exists()
+    ):
         return roberta_dir
     tfidf_dir = models_dir / "tfidf_svm"
     if (tfidf_dir / "tfidf_pipeline.joblib").exists():

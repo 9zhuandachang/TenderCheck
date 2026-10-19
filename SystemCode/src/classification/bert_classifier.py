@@ -397,6 +397,15 @@ class BertRequirementClassifier(BaseRequirementClassifier):
         if not meta_path.exists():
             raise FileNotFoundError(f"Missing classifier_meta.json in {model_dir}")
 
+        safetensors_path = model_dir / "model.safetensors"
+        if not safetensors_path.exists():
+            parts = sorted(model_dir.glob("model.safetensors.part*"))
+            if parts:
+                logger.info("Reassembling %d split parts into %s...", len(parts), safetensors_path)
+                with open(safetensors_path, "wb") as out_f:
+                    for part in parts:
+                        out_f.write(part.read_bytes())
+
         with open(meta_path, "r", encoding="utf-8") as f:
             meta = json.load(f)
 

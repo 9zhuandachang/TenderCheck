@@ -1,0 +1,13 @@
+{
+  "model_type": "roberta",
+  "use_section_context": true,
+  "max_length": 160,
+  "batch_size": 64,
+  "learning_rate": 3e-05,
+  "weight_decay": 0.01,
+  "num_epochs": 4,
+  "warmup_ratio": 0.1,
+  "use_class_weights": true,
+  "patience": 2,
+  "random_state": 42
+}
