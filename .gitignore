@@ -83,3 +83,5 @@ desktop.ini
 *.log
 scratch/
 .system_generated/
+# Full experiment outputs contain tender text, field values and local paths.
+/SystemCode/reports/rag_experiments/

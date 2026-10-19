@@ -115,6 +115,12 @@ def parse_args() -> argparse.Namespace:
         help="API base URL when --vlm_mode=openai_compatible.",
     )
     parser.add_argument(
+        "--vlm_quantization",
+        choices=["none", "int8", "nf4"],
+        default="none",
+        help="Optional Qwen language-layer int8/NF4 loading for 16 GB GPUs (requires bitsandbytes).",
+    )
+    parser.add_argument(
         "--embedding_model",
         "--dense_model",
         dest="embedding_model",
@@ -178,6 +184,7 @@ def main() -> None:
                 model_name_or_path=args.vlm_model,
                 mode=args.vlm_mode,
                 api_base_url=args.vlm_api_base,
+                quantization=args.vlm_quantization,
             )
         else:
             raw_vision = LocalHeuristicOCRBackend()

@@ -1,0 +1,7 @@
+classifier,subset,num_samples,accuracy,macro_f1,weighted_f1
+tfidf_svm,two_projects,581,0.9621,0.9386,0.9622
+roberta_wwm_ext,two_projects,581,0.9673,0.9435,0.9671
+tfidf_svm,s604,359,0.9387,0.9065,0.9389
+roberta_wwm_ext,s604,359,0.9471,0.9159,0.9468
+tfidf_svm,2024_project,222,1.0,1.0,1.0
+roberta_wwm_ext,2024_project,222,1.0,1.0,1.0

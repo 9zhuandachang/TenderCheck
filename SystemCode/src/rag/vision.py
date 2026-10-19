@@ -348,12 +348,16 @@ class QwenVLBackend(BaseVisionBackend):
         api_base_url: str = "http://localhost:8000/v1",
         api_key: str = "EMPTY",
         dpi: int = 160,
+        quantization: str = "none",
     ) -> None:
         self.model_name_or_path = model_name_or_path
         self.mode = mode
         self.api_base_url = api_base_url
         self.api_key = api_key
         self.dpi = dpi
+        if quantization not in {"none", "int8", "nf4"}:
+            raise ValueError(f"Unsupported Qwen quantization: {quantization}")
+        self.quantization = quantization
         self._hf_model = None
         self._hf_processor = None
 
@@ -380,6 +384,26 @@ class QwenVLBackend(BaseVisionBackend):
             "torch_dtype": torch.bfloat16 if torch.cuda.is_available() else torch.float32,
             "device_map": "auto",
         }
+        if self.quantization != "none":
+            from transformers import BitsAndBytesConfig
+
+            if not torch.cuda.is_available():
+                raise RuntimeError("Quantized Qwen loading requires a CUDA GPU in this pipeline.")
+            if self.quantization == "int8":
+                quantization_config = BitsAndBytesConfig(
+                    load_in_8bit=True,
+                    llm_int8_skip_modules=["visual", "lm_head"],
+                )
+            else:
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_use_double_quant=True,
+                    llm_int8_skip_modules=["visual", "lm_head"],
+                )
+            load_kwargs["quantization_config"] = quantization_config
+            logger.info("Loading Qwen language layers in %s; vision encoder remains BF16.", self.quantization)
         self._hf_model = model_cls.from_pretrained(self.model_name_or_path, **load_kwargs)
         self._hf_model.eval()
 
@@ -397,6 +421,62 @@ class QwenVLBackend(BaseVisionBackend):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             logger.info("Unloaded VLM from GPU VRAM.")
+
+    @staticmethod
+    def normalize_recovery_category(category: Any, source_heading: str = "") -> Any:
+        """Map explicit document subtypes to the existing coarse taxonomy only."""
+        aliases = {
+            "中标通知书": "近年类似工程业绩证明",
+            "合同协议书": "近年类似工程业绩证明",
+            "公路工程交工验收证书": "近年类似工程业绩证明",
+            "交工验收证书": "近年类似工程业绩证明",
+            "竣工验收报告": "近年类似工程业绩证明",
+            "建造师注册证书": "项目管理机构与人员简历证书",
+            "一级建造师注册证书": "项目管理机构与人员简历证书",
+            "中华人民共和国一级建造师注册证书": "项目管理机构与人员简历证书",
+            "专业技术资格证书": "项目管理机构与人员简历证书",
+            "职称证书": "项目管理机构与人员简历证书",
+            "安全生产考核合格证书": "项目管理机构与人员简历证书",
+            "营业执照": "营业执照与企业资质证书",
+            "建筑业企业资质证书": "营业执照与企业资质证书",
+            "承诺函": "投标函与承诺书",
+            "授权委托书": "法定代表人身份证明与授权委托书",
+            "法定代表人身份证明": "法定代表人身份证明与授权委托书",
+            "合并资产负债表": "财务状况与审计报告",
+            "母公司资产负债表": "财务状况与审计报告",
+            "合并利润表": "财务状况与审计报告",
+            "审计报告": "财务状况与审计报告",
+            "施工进度计划网络图": "施工组织设计与技术方案",
+        }
+        if not isinstance(category, str):
+            return category
+        source_label = (category in {"商务文件", "商务与资信标", "技术文件", "技术标"}
+                        or (category not in DOC_CATEGORIES and len(category) >= 8 and category in source_heading))
+        if source_label and source_heading:
+            chapter_category = infer_doc_category_from_text(source_heading)
+            if chapter_category != "其他投标材料":
+                return chapter_category
+        return aliases.get(category, category)
+
+    @staticmethod
+    def normalize_recovery_metadata(obj: Any, source_heading: str = "") -> Tuple[Any, List[Dict[str, Any]]]:
+        """Normalize equivalent schema representations while retaining field values."""
+        if not isinstance(obj, dict):
+            return obj, []
+        normalized = dict(obj)
+        changes: List[Dict[str, Any]] = []
+        category = QwenVLBackend.normalize_recovery_category(obj.get('doc_category'), source_heading)
+        if category != obj.get('doc_category'):
+            normalized['doc_category'] = category
+            changes.append({'kind':'category','from':obj.get('doc_category'),'to':category})
+        slot_names = ('company_name','credit_code','qualification_level','certificate_no','valid_until',
+                      'person_name','person_role','id_card','project_name','contract_amount_wan',
+                      'completion_date','bid_price_yuan','bid_price_upper','duration_days')
+        top_level = {key:obj[key] for key in slot_names if key in obj}
+        if 'extracted_kv' not in obj and top_level:
+            normalized['extracted_kv'] = top_level
+            changes.append({'kind':'top_level_slots_to_extracted_kv','keys':list(top_level)})
+        return normalized, changes
 
     @staticmethod
     def _parse_vlm_json(raw_output: str, pdf_page: int, fallback_seal: bool) -> PageVisionResult:
@@ -428,6 +508,148 @@ class QwenVLBackend(BaseVisionBackend):
             extracted_kv=extract_kv_heuristically(cleaned),
             backend_name="qwen2.5_vl_raw",
         )
+
+    def _generate_recovery(self, image, prompt: str, max_tokens: int) -> Dict[str, Any]:
+        """Bounded local generation with an explicit finish reason for recovery audits."""
+        self._ensure_hf_loaded()
+        import time
+        import torch
+        from transformers import StoppingCriteria, StoppingCriteriaList
+
+        messages = [{"role": "user", "content": [
+            {"type": "image", "image": image}, {"type": "text", "text": prompt}]}]
+        formatted = self._hf_processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True)
+        inputs = self._hf_processor(text=[formatted], images=[image],
+                                    return_tensors="pt").to(self._hf_model.device)
+        input_length = inputs.input_ids.shape[1]
+
+        class RepeatedTail(StoppingCriteria):
+            stopped = False
+
+            def __call__(self, input_ids, scores, **kwargs):
+                tail = input_ids[0, input_length:]
+                if len(tail) >= 96:
+                    # Repeated long spans indicate a loop; crop and retry instead of accepting it.
+                    self.stopped = all(torch.equal(tail[-24:], tail[-24*(i+1):-24*i])
+                                       for i in range(1, 4))
+                return self.stopped
+
+        stopper = RepeatedTail()
+        started = time.perf_counter()
+        with torch.inference_mode():
+            ids = self._hf_model.generate(
+                **inputs, max_new_tokens=max_tokens, do_sample=False,
+                repetition_penalty=1.05, stopping_criteria=StoppingCriteriaList([stopper]))
+        new_ids = ids[0, input_length:]
+        text = self._hf_processor.decode(new_ids, skip_special_tokens=True,
+                                         clean_up_tokenization_spaces=False).strip()
+        reason = "repetition" if stopper.stopped else (
+            "length" if len(new_ids) >= max_tokens else "eos")
+        return {"text": text, "tokens": len(new_ids), "finish_reason": reason,
+                "seconds": round(time.perf_counter() - started, 3)}
+
+    def analyze_page_recovery(self, doc: fitz.Document, pdf_page: int,
+                              heading_hint: str = "", rotation_degrees: int = 0,
+                              crop_main_scan: bool = False) -> Tuple[Optional[PageVisionResult], Dict[str, Any]]:
+        """Recover a failed page using separate transcription and compact field extraction.
+
+        Exhausted output or repetition triggers bounded spatial retries. Failed attempts
+        remain auditable and are never relabeled as successful merely by closing JSON.
+        """
+        import io
+        from PIL import Image
+
+        if self.mode != "transformers":
+            raise ValueError("Page recovery currently requires the local transformers backend.")
+        if rotation_degrees not in (0, 90, 180, 270):
+            raise ValueError("Recovery rotation must be 0/90/180/270 degrees counterclockwise.")
+        page = doc[pdf_page - 1]
+        clip = page.rect
+        if crop_main_scan:
+            images = page.get_image_info()
+            main = max(images, key=lambda x: fitz.Rect(x['bbox']).get_area(), default=None)
+            if main and fitz.Rect(main['bbox']).get_area() > .3 * page.rect.get_area():
+                clip = fitz.Rect(main['bbox']) & page.rect
+        pix = page.get_pixmap(dpi=self.dpi, clip=clip, alpha=False)
+        image = Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB")
+        if rotation_degrees:
+            image = image.rotate(rotation_degrees, expand=True)
+        audit: Dict[str, Any] = {"pdf_page": pdf_page, "ocr_attempts": [], "metadata_attempts": [],
+                                 "rotation_degrees_ccw": rotation_degrees, "source_clip_pdf_points": list(clip)}
+        ocr_prompt = (
+            "请逐行转录这张文档图片中实际可见的文字。仅输出转录正文，不要JSON、解释、总结或补全。"
+            "表格按行输出，每行各列用空格分开，不必生成Markdown表头和分隔线。"
+            "保留原文的姓名、日期、金额、单位和表头；看不清的文字用[无法辨认]标记，不要猜测。"
+            "不要凭空重复文字或空行。图片中全部可见内容转录完毕立即结束。")
+
+        def transcribe(box, depth=0):
+            crop = image.crop(box)
+            attempt = self._generate_recovery(crop, ocr_prompt, 3072)
+            attempt.update(box=list(box), depth=depth)
+            audit["ocr_attempts"].append(attempt)
+            if attempt["finish_reason"] == "eos" and attempt["text"]:
+                return attempt["text"]
+            if depth >= 2:
+                return None
+            x0, y0, x1, y1 = box
+            mid = (y0 + y1) // 2
+            top = transcribe((x0, y0, x1, mid), depth + 1)
+            bottom = transcribe((x0, mid, x1, y1), depth + 1)
+            if top is None or bottom is None:
+                return None
+            return top + "\n" + bottom
+
+        ocr_text = transcribe((0, 0, image.width, image.height))
+        if ocr_text is None:
+            audit.update(status="failed", reason="ocr_output_incomplete_or_repetitive")
+            return None, audit
+        if clip != page.rect:
+            native_text = page.get_text().strip()
+            if native_text:
+                ocr_text = native_text + "\n" + ocr_text
+                audit["native_text_added"] = native_text
+        metadata_prompt = (
+            "只根据图片中明确可见的内容输出一个简短的合法JSON对象。不要转录正文，不要Markdown。"
+            "不得推断图片未出现的信息。JSON必须具有如下键："
+            '"doc_category"（从' + "、".join(DOC_CATEGORIES) + '中选一），'
+            '"has_official_seal"（布尔值），"seal_company_name"（字符串或null），'
+            '"has_signature"（布尔值），"extracted_kv"（对象）。'
+            "extracted_kv只填写本页明确出现的字段，缺失的字段直接省略。允许字段："
+            "company_name,credit_code,qualification_level,certificate_no,valid_until,"
+            "person_name,person_role,id_card,project_name,contract_amount_wan,completion_date,"
+            "bid_price_yuan,bid_price_upper,duration_days。"
+            "历史业绩合同金额不能填入当前投标总价bid_price_yuan或bid_price_upper。"
+            "不输出ocr_text，尽量简短。章节提示：" + (heading_hint or "无"))
+        for retry in range(2):
+            attempt = self._generate_recovery(image, metadata_prompt, 1024 if retry == 0 else 1536)
+            audit["metadata_attempts"].append(attempt)
+            try:
+                text = re.sub(r"^```(?:json)?\s*|\s*```$", "", attempt["text"].strip())
+                obj = json.loads(text)
+                obj, changes = self.normalize_recovery_metadata(obj, Path(doc.name or '').stem)
+                if changes:
+                    attempt['schema_normalization'] = changes
+                if (attempt["finish_reason"] != "eos" or not isinstance(obj, dict)
+                        or obj.get("doc_category") not in DOC_CATEGORIES
+                        or not isinstance(obj.get("extracted_kv"), dict)
+                        or not isinstance(obj.get("has_official_seal"), bool)
+                        or not isinstance(obj.get("has_signature"), bool)
+                        or not (obj.get("seal_company_name") is None
+                                or isinstance(obj["seal_company_name"], str))):
+                    raise ValueError("Invalid metadata schema or incomplete output")
+                result = PageVisionResult(
+                    pdf_page=pdf_page, doc_category=obj["doc_category"], ocr_text=ocr_text,
+                    has_official_seal=obj["has_official_seal"], seal_company_name=obj.get("seal_company_name"),
+                    has_signature=obj["has_signature"], extracted_kv=obj["extracted_kv"],
+                    backend_name="qwen2.5_vl_recovered")
+                audit.update(status="recovered", ocr_characters=len(ocr_text))
+                return result, audit
+            except (json.JSONDecodeError, ValueError) as exc:
+                attempt["validation_error"] = str(exc)
+                metadata_prompt += "\n请检查输出格式，直接以{开始、以}结束；只填真实可见的少量字段。"
+        audit.update(status="failed", reason="invalid_metadata")
+        return None, audit
 
     def analyze_page(
         self,
@@ -506,7 +728,9 @@ class QwenVLBackend(BaseVisionBackend):
         ).to(self._hf_model.device)
 
         with torch.no_grad():
-            generated_ids = self._hf_model.generate(**inputs, max_new_tokens=1024)
+            generated_ids = self._hf_model.generate(
+                **inputs, max_new_tokens=1024, do_sample=False
+            )
             trimmed_ids = [
                 out_ids[len(in_ids) :]
                 for in_ids, out_ids in zip(inputs.input_ids, generated_ids)

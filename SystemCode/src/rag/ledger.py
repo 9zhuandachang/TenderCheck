@@ -198,7 +198,7 @@ class EntityLedgerBuilder:
                     )
                 )
 
-            if kv.get("bid_price_upper"):
+            if isinstance(kv.get("bid_price_upper"), str) and kv["bid_price_upper"].strip():
                 val_up = kv["bid_price_upper"]
                 if not commercial_info["bid_price_upper"] or len(val_up) > len(
                     commercial_info["bid_price_upper"]
@@ -213,6 +213,9 @@ class EntityLedgerBuilder:
                         chunk_id=chunk.chunk_id,
                     )
                 )
+
+            elif kv.get("bid_price_upper") is not None:
+                logger.warning("Ignoring non-text bid_price_upper in chunk %s; original value remains in source chunk.", chunk.chunk_id)
 
             if kv.get("duration_days"):
                 dur = kv["duration_days"]

@@ -25,6 +25,7 @@ Usage on RTX 5080 (after running `run_rag_pipeline.py --mode ingest`):
 import argparse
 import json
 import logging
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -33,6 +34,9 @@ from typing import Any, Dict, List, Optional, Tuple
 BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
+if str(BASE_DIR.parent) not in sys.path:
+    # Older saved TF-IDF pipelines reference SystemCode.src.* custom transformers.
+    sys.path.insert(0, str(BASE_DIR.parent))
 
 from src.classification import load_classifier
 from src.data import LABEL2ID, REQUIREMENT_TYPES, RequirementSample
@@ -164,7 +168,7 @@ def evaluate_gold_ledger_facts(
     pm_names = [
         str(p.get("name", ""))
         for p in ledger.personnel_ledger
-        if p.get("role") == "项目经理" or p.get("name")
+        if p.get("role") == "项目经理" and p.get("name")
     ]
 
     checks: List[Dict[str, Any]] = []
@@ -192,16 +196,28 @@ def evaluate_gold_ledger_facts(
             matched = bool(matched_pm)
         elif slot_key == "bid_price_yuan":
             ext_val = cs.get("bid_price_yuan")
-            matched = (
-                ext_val is not None
-                and abs(float(ext_val) - float(gold_val)) < 1.0
-            )
+            try:
+                matched = ext_val is not None and abs(float(ext_val) - float(gold_val)) < 1.0
+            except (TypeError, ValueError):
+                matched = False
         elif slot_key == "bid_price_upper":
             ext_val = cs.get("bid_price_upper")
             matched = bool(ext_val and str(gold_val) in str(ext_val))
         elif slot_key == "duration_days":
             ext_val = cs.get("duration_days")
-            matched = bool(ext_val and str(gold_val) in str(ext_val))
+            # VLM JSON may store numeric days while the reference includes a unit.
+            # Do not equate months or working days with calendar days.
+            def calendar_days(value: Any) -> Optional[float]:
+                match = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*(?:日历天|天)?\s*", str(value))
+                return float(match.group(1)) if match else None
+
+            actual_days = calendar_days(ext_val)
+            expected_days = calendar_days(gold_val)
+            matched = (
+                actual_days is not None
+                and expected_days is not None
+                and actual_days == expected_days
+            )
         elif slot_key == "quality_target":
             ext_val = cs.get("quality_target")
             matched = bool(ext_val and str(gold_val) in str(ext_val))
@@ -287,6 +303,7 @@ def evaluate_gold_retrieval_ablation(
     per_cat_ours: Dict[str, Dict[str, float]] = defaultdict(
         lambda: {"count": 0, "hit1": 0.0, "hit3": 0.0, "hit5": 0.0, "mrr5": 0.0}
     )
+    query_details: List[Dict[str, Any]] = []
 
     for q in gold_queries:
         req_text = q["requirement"]
@@ -336,6 +353,15 @@ def evaluate_gold_retrieval_ablation(
             ),
         ]
 
+        query_result: Dict[str, Any] = {
+            "clause_id": q["clause_id"],
+            "requirement": req_text,
+            "gold_category": gold_cat,
+            "predicted_category": pred_cat,
+            "target_doc_categories": target_cats,
+            "target_keywords": target_kws,
+            "methods": {},
+        }
         for m_name, h_list, ledger_hit in method_hits:
             first_rank: Optional[int] = None
             for rank_idx, h in enumerate(h_list[:top_k], start=1):
@@ -344,6 +370,11 @@ def evaluate_gold_retrieval_ablation(
                     break
             if ledger_hit and (first_rank is None or first_rank > 1):
                 first_rank = 1
+            query_result["methods"][m_name] = {
+                "first_relevant_rank": first_rank,
+                "ledger_keyword_hit": ledger_hit,
+                "hits": [h.to_dict() for h in h_list[:top_k]],
+            }
 
             if first_rank is not None:
                 if first_rank <= 1:
@@ -365,6 +396,8 @@ def evaluate_gold_retrieval_ablation(
                     if first_rank <= 5:
                         cat_entry["hit5"] += 1.0
                     cat_entry["mrr5"] += 1.0 / float(first_rank)
+
+        query_details.append(query_result)
 
     n_total = max(len(gold_queries), 1)
     ablation_summary = {}
@@ -394,6 +427,7 @@ def evaluate_gold_retrieval_ablation(
     return {
         "ablation_table": ablation_summary,
         "per_category_ir_metrics": per_category_ir,
+        "query_details": query_details,
     }
 
 
@@ -771,6 +805,14 @@ def main() -> None:
         top_k=args.top_k,
         max_eval_clauses=args.max_eval_clauses,
     )
+    report["execution_config"] = {
+        "classifier_model_dir": str(model_path),
+        "embedding_model": hybrid_index.embedding_model_name,
+        "reranker_model": args.reranker_model,
+        "top_k": args.top_k,
+        "benchmark_json": str(args.benchmark_json),
+        "relevance_criterion": "Keyword/category proxy; ledger keyword matches are assigned rank 1.",
+    }
 
     reports_dir = BASE_DIR / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)

@@ -52,6 +52,7 @@ class RetrievedChunkHit:
             "sparse_score": round(float(self.sparse_score), 4),
             "rerank_score": round(float(self.rerank_score), 4) if self.rerank_score is not None else None,
             "chunk_id": self.child_chunk.chunk_id,
+            "document_id": self.child_chunk.document_id,
             "parent_id": self.parent_chunk.chunk_id,
             "volume_type": self.child_chunk.volume_type,
             "doc_category": self.child_chunk.doc_category,
