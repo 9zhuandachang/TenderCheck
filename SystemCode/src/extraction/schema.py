@@ -34,6 +34,8 @@ class TenderConstraintSlots:
     requires_official_seal: bool = False
     requires_signature: bool = False
     scoring_max_points: Optional[float] = None
+    scoring_bands: List[Dict[str, Any]] = field(default_factory=list)
+    source_quotes: Dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -42,14 +44,16 @@ class TenderConstraintSlots:
     def from_dict(cls, data: Dict[str, Any]) -> "TenderConstraintSlots":
         valid_keys = {f.name for f in cls.__dataclass_fields__.values()}
         filtered = {k: v for k, v in (data or {}).items() if k in valid_keys}
+        validate_slot_types(filtered)
         return cls(**filtered)
 
 
 @dataclass
 class BidEvidenceSlots:
-    """Structured facts extracted from the retrieved bid chunks and EntityLedger."""
+    """Facts extracted from cited bid passages; unknown facts remain null."""
 
     evidence_found: bool = False
+    document_present: Optional[bool] = None
     actual_numeric: Optional[float] = None
     actual_unit: str = ""
     secondary_actual_numeric: Optional[float] = None
@@ -59,15 +63,17 @@ class BidEvidenceSlots:
     entity_primary: str = ""               # 主体1 (如投标人名称 / 投标函报价)
     entity_secondary: str = ""             # 主体2 (如建造师注册单位 / 清单汇总表报价)
     certificate_valid: Optional[bool] = None
-    has_official_seal: bool = False
-    has_signature: bool = False
-    prohibition_violated: bool = False     # 是否违反禁止性条款 (如存在联合体、存在违法分包、存在虚假承诺等)
-    commitment_fulfilled: bool = True      # 是否作出了招标要求的实质性承诺
-    qualitative_match: bool = False        # 定性要求是否满足
+    has_official_seal: Optional[bool] = None
+    has_signature: Optional[bool] = None
+    prohibition_violated: Optional[bool] = None
+    commitment_fulfilled: Optional[bool] = None
+    qualitative_match: Optional[bool] = None
     estimated_score: Optional[float] = None
     page_mentions: List[Dict[str, Any]] = field(default_factory=list)
     evidence_pages: List[int] = field(default_factory=list)
     evidence_summary: str = ""
+    conflict_detected: bool = False
+    evidence_references: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -76,6 +82,7 @@ class BidEvidenceSlots:
     def from_dict(cls, data: Dict[str, Any]) -> "BidEvidenceSlots":
         valid_keys = {f.name for f in cls.__dataclass_fields__.values()}
         filtered = {k: v for k, v in (data or {}).items() if k in valid_keys}
+        validate_slot_types(filtered)
         return cls(**filtered)
 
 
@@ -90,6 +97,7 @@ class StructuredExtractionResult:
     bid_slots: BidEvidenceSlots
     extractor_backend: str = "deepseek-chat"
     raw_llm_verdict_hint: Optional[str] = None  # Used only when comparing against direct-LLM baseline
+    extraction_issues: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -100,6 +108,7 @@ class StructuredExtractionResult:
             "bid_slots": self.bid_slots.to_dict(),
             "extractor_backend": self.extractor_backend,
             "raw_llm_verdict_hint": self.raw_llm_verdict_hint,
+            "extraction_issues": self.extraction_issues,
         }
 
     @classmethod
@@ -112,4 +121,31 @@ class StructuredExtractionResult:
             bid_slots=BidEvidenceSlots.from_dict(data.get("bid_slots") or {}),
             extractor_backend=str(data.get("extractor_backend", "deepseek-chat")),
             raw_llm_verdict_hint=data.get("raw_llm_verdict_hint"),
+            extraction_issues=list(data.get("extraction_issues") or []),
         )
+
+
+def validate_slot_types(values):
+    """Reject strings posing as booleans and NaN rather than silently coercing."""
+    import math
+    boolean = {'evidence_found', 'document_present', 'certificate_valid', 'has_official_seal', 'has_signature',
+               'prohibition_violated', 'commitment_fulfilled', 'qualitative_match',
+               'requires_official_seal', 'requires_signature', 'conflict_detected'}
+    numeric = {'expected_numeric', 'secondary_numeric', 'scoring_max_points', 'actual_numeric',
+               'secondary_actual_numeric', 'estimated_score'}
+    arrays = {'scoring_bands', 'page_mentions', 'evidence_pages', 'evidence_references'}
+    for key, value in values.items():
+        if key in boolean:
+            if value is not None and type(value) is not bool:
+                raise ValueError(f'{key} must be a boolean or null')
+        elif key in numeric:
+            if value is not None and (type(value) not in (float, int) or not math.isfinite(value)):
+                raise ValueError(f'{key} must be a finite number or null')
+        elif key in arrays:
+            if not isinstance(value, list):
+                raise ValueError(f'{key} must be a list')
+        elif key == 'source_quotes':
+            if not isinstance(value, dict):
+                raise ValueError('source_quotes must be an object')
+        elif not isinstance(value, str):
+            raise ValueError(f'{key} must be a string')

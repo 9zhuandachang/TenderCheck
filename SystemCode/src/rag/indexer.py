@@ -60,11 +60,8 @@ class RetrievedChunkHit:
             "section_path": self.child_chunk.section_path,
             "page_start": self.child_chunk.page_start,
             "page_end": self.child_chunk.page_end,
-            "has_official_seal": self.child_chunk.has_official_seal,
-            "has_signature": self.child_chunk.has_signature,
             "child_text": self.child_chunk.text,
             "parent_text": self.parent_chunk.text,
-            "extracted_kv": self.parent_chunk.extracted_kv,
         }
 
 

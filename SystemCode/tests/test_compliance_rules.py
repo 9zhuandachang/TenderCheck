@@ -135,6 +135,7 @@ class ComplianceRulesTests(unittest.TestCase):
             bid_slots=BidEvidenceSlots(
                 evidence_found=True,
                 has_official_seal=False,
+                document_present=True,
                 evidence_pages=[220],
             ),
         )
@@ -150,6 +151,13 @@ class ComplianceRulesTests(unittest.TestCase):
                 target_field="debt_ratio_score",
                 operator="SCORE_BRACKET",
                 scoring_max_points=6.0,
+                expected_unit="%",
+                scoring_bands=[
+                    dict(min=None,max=75,min_inclusive=False,max_inclusive=False,points=6),
+                    dict(min=75,max=80,min_inclusive=True,max_inclusive=True,points=4),
+                    dict(min=80,max=85,min_inclusive=False,max_inclusive=True,points=2),
+                    dict(min=85,max=None,min_inclusive=False,max_inclusive=False,points=0),
+                ],
             ),
             bid_slots=BidEvidenceSlots(
                 evidence_found=True,
@@ -160,7 +168,7 @@ class ComplianceRulesTests(unittest.TestCase):
             ),
         )
         rep = self.engine.evaluate(ext_score)
-        self.assertEqual(rep.verdict, "COMPLIANT")
+        self.assertEqual(rep.verdict, "SCORED")
         self.assertEqual(rep.awarded_score, 6.0)
 
 

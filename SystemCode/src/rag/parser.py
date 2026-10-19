@@ -34,7 +34,6 @@ from .vision import (
     LocalHeuristicOCRBackend,
     PageVisionResult,
     detect_red_seal_from_pixmap,
-    extract_kv_heuristically,
     infer_doc_category_from_text,
 )
 
@@ -404,7 +403,7 @@ class BidDocumentParser:
             joined = "\n".join(nar_buf).strip()
             sec_path = " > ".join(headings[k] for k in sorted(headings)) or current_volume
             doc_cat = forced_doc_category or infer_doc_category_from_text(joined, sec_path)
-            kv = extract_kv_heuristically(joined)
+            kv = {}
             c_spans = _split_text_into_spans(
                 joined,
                 target_chars=self.child_target_chars,
@@ -485,12 +484,7 @@ class BidDocumentParser:
                     target_chars=self.child_target_chars,
                     overlap_chars=self.child_overlap_chars,
                 )
-                merged_kv = dict(vision_res.extracted_kv or {})
-                if clean_text:
-                    for k_native, v_native in extract_kv_heuristically(clean_text).items():
-                        if v_native is not None and v_native != "":
-                            merged_kv[k_native] = v_native
-
+                merged_kv = {}
                 _emit_parent_and_children(
                     content_type=c_type,
                     doc_category=doc_cat,
@@ -512,7 +506,7 @@ class BidDocumentParser:
                 _flush_narrative_buffer()
                 page_type_counts["table"] += 1
                 doc_cat = forced_doc_category or infer_doc_category_from_text(clean_text, sec_path)
-                kv = extract_kv_heuristically(clean_text)
+                kv = {}
                 parent_tbl_text = "\n\n".join(md_tables)
                 if clean_text:
                     parent_tbl_text = f"{clean_text}\n\n{parent_tbl_text}"

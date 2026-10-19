@@ -26,10 +26,11 @@ class RuleEvaluationReport:
     category: str
     verdict: str                           # "COMPLIANT" | "NON_COMPLIANT"
     triggered_rule_id: str                 # e.g. "R01_NUMERIC_BOUND"
-    rule_passed: bool
+    rule_passed: Optional[bool]
     symbolic_trace: str                    # Formal symbolic check expression
     explanation: str                       # Human-readable audit explanation
     evidence_pages: List[int] = field(default_factory=list)
+    evidence_references: List[Dict[str, Any]] = field(default_factory=list)
     awarded_score: Optional[float] = None  # Populated for Scoring clauses
 
     def to_dict(self) -> Dict[str, Any]:
@@ -109,22 +110,6 @@ def normalize_rmb_upper_text(text: str) -> str:
     return cleaned
 
 
-def normalize_unit_value(value: Optional[float], unit: str, target_unit: str) -> Optional[float]:
-    """Convert numeric value to match `target_unit` when units differ by `万元` vs `元`."""
-    if value is None:
-        return None
-    u_src = (unit or "").strip()
-    u_tgt = (target_unit or "").strip()
-    if u_src == u_tgt or not u_src or not u_tgt:
-        return float(value)
-    if "万元" in u_src and u_tgt == "元":
-        return float(value) * 10000.0
-    if u_src == "元" and "万元" in u_tgt:
-        return float(value) / 10000.0
-    # Handle implicit unit scale mismatch when LLM leaves actual_unit blank or same
-    return float(value)
-
-
 def parse_qualification_rank(text: str) -> Tuple[str, int]:
     """
     Map Chinese qualification / constructor / engineering title string to `(family, rank_int)`
@@ -155,449 +140,149 @@ def parse_qualification_rank(text: str) -> Tuple[str, int]:
             return ("title", 4)
         if "高级工程师" in t or "副高" in t:
             return ("title", 3)
-        if "中级" in t or "工程师" in t:
-            return ("title", 2)
         if "助理" in t or "初级" in t:
             return ("title", 1)
+        if "中级" in t or "工程师" in t:
+            return ("title", 2)
 
-    return ("generic_cert", 1 if t.strip() else 0)
+    return ("generic_cert", 0)
 
 
 class ComplianceRuleEngine:
-    """
-    Deterministic Symbolic Rule Engine (`src/rules`).
-    Evaluates `StructuredExtractionResult` across 6 formal symbolic rule families.
-    """
+    """Compare explicitly extracted constraints and facts; never fill missing facts."""
 
     def evaluate(self, extracted: StructuredExtractionResult) -> RuleEvaluationReport:
-        ctype = extracted.tender_slots.constraint_type
-        if ctype == "NUMERIC_BOUND":
-            return self._eval_numeric_bound(extracted)
-        if ctype == "QUALIFICATION_LEVEL":
-            return self._eval_qualification_level(extracted)
-        if ctype == "ENTITY_CONSISTENCY":
-            return self._eval_entity_consistency(extracted)
-        if ctype == "DOCUMENT_PRESENCE_AND_SEAL":
-            return self._eval_document_and_seal(extracted)
-        if ctype == "PROHIBITION_AND_COMMITMENT":
-            return self._eval_prohibition_and_commitment(extracted)
-        return self._eval_qualitative_or_scoring(extracted)
+        t, b = extracted.tender_slots, extracted.bid_slots
+        rule = t.constraint_type
+        rule_id = {'NUMERIC_BOUND':'R01_NUMERIC_BOUND','QUALIFICATION_LEVEL':'R02_QUALIFICATION_HIERARCHY',
+                   'ENTITY_CONSISTENCY':'R03_RMB_UPPER_AND_CONSISTENCY','DOCUMENT_PRESENCE_AND_SEAL':'R04_DOCUMENT_AND_SEAL',
+                   'PROHIBITION_AND_COMMITMENT':'R05_PROHIBITION_AND_COMMITMENT',
+                   'QUALITATIVE_OR_SCORING':'R06_QUALITATIVE_AND_SCORING'}.get(rule, 'UNSUPPORTED_RULE')
 
-    def _eval_numeric_bound(self, extracted: StructuredExtractionResult) -> RuleEvaluationReport:
-        t = extracted.tender_slots
-        b = extracted.bid_slots
-        rule_id = "R01_NUMERIC_BOUND"
-
-        if not b.evidence_found or b.actual_numeric is None:
+        def report(verdict, trace, score=None):
             return RuleEvaluationReport(
-                clause_id=extracted.clause_id,
-                category=extracted.category,
-                verdict="NON_COMPLIANT",
+                clause_id=extracted.clause_id, category=extracted.category, verdict=verdict,
                 triggered_rule_id=rule_id,
-                rule_passed=False,
-                symbolic_trace=f"actual_numeric=None vs expected {t.operator} {t.expected_numeric} [FAIL: MISSING_VALUE]",
-                explanation=f"未能在投标证据中提取到有效数值（招标要求: {t.target_field} {t.operator} {t.expected_numeric}{t.expected_unit}）。",
-                evidence_pages=b.evidence_pages,
-            )
+                rule_passed=True if verdict == 'COMPLIANT' else False if verdict == 'NON_COMPLIANT' else None,
+                symbolic_trace=trace, explanation=trace, evidence_pages=b.evidence_pages,
+                evidence_references=b.evidence_references, awarded_score=score)
 
-        # Case where tender clause states a qualitative numeric rule without an explicit literal number
-        # (e.g. T0133 "按招标规定填写清单第100章安全生产费总额价", T0135 "投标报价不得超过最高投标限价")
-        if t.expected_numeric is None:
-            passed = (
-                float(b.actual_numeric) > 0
-                and (b.commitment_fulfilled is not False)
-                and (b.qualitative_match is not False)
-                and (not b.prohibition_violated)
-            )
-            trace_str = (
-                f"actual_numeric={b.actual_numeric:g} > 0; "
-                f"commitment_fulfilled={b.commitment_fulfilled}; "
-                f"qualitative_match={b.qualitative_match} ({'PASS' if passed else 'FAIL'})"
-            )
-            return RuleEvaluationReport(
-                clause_id=extracted.clause_id,
-                category=extracted.category,
-                verdict="COMPLIANT" if passed else "NON_COMPLIANT",
-                triggered_rule_id=rule_id,
-                rule_passed=passed,
-                symbolic_trace=trace_str,
-                explanation=f"符号规则校验{'通过' if passed else '不通过'}：{b.evidence_summary or b.actual_text}",
-                evidence_pages=b.evidence_pages,
-            )
+        def unknown(reason):
+            return report('INSUFFICIENT_EVIDENCE', reason)
 
-        exp_val = float(t.expected_numeric)
-        act_val = normalize_unit_value(b.actual_numeric, b.actual_unit, t.expected_unit) or 0.0
+        def decide(passed, trace):
+            return report('COMPLIANT' if passed else 'NON_COMPLIANT', trace)
 
-        # Auto-reconcile 万元 vs 元 if ratio is ~10000x
-        if exp_val > 0 and act_val > 0:
-            if abs(act_val / 10000.0 - exp_val) < 1e-2 and ("万" in t.expected_unit or "万元" in extracted.requirement_text):
-                act_val = act_val / 10000.0
-            elif abs(act_val * 10000.0 - exp_val) < 1.0 and ("万" in b.actual_unit or act_val < 1000 < exp_val):
-                act_val = act_val * 10000.0
+        if extracted.extraction_issues:
+            return unknown('; '.join(extracted.extraction_issues))
+        if b.conflict_detected:
+            return report('CONFLICTING_EVIDENCE', '证据存在冲突，需要核对来源及主体。')
+        if b.evidence_found is not True:
+            return unknown('未提取到相关证据；检索未命中不能证明原文件缺失或违规。')
 
-        op = (t.operator or "<=").strip()
-        if op in ("<=", "LE"):
-            primary_ok = act_val <= exp_val + 1e-4
-            op_sym = "<="
-        elif op in ("<", "LT"):
-            primary_ok = act_val < exp_val
-            op_sym = "<"
-        elif op in (">=", "GE"):
-            primary_ok = act_val >= exp_val - 1e-4
-            op_sym = ">="
-        elif op in (">", "GT"):
-            primary_ok = act_val > exp_val
-            op_sym = ">"
-        else:
-            primary_ok = abs(act_val - exp_val) <= max(1e-2, abs(exp_val) * 1e-5)
-            op_sym = "=="
+        if rule == 'NUMERIC_BOUND':
+            if t.expected_numeric is None or b.actual_numeric is None:
+                return unknown('缺少招标阈值或投标实际数值。')
+            units = {'日历天': ('day', 1), '天': ('day', 1), '日': ('day', 1),
+                     '元': ('money', 1), '万元': ('money', 10000),
+                     '公里': ('length', 1000), 'km': ('length', 1000), '米': ('length', 1),
+                     '%': ('ratio', 1), '人': ('people', 1)}
+            eu, au = units.get(t.expected_unit), units.get(b.actual_unit)
+            if not eu or not au or eu[0] != au[0]:
+                return unknown('单位缺失或不兼容，不能按数值大小猜测单位。')
+            expected, actual = float(t.expected_numeric)*eu[1], float(b.actual_numeric)*au[1]
+            import operator
+            compare = {'<=': operator.le, '<': operator.lt, '>=': operator.ge,
+                       '>': operator.gt, '==': operator.eq}.get(t.operator)
+            if compare is None:
+                return report('UNSUPPORTED_RULE', '未支持的数值运算符。')
+            if t.secondary_numeric is not None and b.secondary_actual_numeric is None:
+                return unknown('第二项数值约束缺少投标事实。')
+            primary = compare(Decimal(str(actual)), Decimal(str(expected)))
+            secondary = (t.secondary_numeric is None or
+                         Decimal(str(t.secondary_numeric))*Decimal(str(eu[1])) ==
+                         Decimal(str(b.secondary_actual_numeric))*Decimal(str(au[1])))
+            return decide(primary and secondary, f'{actual} {t.operator} {expected}; secondary={secondary}')
 
-        traces = [f"{act_val:g} {op_sym} {exp_val:g} ({'PASS' if primary_ok else 'FAIL'})"]
+        if rule == 'QUALIFICATION_LEVEL':
+            if not t.expected_text or not b.actual_text:
+                return unknown('资质要求或实际资质缺失。')
+            if t.required_domain and not b.actual_domain:
+                return unknown('缺少实际专业。')
+            needs_validity = '有效' in (t.expected_text + extracted.requirement_text)
+            if needs_validity and b.certificate_valid is None:
+                return unknown('证书有效性尚未确认。')
+            required_family, required_rank = parse_qualification_rank(t.expected_text)
+            actual_family, actual_rank = parse_qualification_rank(b.actual_text)
+            if required_rank == 0 or actual_rank == 0:
+                return report('UNSUPPORTED_RULE', '当前规则未识别该资质体系，需人工核对。')
+            domain_ok = not t.required_domain or t.required_domain.strip() == b.actual_domain.strip()
+            valid_ok = b.certificate_valid is not False
+            rank_ok = required_family == actual_family and actual_rank >= required_rank
+            return decide(rank_ok and domain_ok and valid_ok,
+                          f'rank={actual_family}:{actual_rank}/{required_family}:{required_rank}; domain={domain_ok}; valid={valid_ok}')
 
-        # Check secondary numeric constraint if specified (e.g., provisional sum 暂列金 == 8000000.00)
-        secondary_ok = True
-        if t.secondary_numeric is not None and b.secondary_actual_numeric is not None:
-            sec_exp = float(t.secondary_numeric)
-            sec_act = float(b.secondary_actual_numeric)
-            if sec_exp > 10000 and sec_act < 10000:
-                sec_act *= 10000.0
-            secondary_ok = abs(sec_act - sec_exp) <= 1.0
-            traces.append(
-                f"secondary: {sec_act:g} == {sec_exp:g} ({'PASS' if secondary_ok else 'FAIL'})"
-            )
-        elif t.secondary_numeric is not None and b.secondary_actual_numeric is None:
-            if str(int(t.secondary_numeric)) not in (b.evidence_summary + " " + b.actual_text):
-                secondary_ok = False
-                traces.append(f"secondary: None != {t.secondary_numeric:g} (FAIL)")
-
-        # Check cross-page numerical mentions consistency (excluding secondary_actual_numeric mentions)
-        mentions_ok = True
-        if len(b.page_mentions) >= 2:
-            sec_val = float(b.secondary_actual_numeric) if b.secondary_actual_numeric is not None else None
-            vals = []
-            for m in b.page_mentions:
+        if rule == 'ENTITY_CONSISTENCY':
+            if not b.entity_primary or not b.entity_secondary:
+                return unknown('缺少两个独立来源的比对值，不能复制已有主体补齐。')
+            if t.target_field == 'rmb_upper_consistency':
+                if b.actual_numeric is None or not b.upper_amount_text:
+                    return unknown('缺少大小写金额。')
+                upper_ok = normalize_rmb_upper_text(number_to_rmb_upper(b.actual_numeric)) == normalize_rmb_upper_text(b.upper_amount_text)
                 try:
-                    v = float(re.sub(r"[^\d.]", "", str(m.get("value", ""))))
-                    if sec_val is not None and abs(v - sec_val) < 1.0:
-                        continue
-                    vals.append(v)
-                except ValueError:
-                    pass
-            if len(vals) >= 2 and (max(vals) - min(vals) > 1e-2):
-                mentions_ok = False
-                traces.append(f"cross_page_mentions={vals} (FAIL: INCONSISTENT)")
+                    cross_ok = Decimal(b.entity_primary) == Decimal(b.entity_secondary)
+                except Exception:
+                    return unknown('跨表报价不是明确数值。')
+                return decide(upper_ok and cross_ok, f'uppercase={upper_ok}; cross_table={cross_ok}')
+            normalize = lambda x: re.sub(r'\s+', '', x).replace('（','(').replace('）',')')
+            return decide(normalize(b.entity_primary) == normalize(b.entity_secondary),
+                          f'{b.entity_primary} == {b.entity_secondary}')
 
-        passed = primary_ok and secondary_ok and mentions_ok
-        trace_str = "; ".join(traces)
-        if passed:
-            expl = (
-                f"符号规则校验通过：投标文件实测值 {act_val:g}{t.expected_unit} "
-                f"满足招标约束 ({op_sym} {exp_val:g}{t.expected_unit})。"
-            )
-        else:
-            expl = (
-                f"符号规则校验不通过：投标文件实测值 {act_val:g}{t.expected_unit} "
-                f"违反招标约束 ({op_sym} {exp_val:g}{t.expected_unit}) [{trace_str}]。"
-            )
-        return RuleEvaluationReport(
-            clause_id=extracted.clause_id,
-            category=extracted.category,
-            verdict="COMPLIANT" if passed else "NON_COMPLIANT",
-            triggered_rule_id=rule_id,
-            rule_passed=passed,
-            symbolic_trace=trace_str,
-            explanation=expl,
-            evidence_pages=b.evidence_pages,
-        )
+        if rule == 'DOCUMENT_PRESENCE_AND_SEAL':
+            if b.document_present is None:
+                return unknown('所需材料的完整性尚未确认。')
+            if b.document_present is False:
+                return decide(False, '已提取到明确的材料缺失证据。')
+            if t.requires_official_seal and b.has_official_seal is None:
+                return unknown('文本检索不能确认图像中的印章状态。')
+            if t.requires_signature and b.has_signature is None:
+                return unknown('签字状态尚未确认。')
+            passed = (not t.requires_official_seal or b.has_official_seal is True) and (not t.requires_signature or b.has_signature is True)
+            return decide(passed, f'seal={b.has_official_seal}; signature={b.has_signature}')
 
-    def _eval_qualification_level(self, extracted: StructuredExtractionResult) -> RuleEvaluationReport:
-        t = extracted.tender_slots
-        b = extracted.bid_slots
-        rule_id = "R02_QUALIFICATION_HIERARCHY"
+        if rule == 'PROHIBITION_AND_COMMITMENT':
+            if b.prohibition_violated is True or b.commitment_fulfilled is False:
+                return decide(False, '已提取出明确违反或拒绝承诺的证据。')
+            if b.prohibition_violated is None or b.commitment_fulfilled is None:
+                return unknown('禁止事项或承诺状态未确认。')
+            return decide(True, '已提取出对应禁止事项与承诺的明确响应。')
 
-        if not b.evidence_found:
-            return RuleEvaluationReport(
-                clause_id=extracted.clause_id,
-                category=extracted.category,
-                verdict="NON_COMPLIANT",
-                triggered_rule_id=rule_id,
-                rule_passed=False,
-                symbolic_trace="evidence_found=False [FAIL]",
-                explanation="未找到对应的企业或人员资质/证书证明材料。",
-                evidence_pages=b.evidence_pages,
-            )
-
-        valid_ok = (
-            (b.certificate_valid is not False)
-            and (b.commitment_fulfilled is not False)
-            and (b.qualitative_match is not False)
-            and (not b.prohibition_violated)
-        )
-        req_family, req_rank = parse_qualification_rank(t.expected_text or extracted.requirement_text)
-        act_family, act_rank = parse_qualification_rank(b.actual_text or b.evidence_summary)
-
-        # Check domain compatibility (e.g. 公路工程 allows 路桥/道路/桥梁/交通/隧道/工程管理)
-        domain_ok = True
-        if t.required_domain and b.actual_domain:
-            req_dom = t.required_domain.replace("工程", "").strip()
-            act_dom = b.actual_domain.replace("工程", "").strip()
-            if req_dom and act_dom and (req_dom not in act_dom) and (act_dom not in req_dom):
-                highway_compatible = ("公路", "道路", "桥梁", "路桥", "交通", "隧道", "土建", "管理", "安全")
-                if any(k in req_dom for k in ("公路", "交通", "道路", "桥梁")) and any(
-                    k in act_dom for k in highway_compatible
-                ):
-                    domain_ok = True
-                else:
-                    domain_ok = False
-
-        # Evaluate rank hierarchy
-        if req_family == act_family and req_rank > 0:
-            rank_ok = act_rank >= req_rank
-        else:
-            rank_ok = (act_rank >= req_rank) and (not b.prohibition_violated)
-
-        # Check numeric sub-constraints on performance qualifications (e.g., >= 15km or >= 5000万)
-        num_ok = True
-        if t.expected_numeric is not None:
-            if b.actual_numeric is not None:
-                num_ok = float(b.actual_numeric) >= float(t.expected_numeric) - 1e-4
-            elif "未提供" in (b.actual_text + b.evidence_summary):
-                num_ok = False
-
-        passed = valid_ok and domain_ok and rank_ok and num_ok
-        trace_str = (
-            f"rank({act_family}:{act_rank} >= {req_family}:{req_rank})={rank_ok}; "
-            f"domain_ok={domain_ok}; cert_valid={valid_ok}; num_ok={num_ok}"
-        )
-        if passed:
-            expl = f"资质与证书等级核验通过：投标方具备『{b.actual_text or b.evidence_summary}』，满足『{t.expected_text or extracted.requirement_text}』要求。"
-        else:
-            expl = f"资质与证书等级核验不通过：投标方『{b.actual_text or b.evidence_summary}』不满足『{t.expected_text or extracted.requirement_text}』 [{trace_str}]。"
-
-        return RuleEvaluationReport(
-            clause_id=extracted.clause_id,
-            category=extracted.category,
-            verdict="COMPLIANT" if passed else "NON_COMPLIANT",
-            triggered_rule_id=rule_id,
-            rule_passed=passed,
-            symbolic_trace=trace_str,
-            explanation=expl,
-            evidence_pages=b.evidence_pages,
-        )
-
-    def _eval_entity_consistency(self, extracted: StructuredExtractionResult) -> RuleEvaluationReport:
-        t = extracted.tender_slots
-        b = extracted.bid_slots
-        rule_id = "R03_RMB_UPPER_AND_CONSISTENCY"
-
-        # Case A: RMB Uppercase vs Lowercase Numeric Amount Verification
-        if (
-            t.target_field == "rmb_upper_consistency"
-            or "大写" in extracted.requirement_text
-            or (b.upper_amount_text and b.actual_numeric is not None)
-        ):
-            if b.actual_numeric is None or not b.upper_amount_text:
-                return RuleEvaluationReport(
-                    clause_id=extracted.clause_id,
-                    category=extracted.category,
-                    verdict="NON_COMPLIANT",
-                    triggered_rule_id=rule_id,
-                    rule_passed=False,
-                    symbolic_trace="missing numeric or uppercase amount [FAIL]",
-                    explanation="缺少小写报价或大写报价文本，无法完成大小写一致性核验。",
-                    evidence_pages=b.evidence_pages,
-                )
-            computed_upper = number_to_rmb_upper(float(b.actual_numeric))
-            norm_computed = normalize_rmb_upper_text(computed_upper)
-            norm_actual = normalize_rmb_upper_text(b.upper_amount_text)
-            upper_ok = norm_computed == norm_actual
-
-            cross_num_ok = True
-            try:
-                if b.entity_primary and b.entity_secondary and re.fullmatch(r"[\d.]+", str(b.entity_secondary)):
-                    cross_num_ok = abs(float(b.entity_primary) - float(b.entity_secondary)) < 1e-2
-            except ValueError:
-                pass
-
-            passed = upper_ok and cross_num_ok
-            trace_str = (
-                f"RMB_UPPER({b.actual_numeric:.2f})='{norm_computed}' == "
-                f"actual='{norm_actual}' ({'PASS' if upper_ok else 'FAIL'}); "
-                f"cross_num_ok={cross_num_ok}"
-            )
-            expl = (
-                f"大小写与跨表报价一致性核验{'通过' if passed else '不通过'}："
-                f"小写 {b.actual_numeric:.2f} 元对应标准大写『{computed_upper}』，"
-                f"投标文件大写为『{b.upper_amount_text}』。"
-            )
-            return RuleEvaluationReport(
-                clause_id=extracted.clause_id,
-                category=extracted.category,
-                verdict="COMPLIANT" if passed else "NON_COMPLIANT",
-                triggered_rule_id=rule_id,
-                rule_passed=passed,
-                symbolic_trace=trace_str,
-                explanation=expl,
-                evidence_pages=b.evidence_pages,
-            )
-
-        # Case B: Entity / Organization Name Exact Equality
-        ent1 = re.sub(r"[\s（）()]", "", str(b.entity_primary or ""))
-        ent2 = re.sub(r"[\s（）()]", "", str(b.entity_secondary or ""))
-        if ent1 and not ent2 and b.evidence_found and b.commitment_fulfilled is not False and ("不一致" not in b.evidence_summary):
-            # If secondary org wasn't separately repeated because all certificates belong to entity_primary
-            ent2 = ent1
-        passed = bool(ent1 and ent2 and ent1 == ent2)
-        trace_str = f"entity_primary='{ent1}' == entity_secondary='{ent2}' ({'PASS' if passed else 'FAIL'})"
-        expl = (
-            f"主体名称一致性核验{'通过' if passed else '不通过'}："
-            f"主体1『{b.entity_primary}』与主体2『{b.entity_secondary or b.entity_primary}』{'完全一致' if passed else '存在不一致'}。"
-        )
-        return RuleEvaluationReport(
-            clause_id=extracted.clause_id,
-            category=extracted.category,
-            verdict="COMPLIANT" if passed else "NON_COMPLIANT",
-            triggered_rule_id=rule_id,
-            rule_passed=passed,
-            symbolic_trace=trace_str,
-            explanation=expl,
-            evidence_pages=b.evidence_pages,
-        )
-
-    def _eval_document_and_seal(self, extracted: StructuredExtractionResult) -> RuleEvaluationReport:
-        t = extracted.tender_slots
-        b = extracted.bid_slots
-        rule_id = "R04_DOCUMENT_AND_SEAL"
-
-        doc_ok = bool(b.evidence_found) and not b.prohibition_violated
-        seal_ok = (not t.requires_official_seal) or bool(b.has_official_seal)
-        sig_ok = (not t.requires_signature) or bool(b.has_signature)
-
-        passed = doc_ok and seal_ok and sig_ok
-        trace_str = (
-            f"document_found={doc_ok}; "
-            f"seal(req={t.requires_official_seal}, actual={b.has_official_seal})={seal_ok}; "
-            f"sig(req={t.requires_signature}, actual={b.has_signature})={sig_ok}"
-        )
-        expl = (
-            f"文件组成与签章核验{'通过' if passed else '不通过'}："
-            f"{b.evidence_summary or b.actual_text or '已核对文件存在性与盖章状态'} [{trace_str}]。"
-        )
-        return RuleEvaluationReport(
-            clause_id=extracted.clause_id,
-            category=extracted.category,
-            verdict="COMPLIANT" if passed else "NON_COMPLIANT",
-            triggered_rule_id=rule_id,
-            rule_passed=passed,
-            symbolic_trace=trace_str,
-            explanation=expl,
-            evidence_pages=b.evidence_pages,
-        )
-
-    def _eval_prohibition_and_commitment(self, extracted: StructuredExtractionResult) -> RuleEvaluationReport:
-        b = extracted.bid_slots
-        rule_id = "R05_PROHIBITION_AND_COMMITMENT"
-
-        passed = (
-            bool(b.evidence_found)
-            and (not b.prohibition_violated)
-            and bool(b.commitment_fulfilled)
-        )
-        trace_str = (
-            f"evidence_found={b.evidence_found}; "
-            f"prohibition_violated={b.prohibition_violated}; "
-            f"commitment_fulfilled={b.commitment_fulfilled}"
-        )
-        expl = (
-            f"禁止性底线与承诺核验{'通过' if passed else '不通过'}："
-            f"{b.evidence_summary or b.actual_text or '已核验无违规情形且承诺完备'}。"
-        )
-        return RuleEvaluationReport(
-            clause_id=extracted.clause_id,
-            category=extracted.category,
-            verdict="COMPLIANT" if passed else "NON_COMPLIANT",
-            triggered_rule_id=rule_id,
-            rule_passed=passed,
-            symbolic_trace=trace_str,
-            explanation=expl,
-            evidence_pages=b.evidence_pages,
-        )
-
-    def _eval_qualitative_or_scoring(self, extracted: StructuredExtractionResult) -> RuleEvaluationReport:
-        t = extracted.tender_slots
-        b = extracted.bid_slots
-        rule_id = "R06_QUALITATIVE_AND_SCORING"
-
-        # 1. Special symbolic bracket calculation for Debt-to-Asset Ratio (资产负债率 T0214)
-        if "资产负债率" in extracted.requirement_text and b.actual_numeric is not None:
-            ratio = float(b.actual_numeric)
-            if ratio < 75.0:
-                score = 6.0
-            elif ratio <= 80.0:
-                score = 4.0
-            elif ratio <= 85.0:
-                score = 2.0
-            else:
-                score = 0.0
-            passed = score > 0.0
-            trace_str = f"debt_ratio={ratio:.2f}% -> bracket_score={score:.1f}/6.0"
-            return RuleEvaluationReport(
-                clause_id=extracted.clause_id,
-                category=extracted.category,
-                verdict="COMPLIANT" if passed else "NON_COMPLIANT",
-                triggered_rule_id=rule_id,
-                rule_passed=passed,
-                symbolic_trace=trace_str,
-                explanation=f"财务评分规则计算：资产负债率为 {ratio:.2f}%，按档位规则得 {score:.1f} 分。",
-                evidence_pages=b.evidence_pages,
-                awarded_score=score,
-            )
-
-        # 2. Disjunctive performance scoring rule: "长度>=15公里 或 金额>=5000万元" (T0216)
-        if "15公里" in extracted.requirement_text and "5000万元" in extracted.requirement_text:
-            combined_text = f"{b.actual_text} {b.evidence_summary}"
-            m_wan = re.search(r"(\d+(?:\.\d+)?)\s*万元", combined_text)
-            m_km = re.search(r"(\d+(?:\.\d+)?)\s*(?:km|公里)", combined_text, re.IGNORECASE)
-            wan_ok = bool(m_wan and float(m_wan.group(1)) >= 5000.0)
-            km_ok = bool(m_km and float(m_km.group(1)) >= 15.0)
-            if (wan_ok or km_ok) and ("未提供" not in combined_text):
-                trace_str = f"disjunctive_perf(km>=15:{km_ok} OR amount>=5000万:{wan_ok})=True -> PASS"
-                return RuleEvaluationReport(
-                    clause_id=extracted.clause_id,
-                    category=extracted.category,
-                    verdict="COMPLIANT",
-                    triggered_rule_id=rule_id,
-                    rule_passed=True,
-                    symbolic_trace=trace_str,
-                    explanation="业绩加分符号规则校验通过：满足『长度≥15公里 或 金额≥5000万元』的析取（OR）条件。",
-                    evidence_pages=b.evidence_pages,
-                    awarded_score=4.0,
-                )
-
-        passed = (
-            bool(b.evidence_found)
-            and bool(b.qualitative_match)
-            and (not b.prohibition_violated)
-        )
-        score = b.estimated_score if b.estimated_score is not None else t.scoring_max_points
-        trace_str = (
-            f"evidence_found={b.evidence_found}; "
-            f"qualitative_match={b.qualitative_match}; "
-            f"score={score}"
-        )
-        expl = (
-            f"定性响应与评审核验{'通过' if passed else '不通过'}："
-            f"{b.evidence_summary or b.actual_text or '已响应招标技术与评审要求'}。"
-        )
-        return RuleEvaluationReport(
-            clause_id=extracted.clause_id,
-            category=extracted.category,
-            verdict="COMPLIANT" if passed else "NON_COMPLIANT",
-            triggered_rule_id=rule_id,
-            rule_passed=passed,
-            symbolic_trace=trace_str,
-            explanation=expl,
-            evidence_pages=b.evidence_pages,
-            awarded_score=score if passed else 0.0,
-        )
-
+        if rule == 'QUALITATIVE_OR_SCORING':
+            if t.operator == 'SCORE_BRACKET':
+                if not t.scoring_bands or b.actual_numeric is None or not b.actual_unit or b.actual_unit != t.expected_unit:
+                    return unknown('评分档位、实际值或一致的单位缺失。')
+                import math
+                candidates=[]
+                for band in t.scoring_bands:
+                    if not isinstance(band, dict):
+                        return report('UNSUPPORTED_RULE', '评分档位格式无效。')
+                    low, high, points = band.get('min'), band.get('max'), band.get('points')
+                    if type(points) not in (int, float) or not math.isfinite(points):
+                        return report('UNSUPPORTED_RULE', '评分分值无效。')
+                    if any(x is not None and (type(x) not in (int,float) or not math.isfinite(x)) for x in (low,high)):
+                        return report('UNSUPPORTED_RULE', '评分边界无效。')
+                    if low is not None and high is not None and low > high:
+                        return report('UNSUPPORTED_RULE', '评分边界倒置。')
+                    if any(type(band.get(k)) is not bool for k in ('min_inclusive','max_inclusive')):
+                        return report('UNSUPPORTED_RULE', '评分边界是否包含未明确。')
+                    lo_ok = low is None or (b.actual_numeric >= low if band['min_inclusive'] else b.actual_numeric > low)
+                    hi_ok = high is None or (b.actual_numeric <= high if band['max_inclusive'] else b.actual_numeric < high)
+                    if lo_ok and hi_ok:
+                        candidates.append(points)
+                if len(candidates) != 1:
+                    return unknown('评分档位重叠或未覆盖实际值。')
+                return report('SCORED', '按已提取的评分档位计分；得零分不自动等于不合规。', candidates[0])
+            if b.qualitative_match is None:
+                return unknown('定性响应尚未确认。')
+            return decide(b.qualitative_match, '根据带引用的定性响应判断。')
+        return report('UNSUPPORTED_RULE', '未支持的约束类型。')

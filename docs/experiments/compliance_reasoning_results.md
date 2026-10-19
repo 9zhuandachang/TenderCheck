@@ -1,5 +1,7 @@
 # Neuro-Symbolic Compliance Reasoning Evaluation Report (S604)
 
+> **历史结果，不能作为真实检索链路的准确率。** 2026-10-20 核查发现，本实验输入包含台账摘要、写死事实、按标准关键词挑选的段落及缺证据时的“符合”补文，且将全部原始查询预设为合规。下列 99% 等数字仅保留为旧实验记录，不能用于当前系统验收。旧缓存已退出当前流程；请按 [真实证据推理流程](../evidence_reasoning.md) 重新构造输入并补充人工结论标签。
+
 ## 1. Benchmark Overview
 - **Total Test Cases**: `100` (`50` Real S604 Compliant Cases + `50` Counterfactual Violation Cases)
 - **LLM Slot Extractor**: `deepseek-chat` (JSON Schema Mode, `temperature=0.0`)

@@ -73,9 +73,9 @@ python SystemCode/scripts/rebuild_rag_index.py --bid_input "$bid" `
 
 输出须为新目录或空目录。缓存缺失或仍有 raw 页时停止，不调用 Qwen。模型相同时按完全相同的 `embedding_text` 复用旧向量，其余编码；指定不同 `--embedding_model` 禁用复用。同一路径换过权重也须视为模型改变，换新模型路径并重算。索引记录本地模型路径，换机器需调整或重建。
 
-## 4. 历史分类与关键词/台账对照
+## 4. 八分类对照
 
-当前证据检索请使用 [新评测入口](passage_rag_evaluation.md)。下列命令保留用于复现历史结果，需要索引中的 `ledger.json`；首次解析默认不再构建台账，复现旧实验时须显式添加 `--include_ledger`。增量重建脚本仍保留历史台账产物，但新评测不会读取它。
+此入口只评测八分类；段落检索使用 [证据检索入口](passage_rag_evaluation.md)，提取及规则使用 [无台账推理入口](evidence_reasoning.md)。历史台账对照代码已移除，如需复现历史报告请检出对应旧提交。
 
 ```powershell
 python SystemCode/scripts/compare_classifiers.py `
@@ -83,16 +83,12 @@ python SystemCode/scripts/compare_classifiers.py `
   --classifier roberta_wwm_ext=SystemCode/models/roberta_wwm_ext `
   --holdout_json SystemCode/data/holdout_eval/2022__11.11annotations.json `
   --holdout_json SystemCode/data/holdout_eval/2024__2024.1.11-annotations.json `
-  --index_dir SystemCode/data/rag_index/s604_repaired `
-  --rag_holdout_json SystemCode/data/holdout_eval/2022__11.11annotations.json `
-  --benchmark_json SystemCode/data/holdout_eval/s604_rag_benchmark.json `
-  --reranker_model SystemCode/models/pretrained/bge-reranker-v2-m3 `
   --output_dir SystemCode/reports/rag_experiments/classifier_comparison --offline
 ```
 
-每次用新的输出目录。省略索引、RAG 留出集和 benchmark 三项可只比较分类。模型顺序执行，检查标签、概率、共同基线及索引哈希；重排序失败立即停止，不将 RRF 回退当重排序。完整指标、逐查询结果和 CSV 留在输出目录。
+每次用新的输出目录。模型顺序执行，检查标签及概率，保存分类指标、模型与输入文件哈希、CSV；无需加载 RAG 索引。
 
-`--max_eval_clauses 2` 只减少条款检索，分类仍覆盖全部样本，benchmark 仍全部运行；此入口检查不能冒充全量条款联合评测。八分类预测招标要求类型，视觉模型预测投标材料类别，两套标签不同。检索使用关键词/类别代理口径，台账关键词命中算第 1 位，不是精确证据召回或最终合规准确率。
+八分类预测招标要求类型，视觉模型预测投标材料类别，两套标签不同。分类准确率、证据召回率、提取正确率和合规判断准确率分开报告。
 
 ## 回归检查
 
@@ -100,4 +96,4 @@ python SystemCode/scripts/compare_classifiers.py `
 python -m unittest discover -s SystemCode/tests -v
 ```
 
-使用合成页面和模拟生成结果，不下载模型；覆盖分区重试、不完整输出拒收、规范化、金额类型保护、缓存保留及断点续跑。
+使用合成页面和模拟模型响应，不下载模型；覆盖解析恢复、来源定位、缺证据处理、引用校验、缓存隔离及规则比较。模拟测试不代表在线 LLM 准确率。

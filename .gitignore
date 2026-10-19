@@ -11,6 +11,7 @@
 /SystemCode/data/processed/
 /SystemCode/data/rag_index/
 /SystemCode/data/vision_cache/
+/SystemCode/data/extraction_cache/
 /SystemCode/models/
 *.zip
 *.rar

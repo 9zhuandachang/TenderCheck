@@ -1,4 +1,4 @@
-Experiment,Extractor,Reasoner,Total_Cases,Overall_Accuracy,Compliant_Accuracy,Violation_Precision,Violation_Recall,Violation_F1
-Exp1_Heuristic_RuleEngine,Regex_Heuristic,Symbolic_Rule_Engine,100,0.7600,0.6800,0.7241,0.8400,0.7778
-Exp2_Pure_LLM_Direct,deepseek-chat,Direct_LLM_No_Rules,100,0.9800,0.9600,0.9615,1.0000,0.9804
-Exp3_Ours_NeuroSymbolic,deepseek-chat,Symbolic_Rule_Engine,100,0.9900,0.9800,0.9804,1.0000,0.9901
+Status,Metric_scope,Experiment,Extractor,Reasoner,Total_Cases,Overall_Accuracy,Compliant_Accuracy,Violation_Precision,Violation_Recall,Violation_F1
+historical_not_valid_for_end_to_end,Legacy constructed inputs with default facts; see compliance_reasoning_results.md,Exp1_Heuristic_RuleEngine,Regex_Heuristic,Symbolic_Rule_Engine,100,0.7600,0.6800,0.7241,0.8400,0.7778
+historical_not_valid_for_end_to_end,Legacy constructed inputs with default facts; see compliance_reasoning_results.md,Exp2_Pure_LLM_Direct,deepseek-chat,Direct_LLM_No_Rules,100,0.9800,0.9600,0.9615,1.0000,0.9804
+historical_not_valid_for_end_to_end,Legacy constructed inputs with default facts; see compliance_reasoning_results.md,Exp3_Ours_NeuroSymbolic,deepseek-chat,Symbolic_Rule_Engine,100,0.9900,0.9800,0.9804,1.0000,0.9901

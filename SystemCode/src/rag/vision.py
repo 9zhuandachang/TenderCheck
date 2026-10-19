@@ -57,23 +57,9 @@ VLM_SYSTEM_PROMPT = """你是一个专业的中国建设工程招投标文件视
   "has_official_seal": true或false（页面中是否盖有单位红色公章或电子印章）,
   "seal_company_name": "公章上的企业名称文字，若无公章或无法辨认填null",
   "has_signature": true或false（是否有法定代表人或委托代理人签字/私章）,
-  "extracted_kv": {
-    "company_name": "企业名称(如有)",
-    "credit_code": "统一社会信用代码(如有)",
-    "qualification_level": "资质等级名称(如有)",
-    "certificate_no": "证书编号(如有)",
-    "valid_until": "有效期至YYYY-MM-DD(如有)",
-    "person_name": "人员姓名(如有)",
-    "person_role": "拟任职务如项目经理/技术负责人(如有)",
-    "id_card": "身份证号(如有)",
-    "project_name": "业绩项目名称(如有)",
-    "contract_amount_wan": "合同金额万元数值(如有)",
-    "completion_date": "竣工验收日期(如有)",
-    "bid_price_yuan": "投标总报价元数值(如有)",
-    "bid_price_upper": "投标总报价大写(如有)",
-    "duration_days": "工期日历天数值(如有)"
-  }
-}"""
+  "extracted_kv": {}
+}
+extracted_kv固定为空对象；业务事实留给后续基于证据的提取模块。"""
 
 
 @dataclass
@@ -158,104 +144,6 @@ def infer_doc_category_from_text(text: str, heading_hint: str = "") -> str:
     return "其他投标材料"
 
 
-def extract_kv_heuristically(text: str) -> Dict[str, Any]:
-    """
-    Lightweight regex-based key-value slot extractor for certificates, bid forms,
-    personnel tables, and performance records.
-    """
-    kv: Dict[str, Any] = {}
-    compact = re.sub(r"[ \t]+", " ", text)
-
-    # 0. Bidder Company Name & Legal Representative
-    m_comp = re.search(
-        r"(?:投标人|投标人名称|企业名称)[（(盖单位电子印章）)\s：:]*([\u4e00-\u9fa5]{4,28}(?:有限责任公司|股份有限公司|有限公司|集团|工程局))",
-        compact,
-    )
-    if m_comp:
-        kv["company_name"] = m_comp.group(1).strip()
-
-    m_legal = re.search(
-        r"法定代表人[：:\s]*([\u4e00-\u9fa5]{2,4})(?:\s|[（(]|$)",
-        compact,
-    )
-    if m_legal and m_legal.group(1) not in {"身份证明", "或授权", "签字或"}:
-        kv["legal_representative"] = m_legal.group(1).strip()
-
-    # 1. Unified Social Credit Code (18 chars)
-    m_code = re.search(r"(?:统一社会信用代码|信用代码|注册号)[：:\s]*([0-9A-HJ-NPQRTUWXY]{18})", compact)
-    if m_code:
-        kv["credit_code"] = m_code.group(1)
-
-    # 2. Resident ID Card (18 digits)
-    m_id = re.search(r"(?:身份证号|身份证号码|公民身份号码)[：:\s]*(\d{17}[\dXx])", compact)
-    if m_id:
-        kv["id_card"] = m_id.group(1).upper()
-
-    # 3. Bid Total Price (Lower-case numeric: both '投标报价：97984949.58' and '（￥97984949.58元）的投标总报价')
-    m_price = re.search(
-        r"[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]{5,}(?:\.[0-9]+)?)\s*(万元|元)?[)）]?\s*的?(?:投标总报价|投标报价)"
-        r"|(?:投标总报价|投标报价|投标总价|小写)[（(]?[^）)\n]{0,12}[)）]?[：:\s¥￥]+([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]{5,}(?:\.[0-9]+)?)\s*(万元|元)?",
-        compact,
-    )
-    if m_price:
-        num_str = m_price.group(1) or m_price.group(3)
-        unit = m_price.group(2) or m_price.group(4) or "元"
-        if num_str:
-            raw_val = float(num_str.replace(",", ""))
-            if raw_val >= 1000:
-                kv["bid_price_yuan"] = round(raw_val * 10000.0, 2) if unit == "万元" else raw_val
-
-    # 4. Bid Total Price (Upper-case Chinese numerals across line wraps)
-    m_upper = re.search(
-        r"大写[)）：:\s]*([壹贰叁肆伍陆柒捌玖拾佰仟万亿零元圆角分整正\s]{5,40})",
-        compact,
-    )
-    if m_upper:
-        cleaned_upper = re.sub(r"\s+", "", m_upper.group(1))
-        if len(cleaned_upper) >= 5:
-            kv["bid_price_upper"] = cleaned_upper
-
-    # 5. Project Duration & Quality Target
-    m_dur = re.search(r"工期[：:\s]*(\d{2,4})\s*(日历天|天|个月)", compact)
-    if m_dur:
-        kv["duration_days"] = f"{m_dur.group(1)}{m_dur.group(2)}"
-
-    m_qual = re.search(r"工程质量[：:\s]*([^\n；;。]{2,40})", compact)
-    if m_qual:
-        kv["quality_target"] = m_qual.group(1).strip()
-
-    # 6. Project Manager / Person Name (require explicit colon or table delimiter)
-    m_pm = re.search(
-        r"(?:项目经理(?:\s*签字)?|项目负责人|姓\s*名)\s*[：:]\s*([\u4e00-\u9fa5]{2,4})(?:\s|$|[，,。；|])",
-        compact,
-    )
-    if m_pm:
-        candidate = m_pm.group(1).strip()
-        if candidate not in {
-            "拟委任",
-            "投标人",
-            "技术标",
-            "商务标",
-            "身份证",
-            "建造师",
-            "近年完",
-            "到岗履",
-            "承诺书",
-            "简历表",
-            "情况表",
-            "职称",
-            "岗位",
-        }:
-            kv["person_name"] = candidate
-
-    # 7. Certificate Validity Date
-    m_valid = re.search(r"有效期[至期满：:\s]*(\d{4}[年\-/.]\d{1,2}[月\-/.]\d{1,2}日?)", compact)
-    if m_valid:
-        kv["valid_until"] = m_valid.group(1)
-
-    return kv
-
-
 class BaseVisionBackend(ABC):
     """Abstract base class for page-level OCR and VLM analysis."""
 
@@ -275,7 +163,7 @@ class LocalHeuristicOCRBackend(BaseVisionBackend):
     Local CPU/GPU fallback vision backend:
     - Uses `RapidOCR` (if installed) to extract text from scanned page images.
     - Uses HSV/RGB red dominance to detect official corporate stamps (`has_official_seal`).
-    - Applies regex/heuristic slot extraction to populate `extracted_kv`.
+    - Preserves transcription and layout metadata; business extraction runs downstream.
     """
 
     def __init__(self, dpi: int = 150) -> None:
@@ -320,7 +208,7 @@ class LocalHeuristicOCRBackend(BaseVisionBackend):
 
         doc_cat = infer_doc_category_from_text(ocr_text, heading_hint=heading_hint)
         has_sig = any(kw in ocr_text for kw in ("法定代表人", "委托代理人", "签字", "签名", "签章"))
-        extracted_kv = extract_kv_heuristically(ocr_text)
+        extracted_kv = {}
 
         return PageVisionResult(
             pdf_page=pdf_page,
@@ -496,7 +384,7 @@ class QwenVLBackend(BaseVisionBackend):
                     has_official_seal=bool(obj.get("has_official_seal", fallback_seal)),
                     seal_company_name=obj.get("seal_company_name"),
                     has_signature=bool(obj.get("has_signature", False)),
-                    extracted_kv=dict(obj.get("extracted_kv") or {}),
+                    extracted_kv={},
                     backend_name="qwen2.5_vl",
                 )
             except json.JSONDecodeError:
@@ -508,7 +396,7 @@ class QwenVLBackend(BaseVisionBackend):
             ocr_text=cleaned,
             has_official_seal=fallback_seal,
             has_signature=("签字" in cleaned or "签章" in cleaned),
-            extracted_kv=extract_kv_heuristically(cleaned),
+            extracted_kv={},
             backend_name="qwen2.5_vl_raw",
         )
 
@@ -618,11 +506,7 @@ class QwenVLBackend(BaseVisionBackend):
             '"doc_category"（从' + "、".join(DOC_CATEGORIES) + '中选一），'
             '"has_official_seal"（布尔值），"seal_company_name"（字符串或null），'
             '"has_signature"（布尔值），"extracted_kv"（对象）。'
-            "extracted_kv只填写本页明确出现的字段，缺失的字段直接省略。允许字段："
-            "company_name,credit_code,qualification_level,certificate_no,valid_until,"
-            "person_name,person_role,id_card,project_name,contract_amount_wan,completion_date,"
-            "bid_price_yuan,bid_price_upper,duration_days。"
-            "历史业绩合同金额不能填入当前投标总价bid_price_yuan或bid_price_upper。"
+            "extracted_kv固定为空对象，不提取业务字段。"
             "不输出ocr_text，尽量简短。章节提示：" + (heading_hint or "无"))
         for retry in range(2):
             attempt = self._generate_recovery(image, metadata_prompt, 1024 if retry == 0 else 1536)
@@ -644,7 +528,7 @@ class QwenVLBackend(BaseVisionBackend):
                 result = PageVisionResult(
                     pdf_page=pdf_page, doc_category=obj["doc_category"], ocr_text=ocr_text,
                     has_official_seal=obj["has_official_seal"], seal_company_name=obj.get("seal_company_name"),
-                    has_signature=obj["has_signature"], extracted_kv=obj["extracted_kv"],
+                    has_signature=obj["has_signature"], extracted_kv={},
                     backend_name="qwen2.5_vl_recovered")
                 audit.update(status="recovered", ocr_characters=len(ocr_text))
                 return result, audit

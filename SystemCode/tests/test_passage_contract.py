@@ -10,9 +10,26 @@ import fitz
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.rag.parser import BidDocumentParser
 from src.rag.passages import passage_to_dict, source_registry
+from src.rag.vision import BaseVisionBackend, PageVisionResult
 
 
 class PassageContractTests(unittest.TestCase):
+    def test_parser_ignores_business_fields_from_legacy_vision_cache(self):
+        class CachedPage(BaseVisionBackend):
+            def analyze_page(self, doc, pdf_page, **kwargs):
+                return PageVisionResult(pdf_page=pdf_page,ocr_text='工期为365日历天。',
+                                        extracted_kv={'duration_days':360})
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'bid.pdf'
+            with fitz.open() as pdf:
+                page=pdf.new_page()
+                page.insert_text((50,50),'投标函',fontname='china-s')
+                pdf.save(path)
+            parents,children,_=BidDocumentParser(vision_backend=CachedPage()).parse_pdf(path)
+            self.assertTrue(parents)
+            self.assertIn('365',parents[0].text)
+            self.assertTrue(all(not c.extracted_kv for c in parents+children))
+
     def test_sources_preserve_physical_pages_and_pdf_identity_across_sections(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'bid.pdf'
