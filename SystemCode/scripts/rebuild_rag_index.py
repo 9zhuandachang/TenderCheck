@@ -73,6 +73,7 @@ def main(argv=None):
     ledger = EntityLedgerBuilder.build_from_chunks(parents[0].document_id, parents, children)
     EntityLedgerBuilder.save_ledger(ledger, args.output_index)
     write_json(args.output_index / "ingest_stats.json", stats)
+    write_json(args.output_index / "document_sources.json", bid_parser.document_sources)
     summary = dict(status="complete", parents=len(parents), children=len(children),
                    reused_vectors=reused, newly_encoded_unique_texts=len(new_texts),
                    cache_only=True, source_cache_unchanged=True, base_index_unchanged=True,

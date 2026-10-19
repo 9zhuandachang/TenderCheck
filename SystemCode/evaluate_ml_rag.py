@@ -1,5 +1,8 @@
 """
-End-to-End ML + RAG Joint Evaluation & Ground-Truth Benchmark Suite for TenderCheck.
+Legacy keyword/category proxy and ledger experiment for TenderCheck.
+
+For the primary passage-matching task use evaluate_evidence_rag.py. The metrics
+below are historical proxy scores, not reviewed evidence recall or compliance accuracy.
 
 Evaluates:
 1. Holdout ML Classification Accuracy & Macro-F1 on all tender clauses.
@@ -765,6 +768,8 @@ def main() -> None:
         help="Output filename prefix in SystemCode/reports/ (default: derived from index_dir).",
     )
     args = parser.parse_args()
+
+    logger.warning("Legacy keyword/ledger proxy evaluation. Use evaluate_evidence_rag.py for passage evidence metrics.")
 
     samples = load_holdout_samples(args.holdout_json)
     model_path = resolve_model_dir(BASE_DIR / "models", args.model_dir)

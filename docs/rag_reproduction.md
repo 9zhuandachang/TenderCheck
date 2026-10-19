@@ -1,6 +1,6 @@
 # RAG 环境与复现
 
-从仓库根目录运行。原始 PDF、模型下载、缓存、索引和完整评测保留在本地；公开结果见 [实验摘要](experiments/s604_results.md)。
+从仓库根目录运行。原始 PDF、模型下载、缓存、索引和完整评测保留在本地。当前主流程与评测见 [投标证据段落检索](passage_rag_evaluation.md)；[旧实验摘要](experiments/s604_results.md) 使用历史关键词/台账口径。
 
 ## 环境
 
@@ -73,7 +73,9 @@ python SystemCode/scripts/rebuild_rag_index.py --bid_input "$bid" `
 
 输出须为新目录或空目录。缓存缺失或仍有 raw 页时停止，不调用 Qwen。模型相同时按完全相同的 `embedding_text` 复用旧向量，其余编码；指定不同 `--embedding_model` 禁用复用。同一路径换过权重也须视为模型改变，换新模型路径并重算。索引记录本地模型路径，换机器需调整或重建。
 
-## 4. 分类与检索对照
+## 4. 历史分类与关键词/台账对照
+
+当前证据检索请使用 [新评测入口](passage_rag_evaluation.md)。下列命令保留用于复现历史结果，需要索引中的 `ledger.json`；首次解析默认不再构建台账，复现旧实验时须显式添加 `--include_ledger`。增量重建脚本仍保留历史台账产物，但新评测不会读取它。
 
 ```powershell
 python SystemCode/scripts/compare_classifiers.py `

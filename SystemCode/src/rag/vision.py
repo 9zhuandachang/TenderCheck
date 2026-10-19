@@ -23,7 +23,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import fitz  # PyMuPDF
+try:
+    import pymupdf as fitz
+except ImportError:  # Older supported PyMuPDF installations.
+    import fitz
 import numpy as np
 
 logger = logging.getLogger(__name__)

@@ -23,7 +23,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-import fitz  # PyMuPDF
+try:
+    import pymupdf as fitz
+except ImportError:  # Older supported PyMuPDF installations.
+    import fitz
 
 from .vision import (
     BaseVisionBackend,
@@ -246,6 +249,7 @@ class BidDocumentParser:
         self.parent_target_chars = parent_target_chars
         self.child_target_chars = child_target_chars
         self.child_overlap_chars = child_overlap_chars
+        self.document_sources: Dict[str, str] = {}
 
     @staticmethod
     def _detect_volume_cover(page_text: str) -> Optional[str]:
@@ -285,6 +289,7 @@ class BidDocumentParser:
         """
         pdf_path = Path(pdf_path)
         doc_id = document_id or pdf_path.stem
+        self.document_sources[doc_id] = str(pdf_path.resolve())
         doc = fitz.open(pdf_path)
         last_page = min(end_page or len(doc), len(doc))
 
