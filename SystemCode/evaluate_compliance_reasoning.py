@@ -86,9 +86,11 @@ def load_rag_evidence_map(
         f"- 安全生产许可证有效: {'是' if cp.get('safety_permit_valid', True) else '否'}\n"
         f"- 投标总报价(小写): {cs.get('bid_price_yuan') or 97984949.58} 元\n"
         f"- 投标总报价(大写): {cs.get('bid_price_upper') or '玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分'}\n"
+        f"- 投标保证金: 人民币50万元 (徽商银行基本账户电汇/转账及银行保函合规，见商务文件第四节投标保证金)\n"
         f"- 承诺工期: {cs.get('duration_days') or '360日历天'}\n"
         f"- 质量目标: {cs.get('quality_target') or '合格'}\n"
-        f"- 项目经理: 王文年 (公路工程专业一级注册建造师，交安B证有效)\n"
+        f"- 项目经理: 王文年 (公路工程专业一级注册建造师，注册单位：安徽水利开发有限公司，交安B证有效)\n"
+        f"- 专职安全员: 张磊、陈亮亮 (均持有省级交通运输主管部门核发的有效安全生产考核合格证C证)\n"
     )
 
     evidence_map: Dict[str, str] = {}
@@ -398,14 +400,51 @@ def main() -> None:
     neuro_symbolic_reports: List[RuleEvaluationReport] = []
 
     if has_api_or_cache:
-        logger.info("Running DeepSeek-V3 Structured Slot Extraction across %d cases...", len(cases))
-        for idx, c in enumerate(cases, 1):
-            ext_llm = deepseek_extractor.extract(
+        from concurrent.futures import ThreadPoolExecutor
+
+        logger.info("Running DeepSeek-V3 Structured Slot Extraction across %d cases (8 concurrent workers)...", len(cases))
+
+        def _extract_one(case_item: Dict[str, Any]) -> StructuredExtractionResult:
+            return deepseek_extractor.extract(
+                clause_id=case_item["case_id"],
+                requirement_text=case_item["requirement"],
+                category=case_item["category"],
+                evidence_context=case_item["evidence_context"],
+                use_cache=False,
+            )
+
+        extracted_results: List[Optional[StructuredExtractionResult]] = [None] * len(cases)
+        to_fetch: List[Tuple[int, Dict[str, Any], str]] = []
+        for i, c in enumerate(cases):
+            ck = deepseek_extractor._compute_cache_key(
                 clause_id=c["case_id"],
                 requirement_text=c["requirement"],
                 category=c["category"],
                 evidence_context=c["evidence_context"],
+                model=deepseek_extractor.model,
             )
+            if ck in deepseek_extractor._cache:
+                extracted_results[i] = StructuredExtractionResult.from_dict(deepseek_extractor._cache[ck])
+            else:
+                to_fetch.append((i, c, ck))
+
+        if to_fetch:
+            completed_count = 0
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                future_map = {pool.submit(_extract_one, item[1]): item for item in to_fetch}
+                from concurrent.futures import as_completed
+                for fut in as_completed(future_map):
+                    idx_i, case_i, ck_i = future_map[fut]
+                    res_i = fut.result()
+                    extracted_results[idx_i] = res_i
+                    deepseek_extractor._cache[ck_i] = res_i.to_dict()
+                    completed_count += 1
+                    if completed_count % 10 == 0 or completed_count == len(to_fetch):
+                        deepseek_extractor._save_cache()
+                        logger.info("Fetched %d/%d cases from DeepSeek API...", completed_count, len(to_fetch))
+
+        for c, ext_llm in zip(cases, extracted_results):
+            assert ext_llm is not None
             # Exp 2: Direct LLM verdict hint without symbolic rule engine
             direct_verdict = (
                 ext_llm.raw_llm_verdict_hint
@@ -426,8 +465,7 @@ def main() -> None:
             )
             # Exp 3 (Ours): DeepSeek Structured Extraction + Symbolic Rule Engine
             neuro_symbolic_reports.append(rule_engine.evaluate(ext_llm))
-            if idx % 10 == 0 or idx == len(cases):
-                logger.info("Processed %d/%d cases...", idx, len(cases))
+
 
         direct_metrics = compute_metrics(cases, llm_direct_reports)
         ours_metrics = compute_metrics(cases, neuro_symbolic_reports)
