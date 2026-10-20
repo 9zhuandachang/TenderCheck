@@ -1,0 +1,661 @@
+{
+  "schema_version": 1,
+  "task": "bid_compliance_verdict_reference_labels",
+  "note": "Separated from retrieval evidence annotations (`annotations.json`). Records assistant-verified compliance conclusions and scoring expectations for S604皖南交旅融合（飞毕路美丽公路）项目; requires human review before use as final human gold standard.",
+  "project_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目",
+  "evidence_annotations_file": "annotations.json",
+  "queries": [
+    {
+      "clause_id": "T0001",
+      "requirement": "计划工期为360日历天。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "投标函（sys01第4页）及技术标（sys02第302页）均明确承诺工期为360日历天。",
+      "linked_evidence_group_ids": [
+        "duration"
+      ]
+    },
+    {
+      "clause_id": "T0002",
+      "requirement": "项目招标控制价115046243.64元，含暂列金8000000.00元。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "报价文件投标函总报价为97984949.58元（低于控制价115046243.64元），且工程量清单汇总表（sys05第863页）暂列金额保持8000000.00元不变。",
+      "linked_evidence_group_ids": [
+        "bid_total",
+        "provisional_sum"
+      ]
+    },
+    {
+      "clause_id": "T0003",
+      "requirement": "投标人须具有独立法人资格。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "营业执照副本（sub16第4页）证实安徽水利开发有限公司为其他有限责任公司，具备独立法人资格。",
+      "linked_evidence_group_ids": [
+        "business_license"
+      ]
+    },
+    {
+      "clause_id": "T0004",
+      "requirement": "投标人须具备公路工程施工总承包三级及以上资质。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "建筑业企业资质证书（sub16第7页，D134005897）证实具备公路工程施工总承包特级资质（有效期至2023-12-24）。",
+      "linked_evidence_group_ids": [
+        "highway_qualification_certificate"
+      ]
+    },
+    {
+      "clause_id": "T0005",
+      "requirement": "投标人须具有有效安全生产许可证。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "安全生产许可证副本（sub16第5页，(皖)JZ安许证字[2018]001389）在有效期内（2021-08-12至2024-08-12）。",
+      "linked_evidence_group_ids": [
+        "safety_production_license"
+      ]
+    },
+    {
+      "clause_id": "T0007",
+      "requirement": "项目经理须具有公路工程专业一级注册建造师资格。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "拟委任项目经理王文年具有公路工程专业一级注册建造师注册证书（sub05第3页，皖1342011201207116，有效期2022.07.12-2025.07.11）。",
+      "linked_evidence_group_ids": [
+        "proposed_manager_role",
+        "manager_constructor_certificate"
+      ]
+    },
+    {
+      "clause_id": "T0009",
+      "requirement": "项目经理须具有有效安全生产考核合格证书。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "项目经理王文年具有有效安全生产考核合格证书B证（sub05第4-5页，皖交安B(16)G01146，有效期至2024-06-30）。",
+      "linked_evidence_group_ids": [
+        "proposed_manager_role",
+        "manager_safety_b_certificate"
+      ]
+    },
+    {
+      "clause_id": "T0010",
+      "requirement": "项目经理须未在其他项目任职，或虽任职但本项目中标后能够从原项目撤离。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "conflict_flagged",
+      "rationale": "商务文件投标函（sys01第4页）及简历表（sub05第1页）声明项目经理王文年现阶段任G345来安至釜山段一级公路改建三期工程项目经理且中标后能够撤离（符合‘或虽任职但能够撤离’条款），但同卷第5页诚信承诺书同时声明‘拟派项目经理无在建工程’，存在跨页自相矛盾（详见T0057）。",
+      "linked_evidence_group_ids": [
+        "manager_mobilization"
+      ]
+    },
+    {
+      "clause_id": "T0011",
+      "requirement": "拟派项目经理须于2017年1月1日至投标截止时间以项目经理身份至少完成一个新建、改建或扩建三级及以上公路施工项目，单合同含长度≥15公里或金额≥5000万元，内容包括路基、路面及桥涵，时间以交工或竣工验收时间为准。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "王文年以项目经理身份（郎建指〔2015〕2号批复变更）完成省道214郎溪段改建工程四期工程，2017-11-30交工验收，一级公路长15.15km、合同价49123.2526万元，含路基、路面、桥涵。",
+      "linked_evidence_group_ids": [
+        "manager_performance_summary_or_credit",
+        "manager_role_change_approval",
+        "handover_acceptance_scope_and_date"
+      ]
+    },
+    {
+      "clause_id": "T0012",
+      "requirement": "项目经理业绩须提供合同。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "sub06/sub02/sub03第3-5页提供了省道214郎溪段改建工程四期工程合同协议书及业主关于项目经理变更为王文年的批复扫描件。",
+      "linked_evidence_group_ids": [
+        "manager_performance_contract",
+        "manager_role_change_approval"
+      ]
+    },
+    {
+      "clause_id": "T0013",
+      "requirement": "项目经理业绩须提供中标通知书。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "sub06/sub02/sub03第2页提供了省道214郎溪段改建工程四期工程中标通知书扫描件（皖建施招-LX-2014-061）。",
+      "linked_evidence_group_ids": [
+        "manager_performance_award_notice"
+      ]
+    },
+    {
+      "clause_id": "T0014",
+      "requirement": "项目经理业绩须提供交工或竣工验收证明，须有建设、设计、监理、施工单位等盖章确认。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "sub06/sub02/sub03第6-8页提供了公路工程（合同段）交工验收证书，含施工、监理、设计、建设四方单位盖章确认。",
+      "linked_evidence_group_ids": [
+        "acceptance_certificate_main",
+        "acceptance_construction_unit_seal",
+        "acceptance_owner_design_supervision_seals"
+      ]
+    },
+    {
+      "clause_id": "T0015",
+      "requirement": "项目总工须具有公路工程相关专业中级及以上职称，相关专业包括公路工程、桥梁、公路与桥梁、交通土建、隧道（地下结构）、交通工程等。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "拟任项目总工王曙具有路桥工程专业高级工程师职称证书（sub05第12页，(2018)934000648）。",
+      "linked_evidence_group_ids": [
+        "proposed_chief_engineer_role",
+        "chief_engineer_title_certificate"
+      ]
+    },
+    {
+      "clause_id": "T0016",
+      "requirement": "本次招标不接受联合体投标。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "联合体协议书（sub11第1页）填写‘无’，独立投标。",
+      "linked_evidence_group_ids": [
+        "joint_venture_response"
+      ]
+    },
+    {
+      "clause_id": "T0018",
+      "requirement": "投标人不得被宣城市工程建设行业行政主管部门或集中处罚部门记不良行为且截止日仍在披露期内。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "投标人信誉情况表（sub04第1页）明确声明未被宣城市各级工程建设行业行政主管部门或行使集中处罚权的部门记披露期内不良行为记录。",
+      "linked_evidence_group_ids": [
+        "reputation_statement"
+      ]
+    },
+    {
+      "clause_id": "T0023",
+      "requirement": "投标保证金为人民币50万元。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "徽商银行电子回单（sub12第1页）证实已缴纳投标保证金人民币500,000.00元（伍拾万元整）。",
+      "linked_evidence_group_ids": [
+        "bid_bond_receipt_amount"
+      ]
+    },
+    {
+      "clause_id": "T0024",
+      "requirement": "投标保证金可采用银行保函、保证保险、担保保函等保函形式，或电汇、转账。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "徽商银行电子回单（sub12第1页）证实采用电子汇兑/转账方式从基本账户转出。",
+      "linked_evidence_group_ids": [
+        "bid_bond_payment_method"
+      ]
+    },
+    {
+      "clause_id": "T0027",
+      "requirement": "计划工期360日历天。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "投标函及技术标均响应计划工期360日历天。",
+      "linked_evidence_group_ids": [
+        "duration"
+      ]
+    },
+    {
+      "clause_id": "T0028",
+      "requirement": "标段交工验收质量评定须为合格。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "投标函（sys01第4页）明确承诺标段工程交工验收的质量评定为合格。",
+      "linked_evidence_group_ids": [
+        "quality_target"
+      ]
+    },
+    {
+      "clause_id": "T0030",
+      "requirement": "安全目标为无生产安全责任事故。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "投标函（sys01第4页）明确承诺安全目标为无生产安全责任事故。",
+      "linked_evidence_group_ids": [
+        "safety_target"
+      ]
+    },
+    {
+      "clause_id": "T0033",
+      "requirement": "本项目不允许分包。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "拟分包项目情况表（sub15第1页）各项均填写‘无’，无分包计划。",
+      "linked_evidence_group_ids": [
+        "subcontracting_plan_table"
+      ]
+    },
+    {
+      "clause_id": "T0034",
+      "requirement": "增值税税率须按国家规定执行。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "报价文件投标函（sys04第859页）承诺增值税税率按国家规定的相关税率执行。",
+      "linked_evidence_group_ids": [
+        "tax_response"
+      ]
+    },
+    {
+      "clause_id": "T0037",
+      "requirement": "投标有效期自投标文件递交截止日起90日。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "商务文件投标函（sys01第4页）承诺在招标文件规定的投标有效期内不撤销投标文件。",
+      "linked_evidence_group_ids": [
+        "validity_response"
+      ]
+    },
+    {
+      "clause_id": "T0040",
+      "requirement": "不得挂靠投标。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "投标诚信承诺书（sys01第5页）明确承诺无资质挂靠或参与串标、围标情形。",
+      "linked_evidence_group_ids": [
+        "anti_affiliation_commitment"
+      ]
+    },
+    {
+      "clause_id": "T0054",
+      "requirement": "招投标活动中不得弄虚作假。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "投标函（sys01第4页）声明所递交的投标文件及有关资料内容完整、真实和准确。",
+      "linked_evidence_group_ids": [
+        "authenticity_commitment"
+      ]
+    },
+    {
+      "clause_id": "T0056",
+      "requirement": "拟派经理已任其他项目经理的，须在投标文件承诺本项目中标后签合同前能够变更至本项目全面履约。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "商务文件投标函（sys01第4页）声明项目经理王文年现任G345来安至釜山段一级公路改建三期工程项目经理，并承诺中标后合同签订前可从原项目变更至本项目全面履约。",
+      "linked_evidence_group_ids": [
+        "manager_mobilization"
+      ]
+    },
+    {
+      "clause_id": "T0057",
+      "requirement": "拟派经理已任其他项目经理时，不得虚假承诺未在其他项目任项目经理。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "non_compliant",
+      "rationale": "前后矛盾：商务文件投标函（sys01第4页）及简历表（sub05第1页）声明王文年已在来安县交通运输局发包的《G345来安至釜山段一级公路改建三期工程》担任项目经理岗位，但紧接其后的投标诚信承诺书（sys01第5页）却声明‘拟派项目经理无在建工程’，违反‘已任其他项目经理时不得虚假承诺未在其他项目任项目经理’的要求。",
+      "linked_evidence_group_ids": [
+        "actual_current_assignment",
+        "no_assignment_declaration"
+      ]
+    },
+    {
+      "clause_id": "T0059",
+      "requirement": "安全生产费为第100—700章合计报价总额的1.5%，基数不含安全生产费、建筑工程一切险及第三者责任险保险费。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "工程量清单汇总表（sys05第863-864页）第100-700章合计89984949.58元，扣除安全生产费1324528.73元、建筑工程一切险224066.11元、第三者责任险134439.67元后基数为88301915.07元，其1.5%恰好为1324528.73元，完全符合规定。",
+      "linked_evidence_group_ids": [
+        "chapter_total",
+        "insurance_costs",
+        "safety_fee"
+      ]
+    },
+    {
+      "clause_id": "T0069",
+      "requirement": "项目经理注册证书注册单位须与投标人名称一致。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "项目经理王文年一级建造师注册证书聘用企业（安徽水利开发有限公司，sub05第3页）与投标人名称完全一致。",
+      "linked_evidence_group_ids": [
+        "bidder_entity_identity",
+        "manager_registration_employer"
+      ]
+    },
+    {
+      "clause_id": "T0078",
+      "requirement": "须配备道路工程师1人，具公路工程相关专业中级工程师及以上职称。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "拟配备道路工程师王雷（sub14第1页），具路桥工程专业中级工程师职称（sub08第4页，20190192）。",
+      "linked_evidence_group_ids": [
+        "proposed_road_engineer_role",
+        "road_engineer_title_certificate"
+      ]
+    },
+    {
+      "clause_id": "T0079",
+      "requirement": "须配备桥梁工程师1人，具公路工程相关专业中级工程师及以上职称。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "拟配备桥梁工程师陈春海（sub14第1页），具道路与桥梁专业中级工程师职称（sub08第9页，20190346）。",
+      "linked_evidence_group_ids": [
+        "proposed_bridge_engineer_role",
+        "bridge_engineer_title_certificate"
+      ]
+    },
+    {
+      "clause_id": "T0081",
+      "requirement": "须配备专职安全员1人，具省级及以上交通运输主管部门核发的专职安全员C证。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "拟配备专职安全员张磊（皖交安C(19)G04171）和陈亮亮（皖交安C(19)G01914），均持有安徽省交通运输厅核发的有效交安C证（sub08第18-19、24-25页）。",
+      "linked_evidence_group_ids": [
+        "proposed_safety_officer_role",
+        "safety_officer_c_certificate"
+      ]
+    },
+    {
+      "clause_id": "T0099",
+      "requirement": "投标人不得被信用中国列入失信被执行人名单。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "投标人信誉情况表（sub04第2页）声明在‘信用中国’网站未被列入失信被执行人名单。",
+      "linked_evidence_group_ids": [
+        "credit_declaration"
+      ]
+    },
+    {
+      "clause_id": "T0101",
+      "requirement": "投标人自投标截止日追溯3年内不得有行贿犯罪行为。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "投标人信誉情况表（sub04第2页）声明自投标截止日追溯3年内无行贿犯罪行为。",
+      "linked_evidence_group_ids": [
+        "bribery_declaration"
+      ]
+    },
+    {
+      "clause_id": "T0106",
+      "requirement": "投标人名称须与交通运输部施工资质企业名录相应企业名称完全一致。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "全国公路建设市场信用信息管理系统企业资质名录网页截图（sub16第11页）显示‘在名录中’且企业名称‘安徽水利开发有限公司’与投标人名称完全一致。",
+      "linked_evidence_group_ids": [
+        "bidder_entity_identity",
+        "mot_qualification_directory_record"
+      ]
+    },
+    {
+      "clause_id": "T0112",
+      "requirement": "商务文件须包括不含报价的投标函。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "商务文件（sys01第4页）包含不含报价的投标函。",
+      "linked_evidence_group_ids": [
+        "non_price_letter"
+      ]
+    },
+    {
+      "clause_id": "T0113",
+      "requirement": "须提交法定代表人身份证明或授权委托书。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "sub10第1-5页提交了法定代表人身份证明及授权委托书。",
+      "linked_evidence_group_ids": [
+        "legal_representative_document"
+      ]
+    },
+    {
+      "clause_id": "T0118",
+      "requirement": "报价文件须包括含报价的投标函。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "报价文件（sys04第859页）包含含报价的投标函。",
+      "linked_evidence_group_ids": [
+        "bid_total"
+      ]
+    },
+    {
+      "clause_id": "T0127",
+      "requirement": "采用固化清单时，已标价清单投标报价须与投标函大写报价一致。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "报价文件投标函大写报价（玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分，¥97984949.58元，sys04第859页）与已标价工程量清单投标报价汇总表（97984949.58元，sys05第863页）完全一致。",
+      "linked_evidence_group_ids": [
+        "bid_total",
+        "boq_total"
+      ]
+    },
+    {
+      "clause_id": "T0133",
+      "requirement": "投标总价须计入安全生产费，按招标规定填写清单第100章安全生产费总额价。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "已标价工程量清单第100章（sys05第864页）已填写102-3安全生产费总额1324528.73元并计入投标总价。",
+      "linked_evidence_group_ids": [
+        "safety_fee",
+        "boq_total"
+      ]
+    },
+    {
+      "clause_id": "T0135",
+      "requirement": "投标报价不得超过最高投标限价。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "投标报价97984949.58元低于最高投标限价115046243.64元。",
+      "linked_evidence_group_ids": [
+        "bid_total"
+      ]
+    },
+    {
+      "clause_id": "T0137",
+      "requirement": "投标有效期内不得撤销投标文件。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "商务文件投标函（sys01第4页）承诺在投标有效期内不撤销投标文件。",
+      "linked_evidence_group_ids": [
+        "validity_response"
+      ]
+    },
+    {
+      "clause_id": "T0152",
+      "requirement": "信誉情况说明须与实际相符，不得弄虚作假。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "sub04第1-2页逐项填报了信誉情况说明并承诺真实有效，符合表格填报规则（无需另附外部证明材料，情况说明即为承诺）。",
+      "linked_evidence_group_ids": [
+        "reputation_declarations_page1",
+        "reputation_declarations_page2",
+        "authenticity_commitment"
+      ]
+    },
+    {
+      "clause_id": "T0204",
+      "requirement": "不得更改招标文件暂列金额。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "compliant",
+      "rationale": "工程量清单汇总表（sys05第863页）暂列金额为8000000.00元，未更改招标文件暂列金额。",
+      "linked_evidence_group_ids": [
+        "provisional_sum"
+      ]
+    },
+    {
+      "clause_id": "T0209",
+      "requirement": "拟任项目经理业绩满足招标最低要求得6分。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "scored_full",
+      "rationale": "项目经理王文年业绩（省道214郎溪段改建工程四期工程）满足最低资格要求，得6分。",
+      "linked_evidence_group_ids": [
+        "manager_performance_summary_or_credit",
+        "manager_role_change_approval",
+        "handover_acceptance_scope_and_date"
+      ],
+      "expected_score": 6.0,
+      "max_score": 6.0
+    },
+    {
+      "clause_id": "T0214",
+      "requirement": "资产负债率75%以下得6分，75%（含）—80%（含）得4分，80%—85%（含）得2分，85%以上不得分；按原文档位保留。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "scored_partial",
+      "rationale": "近年财务状况表（sub17第1页）披露2021年资产负债率为84.99%，处于80%—85%（含）区间，得2分。",
+      "linked_evidence_group_ids": [
+        "reported_balance_ratio"
+      ],
+      "expected_score": 2.0,
+      "max_score": 6.0
+    },
+    {
+      "clause_id": "T0216",
+      "requirement": "2017年1月1日以来以交工或竣工时间为准，每增加一个单合同含长度≥15公里或金额≥5000万元的新建、改建或扩建三级及以上公路施工业绩，含路基、路面及桥涵，得4分，最高12分。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "scored_full",
+      "rationale": "除满足资格审查最低要求的1个业绩（省道214四期）外，另提供S214五期、大广高速信丰北互通、S331升级改造3个满足条件的商务评分业绩，加满12分。",
+      "linked_evidence_group_ids": [
+        "project_01_s214_phase4",
+        "project_02_s214_phase5",
+        "project_04_daguang_interchange",
+        "project_05_s331_upgrade"
+      ],
+      "expected_score": 12.0,
+      "max_score": 12.0
+    },
+    {
+      "clause_id": "T0222",
+      "requirement": "总体施工组织布置规划按工程特点、总体筹划、目标节点、关键工序、工期保障及场地布置评审：优良0.75≤F≤1分，一般0.5≤F＜0.75分，差0≤F＜0.5分。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "subjective_technical_scoring",
+      "rationale": "技术标第一章（sub19第15-48页及第555页总平面图）完整涵盖工程特点、总体筹划、目标节点、关键工序、工期保障及施工场地布置，达到优良档（0.75≤F≤1分）。",
+      "linked_evidence_group_ids": [
+        "engineering_overview_and_characteristics",
+        "overall_planning_and_schedule_targets",
+        "key_processes_and_schedule_guarantee",
+        "construction_site_layout"
+      ],
+      "max_score": 1.0,
+      "score_range": [
+        0.75,
+        1.0
+      ]
+    },
+    {
+      "clause_id": "T0225",
+      "requirement": "结合工程特点评审质量管理体系及措施：优良1≤F≤1.5分，一般0.5≤F＜1分，差按原文0≤F＜1分。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "subjective_technical_scoring",
+      "rationale": "技术标第四章（sub19第273-337页）完整建立质量方针目标、质量保证体系及道路/桥涵关键工序质量控制措施，达到优良档（1≤F≤1.5分）。",
+      "linked_evidence_group_ids": [
+        "quality_management_system_and_targets",
+        "key_process_quality_control_measures"
+      ],
+      "max_score": 1.5,
+      "score_range": [
+        1.0,
+        1.5
+      ]
+    },
+    {
+      "clause_id": "T0226",
+      "requirement": "结合工程特点评审安全生产管理体系及措施：优良1≤F≤1.5分，一般0.5≤F＜1分，差按原文0≤F＜1分。",
+      "category": null,
+      "review_status": "assistant_verified",
+      "reviewer": "assistant-source-review-2026-10-20",
+      "verdict": "subjective_technical_scoring",
+      "rationale": "技术标第五章（sub19第339-404页）完整建立安全生产管理目标、组织体系及现场危险源管控保证措施，达到优良档（1≤F≤1.5分）。",
+      "linked_evidence_group_ids": [
+        "safety_management_system_and_organization",
+        "safety_production_guarantee_measures"
+      ],
+      "max_score": 1.5,
+      "score_range": [
+        1.0,
+        1.5
+      ]
+    }
+  ]
+}

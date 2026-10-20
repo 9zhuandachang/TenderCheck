@@ -1,19 +1,22 @@
 # S604 检索证据标注交接
 
 导出日期：2026-10-20。交接基线：**50 条需求，26 条助手已核对，24 条待补齐，人工审定 0 条**。
+最新状态（2026-10-20 原件补齐后）：**50 条需求，50 条助手已核对（`assistant_verified`），0 条待补齐，人工审定 0 条（`human_verified`）**。
 
-这是 RAG 的参考证据标注，目标是定位与招标需求有关的投标原文。它不是合规结论标签，也不是本轮 10 条 DeepSeek 实验的模型输出。原有 50 条需求与编号保持不变。
+这是 RAG 的参考证据标注，目标是定位与招标需求有关的投标原文。它不是合规结论标签，也不是本轮 10 条 DeepSeek 实验的模型输出。原有 50 条需求与编号保持不变。下游合规结论参考标注已单独保存在 [compliance_verdict_labels.json](compliance_verdict_labels.json) 中，与检索证据标注完全解耦。
 
 ## 文件
 
 | 文件 | 用途 |
 | --- | --- |
-| [annotations.json](annotations.json) | 唯一主标注文件，包含全部 50 条；26 条已有证据组，24 条保留 pending。本次导出与原实验标注逐字节相同。 |
-| [pending.json](pending.json) | 导出时待补齐的 24 个 ID、需求和工作提示；是任务快照，不是第二份可编辑答案集。 |
-| [progress.md](progress.md) | 全部 50 条的可读进度、已核对位置和待办。 |
+| [annotations.json](annotations.json) | 唯一检索证据主标注文件，包含全部 50 条（均已完成原件核对并设为 `assistant_verified`，`annotation_complete=true`）。 |
+| [compliance_verdict_labels.json](compliance_verdict_labels.json) | 独立保存的 50 条合规结论与评分参考标注（`assistant_verified`），与检索证据标注分离存放。 |
+| [pending.json](pending.json) | 待补齐任务快照（当前 `pending_count: 0`，并记录本轮已完成的 24 个 ID）。 |
+| [progress.md](progress.md) | 全部 50 条的可读进度与已核对证据组物理页位置。 |
 | [sources.json](sources.json) | 24 个 document_id 对应的文件相对路径、SHA-256 和页数，共 20 份不同 PDF。 |
 
-`annotations.json` 导出 SHA-256：`d79bf299882994355f395665fa33722f1e6d84a94b2e1567f3304ca4c5a07f74`。
+`annotations.json` 初始交接导出 SHA-256：`d79bf299882994355f395665fa33722f1e6d84a94b2e1567f3304ca4c5a07f74`。
+`annotations.json` 补齐 24 条后 SHA-256：`459a03c74f287f65bb38b32c4820899a714c030c8f6347a6bc4308ccf6157f25`。
 
 ## 给接手 agent 的任务
 
@@ -24,7 +27,7 @@
 5. 若发现已有 26 条有误或漏等价位置，可以明确记录依据后修正；不要为提高现有检索分数放宽证据要求。
 6. 完成后更新进度和待办快照，并汇报各状态数量、修改的 ID、仍未解决的事项。人工审定状态仍须真实人工核对。
 
-本次待办 ID：
+本次已完成补齐的 24 个 ID：
 
 `T0003 T0004 T0005 T0007 T0009 T0011 T0012 T0013 T0014 T0015 T0023 T0024 T0033 T0069 T0078 T0079 T0081 T0106 T0152 T0209 T0216 T0222 T0225 T0226`
 
