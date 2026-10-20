@@ -25,18 +25,9 @@ _init_storage()
 ui.apply_style()
 
 navigation = st.navigation({
-    "TenderCheck": [
-        st.Page(ui.PAGES["overview"], title="Overview", icon=":material/dashboard:", default=True),
-    ],
-    "Review": [
-        st.Page(ui.PAGES["documents"], title="Documents", icon=":material/folder_open:"),
-        st.Page(ui.PAGES["requirements"], title="Requirements", icon=":material/checklist:"),
-        st.Page(ui.PAGES["workspace"], title="Review Workspace", icon=":material/compare:"),
-        st.Page(ui.PAGES["remediation"], title="Remediation", icon=":material/build:"),
-    ],
-    "Delivery": [
-        st.Page(ui.PAGES["report"], title="Report & Sign-off", icon=":material/verified:"),
-    ],
-})
-ui.sidebar()
+    section: [st.Page(ui.PAGES[page], title=label, icon=icon, default=page == "overview")
+              for page, label, icon in pages]
+    for section, pages in ui.NAVIGATION.items()
+}, position="hidden")
+ui.sidebar(navigation.url_path)
 navigation.run()

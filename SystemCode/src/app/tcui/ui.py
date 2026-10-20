@@ -3,12 +3,12 @@
 import base64
 import html
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pymupdf as fitz
 import streamlit as st
 
-from . import config, store
+from . import config, service, store
 from .config import CLOSED, COMPLIANT, CONFIRMED, INSUFFICIENT, NON_COMPLIANT, TO_REINSPECT, TO_REMEDIATE, UNREVIEWED
 
 PAGES = {
@@ -18,6 +18,17 @@ PAGES = {
     "workspace": "views/workspace.py",
     "remediation": "views/remediation.py",
     "report": "views/report.py",
+}
+
+NAVIGATION = {
+    "Workspace": [("overview", "Overview", ":material/dashboard:")],
+    "Review": [
+        ("documents", "Documents", ":material/folder_open:"),
+        ("requirements", "Requirements", ":material/checklist:"),
+        ("workspace", "Review Workspace", ":material/compare:"),
+        ("remediation", "Remediation", ":material/build:"),
+    ],
+    "Delivery": [("report", "Report & Sign-off", ":material/verified:")],
 }
 
 VERDICT_STYLE = {
@@ -81,6 +92,7 @@ def require_project() -> Dict[str, Any]:
 
 def select_project(pid: Optional[int]) -> None:
     st.session_state["project_id"] = pid
+    st.session_state["_show_project_start"] = False
     for key in list(st.session_state):
         if key.startswith(("ws_", "rem_", "pane_")):
             del st.session_state[key]
@@ -94,30 +106,44 @@ def actor() -> str:
     return (st.session_state.get("user_name") or "").strip() or role()
 
 
-def sidebar() -> None:
+def sidebar(current_page: str = "") -> None:
     with st.sidebar:
+        st.caption("Projects")
+        if st.button("New project", icon=":material/add:", key="nav_new_project", type="secondary",
+                     width="stretch", wrap=True):
+            st.session_state["_show_project_start"] = True
+            go("overview")
+        if current_page:
+            st.session_state["_show_project_start"] = False
         projects = store.list_projects()
         if projects:
             ids = [p["id"] for p in projects]
             names = {p["id"]: p["name"] for p in projects}
             pid = project_id()
-            chosen = st.selectbox("Project", ids, index=ids.index(pid) if pid in ids else 0,
-                                  format_func=lambda i: names[i])
-            if chosen != pid:
+            starting = st.session_state.get("_show_project_start", False)
+            chosen = st.selectbox("Project", ids, index=None if starting else (ids.index(pid) if pid in ids else 0),
+                                  format_func=lambda i: names[i], placeholder="Open an existing project")
+            if chosen is not None and (chosen != pid or starting):
                 select_project(chosen)
                 st.rerun()
+        for section, pages in NAVIGATION.items():
+            st.caption(section)
+            for page, label, icon in pages:
+                st.page_link(PAGES[page], label=label, icon=icon, width="stretch")
+        st.caption("Reviewer details")
         if "role" not in st.session_state:
             st.session_state["role"] = "Reviewer"
         st.segmented_control("Role", config.ROLES, key="role", required=True)
         st.text_input("Your name", key="user_name", placeholder="Recorded in the audit log")
-        st.divider()
+        st.caption("Data processing")
         if config.LLM_PROVIDER:
             st.warning(f"Clause text and bid excerpts are sent to **{config.LLM_PROVIDER}** for extraction.",
                        icon=":material/cloud_upload:")
         else:
             st.caption(":material/lock: All processing runs on this machine. No document text is sent to an "
                        "external LLM service.")
-        st.caption(f"Engine: {config.ENGINE_NAME} · Rules: {config.RULE_VERSION}")
+        with st.expander("Engine details"):
+            st.caption(f"Engine: {config.ENGINE_NAME} · Rules: {config.RULE_VERSION}")
 
 
 def flash(message: str, kind: str = "success") -> None:
@@ -133,6 +159,97 @@ def go(page: str, **state: Any) -> None:
     for key, value in state.items():
         st.session_state[key] = value
     st.switch_page(PAGES[page])
+
+
+# ----------------------------------------------------------------- overview guidance
+
+def workflow_steps(active: Optional[str] = None, completed: Optional[List[str]] = None) -> None:
+    steps = [
+        ("Documents", "Upload tender and bid"),
+        ("Requirements", "Confirm what to check"),
+        ("Review", "Trace and verify evidence"),
+        ("Remediation", "Resolve and re-inspect if needed"),
+        ("Sign-off", "Approve and export"),
+    ]
+    st.subheader("Review workflow")
+    with st.container(horizontal=True, wrap=True, gap="small"):
+        for number, (label, detail) in enumerate(steps, start=1):
+            with st.container(width=160, gap="xsmall"):
+                st.markdown(f"**{number} · {label}**")
+                if label in (completed or []):
+                    st.badge("Complete", icon=":material/check:", color="green")
+                elif label == active:
+                    st.badge("Next", icon=":material/arrow_forward:", color="blue")
+                elif label == "Remediation" and active:
+                    st.badge("If needed", color="gray")
+                elif active:
+                    st.badge("Upcoming", color="gray")
+                st.caption(detail)
+
+
+def workflow_completed_steps(project: Dict[str, Any], checks: List[Dict[str, Any]],
+                             rnd: Optional[Dict[str, Any]]) -> List[str]:
+    """Read completion from project data; re-inspection can return to an earlier stage."""
+    completed = []
+    requirement_checks = {"Addendum changes decided", "Requirement list confirmed"}
+    if all(c["ok"] for c in checks if c["item"] not in requirement_checks):
+        completed.append("Documents")
+    if all(c["ok"] for c in checks):
+        completed.append("Requirements")
+    bid = store.selected_bid(project["id"])
+    if (not all(c["ok"] for c in checks) or not rnd or not bid or bid["id"] != rnd["bid_doc_id"]
+            or store.active_jobs(project["id"], "review")):
+        return completed
+    items = store.list_remediations(project["id"])
+    if not service.signoff_blockers(rnd["id"]):
+        completed.append("Review")
+        if items and all(item["status"] == CLOSED for item in items):
+            completed.append("Remediation")
+    if rnd["signed_at"]:
+        completed.append("Sign-off")
+    return completed
+
+
+def project_next_step(project: Dict[str, Any], checks: List[Dict[str, Any]],
+                      rnd: Optional[Dict[str, Any]]) -> Tuple[str, str, str]:
+    """Choose an Overview entry point using existing readiness and review state."""
+    pid = project["id"]
+    if store.active_jobs(pid, "review"):
+        return "Review", "The automated review is running. Follow its progress below.", "overview"
+
+    requirement_checks = {"Addendum changes decided", "Requirement list confirmed"}
+    missing_documents = [c["item"] for c in checks if not c["ok"] and c["item"] not in requirement_checks]
+    if missing_documents:
+        return "Documents", "Prepare the selected documents: " + "; ".join(missing_documents) + ".", "documents"
+    if store.active_jobs(pid, "extract"):
+        return "Requirements", "Requirements are being extracted. Open Requirements to follow progress.", "requirements"
+    if any(not c["ok"] for c in checks):
+        return ("Requirements", "Extract or import requirements, decide addendum changes, and confirm the list.",
+                "requirements")
+    if not rnd:
+        return "Review", "Your documents and requirements are ready. Start the automated review.", "overview"
+
+    bid = store.selected_bid(pid)
+    open_rem = store.list_remediations(pid, open_only=True)
+    if bid and bid["id"] != rnd["bid_doc_id"]:
+        if open_rem:
+            return "Remediation", "A new bid version is ready. Re-inspect it and compare the results.", "remediation"
+        return "Review", "A new bid version is ready. Start a review of this version.", "overview"
+    if rnd["signed_at"]:
+        return "Sign-off", "This round is signed off. Open the report to export the matrix and review report.", "report"
+
+    summary = service.round_summary(rnd["id"])
+    if summary["unreviewed"]:
+        return ("Review", f"Verify the source evidence and record decisions for {summary['unreviewed']} clause(s).",
+                "workspace")
+    if any(item["status"] == TO_REINSPECT for item in open_rem):
+        return "Review", "Check the re-inspection evidence and confirm the remaining remediation items.", "workspace"
+    if open_rem:
+        return ("Remediation", "Resolve open items, upload a revised bid, and re-inspect. Open risks can also be "
+                "disclosed at sign-off.", "remediation")
+    if service.signoff_blockers(rnd["id"]):
+        return "Review", "Complete the remaining reviewer decisions before sign-off.", "workspace"
+    return "Sign-off", "Reviewer decisions are complete. A Manager can sign off and export.", "report"
 
 
 # ----------------------------------------------------------------- badges
