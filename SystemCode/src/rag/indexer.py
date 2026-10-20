@@ -60,11 +60,8 @@ class RetrievedChunkHit:
             "section_path": self.child_chunk.section_path,
             "page_start": self.child_chunk.page_start,
             "page_end": self.child_chunk.page_end,
-            "has_official_seal": self.child_chunk.has_official_seal,
-            "has_signature": self.child_chunk.has_signature,
             "child_text": self.child_chunk.text,
             "parent_text": self.parent_chunk.text,
-            "extracted_kv": self.parent_chunk.extracted_kv,
         }
 
 
@@ -276,11 +273,14 @@ class HybridBidIndex:
         sparse_weight: float = 0.5,
         rrf_k: int = 60,
         use_reranker: bool = True,
+        candidate_pool_size: Optional[int] = None,
     ) -> List[RetrievedChunkHit]:
         """
         Execute Hybrid Dense + Sparse search with optional metadata filter and
         parent-chunk deduplication.
         """
+        if candidate_pool_size is not None and candidate_pool_size < top_k:
+            raise ValueError("candidate_pool_size must be at least top_k")
         if not self.child_chunks:
             return []
 
@@ -323,7 +323,7 @@ class HybridBidIndex:
         sorted_sub_pos = np.argsort(-rrf_scores)
         seen_parents = set()
         candidates: List[RetrievedChunkHit] = []
-        pool_limit = max(top_k * 3, 15) if (use_reranker and self.reranker_model_name) else top_k
+        pool_limit = (candidate_pool_size or max(top_k * 3, 15)) if (use_reranker and self.reranker_model_name) else top_k
 
         for sub_pos in sorted_sub_pos:
             global_idx = int(valid_indices[sub_pos])

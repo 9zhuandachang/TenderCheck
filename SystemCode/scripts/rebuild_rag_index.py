@@ -21,7 +21,7 @@ def main(argv=None):
     set_offline(args.offline)
     import numpy as np
     from src.rag import (BaseVisionBackend, BidDocumentParser, DiskCachedVisionBackend,
-                         EntityLedgerBuilder, HybridBidIndex, load_chunks_jsonl)
+                         HybridBidIndex, load_chunks_jsonl)
 
     class CacheOnly(BaseVisionBackend):
         def analyze_page(self, doc, pdf_page, **kwargs):
@@ -70,9 +70,8 @@ def main(argv=None):
     if before_cache != directory_hashes(args.cache_dir) or before_index != directory_hashes(args.base_index):
         raise RuntimeError("Source cache or base index changed")
     index.save(args.output_index)
-    ledger = EntityLedgerBuilder.build_from_chunks(parents[0].document_id, parents, children)
-    EntityLedgerBuilder.save_ledger(ledger, args.output_index)
     write_json(args.output_index / "ingest_stats.json", stats)
+    write_json(args.output_index / "document_sources.json", bid_parser.document_sources)
     summary = dict(status="complete", parents=len(parents), children=len(children),
                    reused_vectors=reused, newly_encoded_unique_texts=len(new_texts),
                    cache_only=True, source_cache_unchanged=True, base_index_unchanged=True,

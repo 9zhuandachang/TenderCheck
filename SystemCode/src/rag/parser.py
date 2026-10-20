@@ -23,7 +23,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-import fitz  # PyMuPDF
+try:
+    import pymupdf as fitz
+except ImportError:  # Older supported PyMuPDF installations.
+    import fitz
 
 from .vision import (
     BaseVisionBackend,
@@ -31,7 +34,6 @@ from .vision import (
     LocalHeuristicOCRBackend,
     PageVisionResult,
     detect_red_seal_from_pixmap,
-    extract_kv_heuristically,
     infer_doc_category_from_text,
 )
 
@@ -246,6 +248,7 @@ class BidDocumentParser:
         self.parent_target_chars = parent_target_chars
         self.child_target_chars = child_target_chars
         self.child_overlap_chars = child_overlap_chars
+        self.document_sources: Dict[str, str] = {}
 
     @staticmethod
     def _detect_volume_cover(page_text: str) -> Optional[str]:
@@ -285,6 +288,7 @@ class BidDocumentParser:
         """
         pdf_path = Path(pdf_path)
         doc_id = document_id or pdf_path.stem
+        self.document_sources[doc_id] = str(pdf_path.resolve())
         doc = fitz.open(pdf_path)
         last_page = min(end_page or len(doc), len(doc))
 
@@ -399,7 +403,7 @@ class BidDocumentParser:
             joined = "\n".join(nar_buf).strip()
             sec_path = " > ".join(headings[k] for k in sorted(headings)) or current_volume
             doc_cat = forced_doc_category or infer_doc_category_from_text(joined, sec_path)
-            kv = extract_kv_heuristically(joined)
+            kv = {}
             c_spans = _split_text_into_spans(
                 joined,
                 target_chars=self.child_target_chars,
@@ -480,12 +484,7 @@ class BidDocumentParser:
                     target_chars=self.child_target_chars,
                     overlap_chars=self.child_overlap_chars,
                 )
-                merged_kv = dict(vision_res.extracted_kv or {})
-                if clean_text:
-                    for k_native, v_native in extract_kv_heuristically(clean_text).items():
-                        if v_native is not None and v_native != "":
-                            merged_kv[k_native] = v_native
-
+                merged_kv = {}
                 _emit_parent_and_children(
                     content_type=c_type,
                     doc_category=doc_cat,
@@ -507,7 +506,7 @@ class BidDocumentParser:
                 _flush_narrative_buffer()
                 page_type_counts["table"] += 1
                 doc_cat = forced_doc_category or infer_doc_category_from_text(clean_text, sec_path)
-                kv = extract_kv_heuristically(clean_text)
+                kv = {}
                 parent_tbl_text = "\n\n".join(md_tables)
                 if clean_text:
                     parent_tbl_text = f"{clean_text}\n\n{parent_tbl_text}"

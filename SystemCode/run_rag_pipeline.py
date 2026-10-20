@@ -1,12 +1,11 @@
 """
-Command-Line Entrypoint for TenderCheck Dual-Index & 8-Category Routed RAG Pipeline.
+Command-Line Entrypoint for TenderCheck passage retrieval.
 
 Supports:
 1. `ingest`: Parse a bid PDF or `02_投标文件` directory (automatically leveraging
-   `分章节文件/` when present), build the 4-table Structured Entity Ledger
-   (`ledger.json` & `ledger.db`), and construct the Hybrid Dense + BM25 Index.
-2. `query`: Route single or batch tender requirements across the 8 categories
-   and output structured evidence bundles with page provenance.
+   `分章节文件/` when present), and construct the Hybrid Dense + BM25 Index.
+2. `query`: Retrieve passages for a requirement and its supplied category,
+   with original PDF identity and physical pages for downstream extraction.
 
 Usage Examples:
     # 1. Ingest a project's 02_投标文件 directory (CPU fast mode or RTX 5080 VLM mode)
@@ -18,9 +17,9 @@ Usage Examples:
     python SystemCode/run_rag_pipeline.py --mode ingest \\
         --bid_input "path/to/02_投标文件" \\
         --index_dir "SystemCode/data/rag_index/S604" \\
-        --vision_backend qwen_vl --use_neural_dense
+        --vision_backend qwen_vl
 
-    # 3. Query the built dual-index by Requirement Type
+    # 3. Query passages by Requirement Type
     python SystemCode/run_rag_pipeline.py --mode query \\
         --index_dir "SystemCode/data/rag_index/S604" \\
         --req_type Consistency \\
@@ -39,13 +38,12 @@ from src.rag import (
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_RERANKER_MODEL,
     BidDocumentParser,
-    CategoryRouterRetriever,
     DiskCachedVisionBackend,
-    EntityLedgerBuilder,
     HybridBidIndex,
     LocalHeuristicOCRBackend,
     QwenVLBackend,
 )
+from src.rag.passages import PassageRetriever, passage_to_dict, source_registry
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -62,7 +60,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="TenderCheck Multimodal Dual-Index RAG Pipeline"
+        description="TenderCheck passage retrieval with PDF provenance"
     )
     parser.add_argument(
         "--mode",
@@ -80,7 +78,7 @@ def parse_args() -> argparse.Namespace:
         "--index_dir",
         type=Path,
         default=BASE_DIR / "data" / "rag_index" / "default_bid",
-        help="Directory to save/load the built Hybrid Index and Entity Ledger.",
+        help="Directory to save/load the passage index and document source mapping.",
     )
     parser.add_argument(
         "--vision_cache_dir",
@@ -142,11 +140,13 @@ def parse_args() -> argparse.Namespace:
     )
 
     # Query mode options
+    parser.add_argument("--source_map", type=Path, help="Existing document_sources.json for older indices.")
+    parser.add_argument("--candidate_pool_size", type=int, default=50)
     parser.add_argument(
         "--query",
         type=str,
         default="",
-        help="Requirement clause text to retrieve evidence for (if omitted, runs an 8-category demo query suite).",
+        help="Requirement clause text; required for passage query mode.",
     )
     parser.add_argument(
         "--section",
@@ -209,16 +209,6 @@ def main() -> None:
             len(child_chunks),
         )
 
-        # Build and save Structured Entity Ledger (JSON + SQLite)
-        doc_id = parent_chunks[0].document_id if parent_chunks else args.bid_input.stem
-        ledger = EntityLedgerBuilder.build_from_chunks(
-            document_id=doc_id,
-            parent_chunks=parent_chunks,
-            child_chunks=child_chunks,
-        )
-        ledger_json, ledger_db = EntityLedgerBuilder.save_ledger(ledger, args.index_dir)
-        logger.info("Saved Structured Entity Ledger to %s and %s", ledger_json, ledger_db)
-
         # Build and save Hybrid Dense + BM25 Index
         index = HybridBidIndex(
             embedding_model_name=args.embedding_model,
@@ -226,6 +216,8 @@ def main() -> None:
         )
         index.build(parent_chunks=parent_chunks, child_chunks=child_chunks)
         index.save(args.index_dir)
+        with open(args.index_dir / "document_sources.json", "w", encoding="utf-8") as f:
+            json.dump(parser.document_sources, f, ensure_ascii=False, indent=2)
 
         with open(args.index_dir / "ingest_stats.json", "w", encoding="utf-8") as f:
             json.dump(parse_stats, f, ensure_ascii=False, indent=2)
@@ -235,36 +227,17 @@ def main() -> None:
 
     # Mode: query
     index = HybridBidIndex.load(args.index_dir, reranker_model_name=args.reranker_model)
-    ledger = EntityLedgerBuilder.load_ledger(args.index_dir / "ledger.json")
-    retriever = CategoryRouterRetriever(index=index, ledger=ledger)
-
-    if args.query:
-        bundle = retriever.retrieve(
-            requirement_text=args.query,
-            section_text=args.section,
-            requirement_type=args.req_type,
-            top_k=args.top_k,
-        )
-        print(json.dumps(bundle.to_dict(), ensure_ascii=False, indent=2))
-        return
-
-    # Default 8-category smoke test when --query is omitted
-    demo_queries = [
-        ("Qualification", "第一章 招标公告", "投标人须具备公路工程施工总承包三级及以上资质，项目经理须具备公路工程专业二级及以上注册建造师执业资格。"),
-        ("Commercial", "第二章 投标人须知", "投标总价不得超过最高投标限价，并按招标文件要求足额缴纳投标保证金。"),
-        ("Schedule", "第二章 投标人须知", "计划工期不超过日历天要求，投标有效期为90日历天。"),
-        ("Consistency", "第三章 评标办法", "投标函与开标一览表中的投标总价大小写、工期及项目经理姓名必须完全一致。"),
-    ]
-    results = []
-    for req_type, sec, q_text in demo_queries:
-        b = retriever.retrieve(
-            requirement_text=q_text,
-            section_text=sec,
-            requirement_type=req_type,
-            top_k=args.top_k,
-        )
-        results.append(b.to_dict())
-    print(json.dumps(results, ensure_ascii=False, indent=2))
+    if not args.query:
+        raise ValueError("Passage query mode requires --query")
+    mapping_path = args.source_map or args.index_dir / "document_sources.json"
+    if not mapping_path.exists():
+        raise FileNotFoundError("Source mapping missing; supply --source_map or rebuild the index.")
+    mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+    sources = source_registry(mapping, index.parent_map)
+    hits = PassageRetriever(index).retrieve(args.query, args.req_type, args.top_k, args.candidate_pool_size)
+    print(json.dumps(dict(requirement=args.query, requirement_type=args.req_type,
+                          passages=[passage_to_dict(h, sources) for h in hits]),ensure_ascii=False,indent=2))
+    return
 
 
 if __name__ == "__main__":
