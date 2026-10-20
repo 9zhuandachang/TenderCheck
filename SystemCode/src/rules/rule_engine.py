@@ -16,6 +16,7 @@ from src.extraction.schema import (
     StructuredExtractionResult,
     TenderConstraintSlots,
 )
+from src.extraction.semantics import objective_target
 
 
 @dataclass
@@ -31,6 +32,8 @@ class RuleEvaluationReport:
     explanation: str                       # Human-readable audit explanation
     evidence_pages: List[int] = field(default_factory=list)
     evidence_references: List[Dict[str, Any]] = field(default_factory=list)
+    subject_bindings: List[Dict[str, Any]] = field(default_factory=list)
+    conflict_pairs: List[Dict[str, Any]] = field(default_factory=list)
     awarded_score: Optional[float] = None  # Populated for Scoring clauses
 
     def to_dict(self) -> Dict[str, Any]:
@@ -165,7 +168,8 @@ class ComplianceRuleEngine:
                 triggered_rule_id=rule_id,
                 rule_passed=True if verdict == 'COMPLIANT' else False if verdict == 'NON_COMPLIANT' else None,
                 symbolic_trace=trace, explanation=trace, evidence_pages=b.evidence_pages,
-                evidence_references=b.evidence_references, awarded_score=score)
+                evidence_references=b.evidence_references, subject_bindings=b.subject_bindings,
+                conflict_pairs=b.conflict_pairs, awarded_score=score)
 
         def unknown(reason):
             return report('INSUFFICIENT_EVIDENCE', reason)
@@ -175,10 +179,30 @@ class ComplianceRuleEngine:
 
         if extracted.extraction_issues:
             return unknown('; '.join(extracted.extraction_issues))
-        if b.conflict_detected:
-            return report('CONFLICTING_EVIDENCE', '证据存在冲突，需要核对来源及主体。')
         if b.evidence_found is not True:
             return unknown('未提取到相关证据；检索未命中不能证明原文件缺失或违规。')
+        if b.conflict_detected:
+            if not b.conflict_pairs:
+                return unknown('冲突缺少双方可核对的主体、时期和事实引用。')
+            return report('CONFLICTING_EVIDENCE', '证据存在冲突，需要核对来源及主体。')
+
+        # Explicit quality/safety targets have a shared deterministic path even
+        # when the extractor assigns the prohibition rather than qualitative type.
+        target = objective_target(extracted.requirement_text)
+        if target and t.operator == 'QUALITATIVE_MATCH':
+            rule_id = 'R06_OBJECTIVE_TARGET'
+            responses = [objective_target(r['quote']) for r in b.evidence_references
+                         if r['field'] in {'actual_text', 'qualitative_match'}]
+            if not responses or any(value is None or value[0] != target[0] for value in responses):
+                return unknown('目标引用存在未能明确解释的响应，需要核对。')
+            observed = set(responses)
+            observed = {value for kind,value in observed if kind == target[0]}
+            if len(observed) != 1:
+                return unknown('缺少唯一且与本条目标对应的明确响应。')
+            matches = next(iter(observed)) == target[1]
+            if b.qualitative_match is not None and b.qualitative_match != matches:
+                return unknown('模型定性判断与引用中的目标不一致。')
+            return decide(matches, f'目标={target[1]}; 引用响应={next(iter(observed))}')
 
         if rule == 'NUMERIC_BOUND':
             if t.expected_numeric is None or b.actual_numeric is None:

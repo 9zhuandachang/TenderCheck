@@ -74,6 +74,8 @@ class BidEvidenceSlots:
     evidence_summary: str = ""
     conflict_detected: bool = False
     evidence_references: List[Dict[str, Any]] = field(default_factory=list)
+    subject_bindings: List[Dict[str, Any]] = field(default_factory=list)
+    conflict_pairs: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -133,7 +135,7 @@ def validate_slot_types(values):
                'requires_official_seal', 'requires_signature', 'conflict_detected'}
     numeric = {'expected_numeric', 'secondary_numeric', 'scoring_max_points', 'actual_numeric',
                'secondary_actual_numeric', 'estimated_score'}
-    arrays = {'scoring_bands', 'page_mentions', 'evidence_pages', 'evidence_references'}
+    arrays = {'scoring_bands', 'page_mentions', 'evidence_pages', 'evidence_references', 'subject_bindings', 'conflict_pairs'}
     for key, value in values.items():
         if key in boolean:
             if value is not None and type(value) is not bool:

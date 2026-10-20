@@ -1,6 +1,8 @@
-# 真实证据输入的提取与规则判断
+# 下游抽取与规则流程诊断
 
 更新日期：2026-10-20。
+
+本页描述流程诊断。原 50 条仍是 RAG 评测数据，复用其检索结果不构成正式抽取或规则评测集。入口和目录分工见 [评测总览](evaluation_layout.md)。
 
 ## 分工与迁移
 
@@ -15,25 +17,25 @@
 输入必须是已完成的 `evaluate_evidence_rag.py collect` 输出。选择某一方法，保持它实际返回的排名、原文及空结果；不会使用标准答案关键词重新挑段落，也不会拼接预先提取的字段。
 
 ```powershell
-python SystemCode/evaluate_compliance_reasoning.py prepare `
+python SystemCode/run_reasoning_diagnostics.py prepare `
   --retrieval SystemCode/reports/rag_experiments/s604_passage_evidence_v2/retrieval.json `
   --method predicted_category_rerank `
   --output_dir SystemCode/reports/rag_experiments/new_reasoning_inputs
 ```
 
-生成 `cases.json` 和全待审定的 `labels.json`。50 条原查询对应 50 条输入，不自动标记为合规，不自动制造 50 条负例。输入保留完整父段落；当前没有额外截断。准备和运行都会校验原 PDF 哈希；运行还会验证检索记录哈希和输入内容未被替换。
+只生成带 `evaluation_scope=pipeline_diagnostics` 的 `cases.json`，不再自动生成合规标签模板。50 条原查询对应 50 条诊断输入，原 RAG 数据用途保持不变。输入保留完整父段落；当前没有额外截断。准备和运行都会校验原 PDF 哈希；运行还会验证检索记录哈希和输入内容未被替换。
 
 ## 提取和判断
 
 ```powershell
 # 无网络的有限数值基线，用于检查链路，不代表 LLM 的能力
-python SystemCode/evaluate_compliance_reasoning.py run `
+python SystemCode/run_reasoning_diagnostics.py run `
   --cases SystemCode/reports/rag_experiments/new_reasoning_inputs/cases.json `
   --backend heuristic `
   --output_dir SystemCode/reports/rag_experiments/new_reasoning_offline
 
 # 配置 DEEPSEEK_API_KEY 后实际调用 LLM
-python SystemCode/evaluate_compliance_reasoning.py run `
+python SystemCode/run_reasoning_diagnostics.py run `
   --cases SystemCode/reports/rag_experiments/new_reasoning_inputs/cases.json `
   --backend deepseek `
   --output_dir SystemCode/reports/rag_experiments/new_reasoning_deepseek
@@ -65,10 +67,21 @@ python SystemCode/evaluate_compliance_reasoning.py run `
 
 当前规则覆盖明确数值、可识别资质等级、两个实体/金额一致性、材料及签章状态、禁止事项和承诺、明确评分档位及已提取的定性响应。复杂多条件条款仍需拆分与独立验证；不能把当前有限规则集视为完整审标系统。
 
-## 结论标签与指标
+`passage-facts-v5` 增加三类提取层校验：数值比较符号须与招标原文中明确阈值表达一致；资质事实通过 `subject_bindings` 关联主体、角色及原文；材料存在须有实质正文，数值与单位须有关联引用。详细实现、真实复测和限制见[语义与引用修复报告](experiments/extraction_semantics_fixes.md)。无法识别的措辞、主体歧义或单位缺失保持未知，不自动填成通过。
 
-检索参考证据标签不能自动成为合规结论标签。人工需在 `labels.json` 中填写 `review_status=human_verified`、`reviewer`、`review_note`、`expected_verdict`，然后通过 `run --labels 路径` 计分。标签绑定 cases 文件哈希，ID 必须完全一致。
+## 输出统计与独立比较
 
-没有人工结论标签时 `verdict_accuracy=null`。`decision_coverage` 只表示多少条得到明确符合/不符合判断，不能当准确率。错误和弃判不会被计为正确的负例；评分数值准确率还需要额外评分标签，当前不报告。
+默认 `metrics.json` 标识 `evaluation_scope=pipeline_diagnostics`，只报告输出状态数量、判断覆盖率、用量和输入／代码哈希，不生成准确率或待标注合规样本数。
 
-本轮已用 S604 的 50 条实际检索记录跑通离线数值基线。该基线仅支持少数显式数值模式，不能据其覆盖率判断 RAG 或 DeepSeek 的准确率。当前环境未配置 DeepSeek 密钥，在线模型效果尚未重新测量。旧实验的 99% 不适用于此流程。
+原 RAG 证据组不能用作结论标准答案。两份历史助手参考已迁入 `SystemCode/data/reasoning_diagnostics/s604/`。仅显式传 `--reference_labels` 才产生独立的 `reference_comparison.json`，其一致率不进入主报告。
+
+可选 `--labels` 仅接受另行提供的人工端到端标签，要求 `schema_version=1`、`evaluation_scope=end_to_end_compliance`、`cases_sha256` 和完整 ID 列表；已核对行须有 `review_status=human_verified`、`reviewer`、`review_note` 和 `expected_verdict`。结果另存 `human_end_to_end_comparison.json`，不能解释为单独的抽取或规则准确率。旧自动生成的待标注模板不自动迁移为新评测集。
+
+已有 S604 50 条在线运行和离线回放均作为流程诊断保留。10 条试运行见 [历史诊断报告](experiments/reasoning_pilot_10.md)。当前抽取契约为 `passage-facts-v6`，原始缓存和报告不改写；旧命令 `evaluate_compliance_reasoning.py` 仍兼容并提示新入口。
+
+## 抽取与规则第一批完善（2026-10-20）
+
+当前抽取契约为 `passage-facts-v6`，新增人员角色、双侧冲突引用，并完善材料正文和质量／安全目标校验。
+旧模型原始回答可以通过 `SystemCode/replay_compliance_responses.py` 离线重新校验，不调用 API，不读取已校验缓存。
+50 条回放、77 项测试及当前限制见 [第一批修复报告](experiments/extraction_rules_v6.md)。
+v6 提示词本身尚未在线验证；证书时效、多人资格和业绩变更链仍待完善。

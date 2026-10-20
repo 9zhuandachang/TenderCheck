@@ -3,14 +3,13 @@
 导出日期：2026-10-20。交接基线：**50 条需求，26 条助手已核对，24 条待补齐，人工审定 0 条**。
 最新状态（2026-10-20 原件补齐后）：**50 条需求，50 条助手已核对（`assistant_verified`），0 条待补齐，人工审定 0 条（`human_verified`）**。
 
-这是 RAG 的参考证据标注，目标是定位与招标需求有关的投标原文。它不是合规结论标签，也不是本轮 10 条 DeepSeek 实验的模型输出。原有 50 条需求与编号保持不变。下游合规结论参考标注已单独保存在 [compliance_verdict_labels.json](compliance_verdict_labels.json) 中，与检索证据标注完全解耦。
+这是 RAG 的参考证据标注，目标是定位与招标需求有关的投标原文。它不是合规结论标签，也不是本轮 10 条 DeepSeek 实验的模型输出。原有 50 条需求与编号保持不变。历史助手合规参考已迁至 [流程诊断目录](../../reasoning_diagnostics/s604/README.md)，仅供排查下游问题，不是抽取或规则评测金标准。
 
 ## 文件
 
 | 文件 | 用途 |
 | --- | --- |
 | [annotations.json](annotations.json) | 唯一检索证据主标注文件，包含全部 50 条（均已完成原件核对并设为 `assistant_verified`，`annotation_complete=true`）。 |
-| [compliance_verdict_labels.json](compliance_verdict_labels.json) | 独立保存的 50 条合规结论与评分参考标注（`assistant_verified`），与检索证据标注分离存放。 |
 | [pending.json](pending.json) | 待补齐任务快照（当前 `pending_count: 0`，并记录本轮已完成的 24 个 ID）。 |
 | [progress.md](progress.md) | 全部 50 条的可读进度与已核对证据组物理页位置。 |
 | [sources.json](sources.json) | 24 个 document_id 对应的文件相对路径、SHA-256 和页数，共 20 份不同 PDF。 |
@@ -18,7 +17,9 @@
 `annotations.json` 初始交接导出 SHA-256：`d79bf299882994355f395665fa33722f1e6d84a94b2e1567f3304ca4c5a07f74`。
 `annotations.json` 补齐 24 条后 SHA-256：`459a03c74f287f65bb38b32c4820899a714c030c8f6347a6bc4308ccf6157f25`。
 
-## 给接手 agent 的任务
+## 历史交接任务（已完成）
+
+以下为补齐前的交接记录；当前待补齐为 0 条，勿据此重复标注。
 
 1. 先阅读主标注文件中的完整样例及 [标注规则](../../../../docs/passage_rag_evaluation.md)。
 2. 根据 `pending.json` 的 24 个 ID，在 `annotations.json` 原条目上补充证据组。不要新增另一套需求编号或改写招标需求。
@@ -65,3 +66,14 @@ python SystemCode/evaluate_evidence_rag.py score `
 ```
 
 完整检索结果、索引及 OCR 缓存没有放入本交接包。没有本地冻结结果时先完成原件标注，不要伪造检索记录或更改 `corpus_sha256` 来通过校验。该值绑定原检索语料版本，不是 sources.json 的文件哈希。
+
+## 本地全量评测校准（2026-10-20）
+
+- `quote_repairs.json` 记录6条需求19处原生PDF引文修正：使用真实原页文本，保持已逐项核对的 `quote_parts` 不变。含两处安全员年龄/专业误写修正。
+- 当前 `annotations.json` SHA-256：`03902668688035034237cab51d4013b1c738246ace3400748113c3b2f541c1d2`。上面的交接哈希保留用于历史追溯。
+- 两份合规参考现位于 `../../reasoning_diagnostics/s604/`，迁移保留文件原内容；仍是助手诊断参考，不是人工金标准。
+- 校准区分承诺与事实核验、跨页冲突与违规、客观评分与主观评分；纠正 T0214 的资产负债率及分数。校准标签仅在预测结束后用于比较，不进入检索和模型提示词。
+
+### 扫描页复核修订
+
+`visual_reference_repairs.json` 记录16条需求30处扫描引用修订（含移除3个无效替代页）。核对发现资质/安全证编号日期、验收证页码、回单户名、表格阅读顺序等错误。主标注仍为50条、81组；没有修改冻结检索结果。当前最终标注SHA-256：`993c0e964e0030c04787bdb81cfb35e278191427b125c49cb60f2c982e6d1c87`。上方哈希为各阶段快照，当前哈希也可从pending.json读取。

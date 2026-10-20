@@ -115,7 +115,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Visually verified scanned Construction Enterprise Qualification Certificate (建筑业企业资质证书 D134005897) in sub16 page 7 showing 安徽水利开发有限公司 holds 公路工程施工总承包特级 (valid until 2023-12-24).",
+      "review_note": "Visually verified scanned Construction Enterprise Qualification Certificate (建筑业企业资质证书 D134005897) in sub16 page 7 showing 安徽水利开发有限公司 holds 公路工程施工总承包特级 (valid until 2023-12-24). 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "highway_qualification_certificate",
@@ -124,16 +124,19 @@
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub16",
               "source_sha256": "f659509752abb644729bce0e6cc9816d7de94d526f1021bd93350f01a9948816",
-              "page_start": 7,
-              "page_end": 7,
-              "quote": "建筑业企业资质证书 企业名称 安徽水利开发有限公司 证书编号 D134005897 有效期至2023年12月24日 资质类别及等级 公路工程施工总承包特级",
+              "page_start": 6,
+              "page_end": 6,
+              "quote": "建筑业企业资质证书\n安徽水利开发有限公司\nD134128243\n2021年12月31日\n公路工程施工总承包特级",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
+                "建筑业企业资质证书",
                 "安徽水利开发有限公司",
-                "D134005897",
+                "D134128243",
+                "2021年12月31日",
                 "公路工程施工总承包特级"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。原标注将第7页其他类别证书当作公路总承包证书，编号及有效期均误写。实际第6页，证书所示期限已过，是否有延期须另核。"
             }
           ]
         }
@@ -146,7 +149,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Visually verified scanned Safety Production License (安全生产许可证副本) in sub16 page 5 showing 编号 (皖)JZ安许证字[2018]001389, 单位名称 安徽水利开发有限公司, 有效期 2021年08月12日至2024年08月12日.",
+      "review_note": "Visually verified scanned Safety Production License (安全生产许可证副本) in sub16 page 5 showing 编号 (皖)JZ安许证字[2018]001389, 单位名称 安徽水利开发有限公司, 有效期 2021年08月12日至2024年08月12日. 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "safety_production_license",
@@ -157,15 +160,16 @@
               "source_sha256": "f659509752abb644729bce0e6cc9816d7de94d526f1021bd93350f01a9948816",
               "page_start": 5,
               "page_end": 5,
-              "quote": "安全生产许可证 (副本) 编号 (皖)JZ安许证字[2018]001389 单位名称 安徽水利开发有限公司 许可范围 建筑施工 有效期 2021年08月12日至2024年08月12日",
+              "quote": "安全生产许可证\n安徽水利开发有限公司\n(皖)JZ安许证字[2019]013097\n2025年03月31日",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "(皖)JZ安许证字[2018]001389",
+                "安全生产许可证",
                 "安徽水利开发有限公司",
-                "2021年08月12日",
-                "2024年08月12日"
-              ]
+                "(皖)JZ安许证字[2019]013097",
+                "2025年03月31日"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。原编号[2018]001389及2024-08-12有效期与原件不符。"
             }
           ]
         }
@@ -178,7 +182,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Verified both the proposed Project Manager role assignment (王文年 in sub14 page 1 / sub05 page 1, native_pdf) and visually verified the scanned First-Class Registered Constructor Certificate (一级注册建造师注册证书 皖1342011201207116, 注册专业 公路工程, 有效期 2022.07.12-2025.07.11) in sub05 page 3.",
+      "review_note": "Verified both the proposed Project Manager role assignment (王文年 in sub14 page 1 / sub05 page 1, native_pdf) and visually verified the scanned First-Class Registered Constructor Certificate (一级注册建造师注册证书 皖1342011201207116, 注册专业 公路工程, 有效期 2022.07.12-2025.07.11) in sub05 page 3. 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "proposed_manager_role",
@@ -205,13 +209,14 @@
               "source_sha256": "eeef5313d88c38eea113626321c1fb194d986aedad476849113d461542e44b25",
               "page_start": 1,
               "page_end": 1,
-              "quote": "（五）拟委任的项目经理（项目总工）简历表 （五）拟委任的项目经理简历表 姓名 王文年",
+              "quote": "（五）拟委任的项目经理简历表\n姓名\n王文年\n年龄\n41\n学历\n本科\n职称\n高级\n单位\n职务\n项目经理\n拟在本标段\n工程担任职务\n项目经理\n毕业学校\n2012年7月毕业于安徽理工大学（函授）学校土木工程专业，学制2.5年\n经\n历\n时间\n参加过的工程项目名称\n签约合同价金\n额（万元）\n担任职务\n发包人及联系电话\n2015.4-\n2017.11\n省道214 郎溪段改建工程\n四期工程（郎溪县城十字铺\n工业园段）\n49123.2526 万元\n项目经理\n郎溪县交通运输局\n15855386665\n获奖情况\n无\n说明在岗情况\n□目前未在其他项目上任职，现从事工作为：\n目前虽在其他项目上任职，但本项目中标后能够撤离，目\n前任职项目：G345来安至浮山段一级公路改建三期工程，担\n任职位：项目经理。\n注：\n1.本表应填写项目经理和项目总工相关情况。\n2.投标人应根据招标文件第二章“投标人须知”第3.5.5项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
                 "拟委任的项目经理简历表",
                 "王文年"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             }
           ]
         },
@@ -224,15 +229,18 @@
               "source_sha256": "eeef5313d88c38eea113626321c1fb194d986aedad476849113d461542e44b25",
               "page_start": 3,
               "page_end": 3,
-              "quote": "中华人民共和国一级注册建造师注册证书 姓名 王文年 聘用企业 安徽水利开发有限公司 注册编号 皖1342011201207116 注册专业 公路工程 有效期 2022.07.12-2025.07.11",
+              "quote": "中华人民共和国一级建造师注册证书\n王文年\n皖1342011201207116\n聘用企业\n安徽水利开发有限公司\n公路工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "一级注册建造师注册证书",
+                "中华人民共和国一级建造师注册证书",
                 "王文年",
                 "皖1342011201207116",
+                "聘用企业",
+                "安徽水利开发有限公司",
                 "公路工程"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。修正证书标题；原件注册专业有效期为2022-05-16至2025-05-15，非上传标签所写日期。"
             }
           ]
         }
@@ -245,7 +253,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Verified proposed Project Manager role (王文年 in sub14 page 1 / sub05 page 1, native_pdf) and visually verified his Safety Production Assessment Certificate B-class (皖交安B(16)G01146, valid 2021-06-30 to 2024-06-30) in sub05 page 4 and official query screenshot in sub05 page 5.",
+      "review_note": "Verified proposed Project Manager role (王文年 in sub14 page 1 / sub05 page 1, native_pdf) and visually verified his Safety Production Assessment Certificate B-class (皖交安B(16)G01146, valid 2021-06-30 to 2024-06-30) in sub05 page 4 and official query screenshot in sub05 page 5. 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "proposed_manager_role",
@@ -288,29 +296,17 @@
               "source_sha256": "eeef5313d88c38eea113626321c1fb194d986aedad476849113d461542e44b25",
               "page_start": 4,
               "page_end": 4,
-              "quote": "公路水运工程施工企业主要负责人和安全生产管理人员安全生产考核合格证书 姓名 王文年 企业名称 安徽水利开发有限公司 证书编号 皖交安B(16)G01146 有效日期 2021年06月30日至2024年06月30日",
+              "quote": "安全生产考核合格证书\n王文年\n安徽水利开发有限公司\n皖交安B(19)G01960\n2024-09-03",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "安全生产考核合格证书",
                 "王文年",
-                "皖交安B(16)G01146",
-                "2024年06月30日"
-              ]
-            },
-            {
-              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub05",
-              "source_sha256": "eeef5313d88c38eea113626321c1fb194d986aedad476849113d461542e44b25",
-              "page_start": 5,
-              "page_end": 5,
-              "quote": "王文年 安徽水利开发有限公司 皖交安B(16)G01146 安徽省交通运输厅 有效(2024-06-30到期)",
-              "source_verified": true,
-              "verification_basis": "visual_pdf",
-              "quote_parts": [
-                "王文年",
-                "皖交安B(16)G01146",
-                "2024-06-30"
-              ]
+                "安徽水利开发有限公司",
+                "皖交安B(19)G01960",
+                "2024-09-03"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。修正B证编号和有效期，查询截图与证书同在第4页。"
             }
           ]
         }
@@ -348,7 +344,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Verified composite Project Manager performance evidence across sub06 (and duplicate copies in sub02/sub03): (1) summary table (p1, native_pdf) and MOT highway credit system screenshot (p9, visual_pdf) for 省道214郎溪段改建工程四期工程; (2) owner approval changing Project Manager from 韦秀刚 to 王文年 (郎建指〔2015〕2号, p5, visual_pdf); (3) Handover Acceptance Certificate (p6, visual_pdf) confirming handover date 2017-11-30, length 15.15km, first-class highway (一级公路), price 49123.2526万元, and scope covering 路基工程, 路面工程, and 桥涵工程.",
+      "review_note": "Verified composite Project Manager performance evidence across sub06 (and duplicate copies in sub02/sub03): (1) summary table (p1, native_pdf) and MOT highway credit system screenshot (p9, visual_pdf) for 省道214郎溪段改建工程四期工程; (2) owner approval changing Project Manager from 韦秀刚 to 王文年 (郎建指〔2015〕2号, p5, visual_pdf); (3) Handover Acceptance Certificate (p6, visual_pdf) confirming handover date 2017-11-30, length 15.15km, first-class highway (一级公路), price 49123.2526万元, and scope covering 路基工程, 路面工程, and 桥涵工程. 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "manager_performance_summary_or_credit",
@@ -359,7 +355,7 @@
               "source_sha256": "5939c4e63bf92e9171a10b17899fda82e0a2047c7fba58d998d39fa4033ec526",
               "page_start": 1,
               "page_end": 1,
-              "quote": "省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段） 49123.2526 万元 2017-11-30 王文年 路线全长15.15km，采用双向四车道一级公路标准建设",
+              "quote": "（六）项目经理近年完成的类似项目情况表\n序号\n01\n项目名称\n省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段）\n项目所在地\n宣城市郎溪县\n发包人名称\n郎溪县交通运输局\n发包人地址\n宣城市郎溪县\n发包人电话\n0563-7016990\n合同价格\n49123.2526 万元\n开工日期\n2015-04-01\n交工日期\n2017-11-30\n承担的工作\n路基、路面、桥梁、绿化及交通安全设施等\n工程质量\n合格\n项目经理（或注册建\n造师）\n王文年\n技术负责人\n侯帅\n监理单位及联系电话\n安徽虹桥交通建设监理有限公司\n0551-63839383\n总监理工程师及电话\n项知正15855386665\n项目描述\n项目主要内容包括：路线全长15.15km，采用双向四车道一级\n公路标准建设，路基宽24.5米;路面类型为沥青混凝土路面。桥涵\n工程：大桥2座（郎川河大桥：全长758米，桥跨布置为（9×\n40+50+90+50+5×40）米，主桥长190米，最大跨径90米，采用现\n浇连续箱梁、斜拉桥，引桥为先简支后连续预应力砼T型梁；新郎\n川河大桥：全长679.5米，左幅桥跨布置为（9×40+31.5+7×40）\n米，右幅桥跨布置为（3×40+31.5+13×40）米，跨主河槽三孔设\n置装饰性钢管拱，采用先简支后连续预应力砼T型梁）；中桥6座；\n车行天桥3座；涵洞42道。交通安全设施工程等。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.5 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -369,14 +365,15 @@
                 "王文年",
                 "15.15km",
                 "一级公路"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 1,
               "page_end": 1,
-              "quote": "省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段） 49123.2526 万元 2017-11-30 王文年 路线全长15.15km，采用双向四车道一级公路标准建设",
+              "quote": "（三）投标人近年完成的类似项目情况表01\n序号\n01\n项目名称\n省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段）\n项目所在地\n宣城市郎溪县\n发包人名称\n郎溪县交通运输局\n发包人地址\n宣城市郎溪县\n发包人电话\n0563-7016990\n合同价格\n49123.2526 万元\n开工日期\n2015-04-01\n交工日期\n2017-11-30\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n合格\n项目经理（或注册建\n造师）\n王文年\n技术负责人\n侯帅\n监理单位及联系电话\n安徽虹桥交通建设监理有限公司\n0551-63839383\n总监理工程师及电话\n项知正15855386665\n项目描述\n项目主要内容包括：路线全长15.15km，采用双向四车道一级\n公路标准建设，路基宽24.5米;路面类型为沥青混凝土路面。桥涵\n工程：大桥2座（郎川河大桥：全长758米，桥跨布置为（9×\n40+50+90+50+5×40）米，主桥长190米，最大跨径90米，采用现\n浇连续箱梁、斜拉桥，引桥为先简支后连续预应力砼T型梁；新郎\n川河大桥：全长679.5米，左幅桥跨布置为（9×40+31.5+7×40）\n米，右幅桥跨布置为（3×40+31.5+13×40）米，跨主河槽三孔设\n置装饰性钢管拱，采用先简支后连续预应力砼T型梁）；中桥6座；\n车行天桥3座；涵洞42道。交通安全设施工程等。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -386,14 +383,15 @@
                 "王文年",
                 "15.15km",
                 "一级公路"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 1,
               "page_end": 1,
-              "quote": "省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段） 49123.2526 万元 2017-11-30 王文年 路线全长15.15km，采用双向四车道一级公路标准建设",
+              "quote": "（三）投标人近年完成的类似项目情况表01\n序号\n01\n项目名称\n省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段）\n项目所在地\n宣城市郎溪县\n发包人名称\n郎溪县交通运输局\n发包人地址\n宣城市郎溪县\n发包人电话\n0563-7016990\n合同价格\n49123.2526 万元\n开工日期\n2015-04-01\n交工日期\n2017-11-30\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n合格\n项目经理（或注册建\n造师）\n王文年\n技术负责人\n侯帅\n监理单位及联系电话\n安徽虹桥交通建设监理有限公司\n0551-63839383\n总监理工程师及电话\n项知正15855386665\n项目描述\n项目主要内容包括：路线全长15.15km，采用双向四车道一级\n公路标准建设，路基宽24.5米;路面类型为沥青混凝土路面。桥涵\n工程：大桥2座（郎川河大桥：全长758米，桥跨布置为（9×\n40+50+90+50+5×40）米，主桥长190米，最大跨径90米，采用现\n浇连续箱梁、斜拉桥，引桥为先简支后连续预应力砼T型梁；新郎\n川河大桥：全长679.5米，左幅桥跨布置为（9×40+31.5+7×40）\n米，右幅桥跨布置为（3×40+31.5+13×40）米，跨主河槽三孔设\n置装饰性钢管拱，采用先简支后连续预应力砼T型梁）；中桥6座；\n车行天桥3座；涵洞42道。交通安全设施工程等。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -403,7 +401,8 @@
                 "王文年",
                 "15.15km",
                 "一级公路"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub06",
@@ -481,54 +480,60 @@
               "source_sha256": "5939c4e63bf92e9171a10b17899fda82e0a2047c7fba58d998d39fa4033ec526",
               "page_start": 6,
               "page_end": 6,
-              "quote": "公路工程（合同段）交工验收证书 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 交工验收时间：2017年11月30日 路线全长15.15km，采用双向四车道一级公路标准建设 路基工程 路面工程 桥涵工程",
+              "quote": "公路工程（合同段）交工验收证书\n2017年11月30日\n省道214郎溪段改建工程四期工程\n15.15km\n一级公路\n路基工程\n路面工程\n桥涵工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "交工验收证书",
+                "公路工程（合同段）交工验收证书",
                 "2017年11月30日",
+                "省道214郎溪段改建工程四期工程",
                 "15.15km",
                 "一级公路",
                 "路基工程",
                 "路面工程",
                 "桥涵工程"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原页顺序记录：交工日期在工程名之前；不改变日期、工程或必要条件。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 6,
               "page_end": 6,
-              "quote": "公路工程（合同段）交工验收证书 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 交工验收时间：2017年11月30日 路线全长15.15km，采用双向四车道一级公路标准建设 路基工程 路面工程 桥涵工程",
+              "quote": "公路工程（合同段）交工验收证书\n2017年11月30日\n省道214郎溪段改建工程四期工程\n15.15km\n一级公路\n路基工程\n路面工程\n桥涵工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "交工验收证书",
+                "公路工程（合同段）交工验收证书",
                 "2017年11月30日",
+                "省道214郎溪段改建工程四期工程",
                 "15.15km",
                 "一级公路",
                 "路基工程",
                 "路面工程",
                 "桥涵工程"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原页顺序记录：交工日期在工程名之前；不改变日期、工程或必要条件。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 6,
               "page_end": 6,
-              "quote": "公路工程（合同段）交工验收证书 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 交工验收时间：2017年11月30日 路线全长15.15km，采用双向四车道一级公路标准建设 路基工程 路面工程 桥涵工程",
+              "quote": "公路工程（合同段）交工验收证书\n2017年11月30日\n省道214郎溪段改建工程四期工程\n15.15km\n一级公路\n路基工程\n路面工程\n桥涵工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "交工验收证书",
+                "公路工程（合同段）交工验收证书",
                 "2017年11月30日",
+                "省道214郎溪段改建工程四期工程",
                 "15.15km",
                 "一级公路",
                 "路基工程",
                 "路面工程",
                 "桥涵工程"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原页顺序记录：交工日期在工程名之前；不改变日期、工程或必要条件。"
             }
           ]
         }
@@ -541,7 +546,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Visually verified the scanned Contract Agreement (合同协议书, pages 3-4 of sub06/sub02/sub03) for 省道214郎溪段改建工程四期工程 between 郎溪县交通运输局 and 安徽水利开发股份有限公司 (contract price 491,232,526.88元), together with the owner's approval letter on page 5 linking Project Manager 王文年 to this contract.",
+      "review_note": "Visually verified the scanned Contract Agreement (合同协议书, pages 3-4 of sub06/sub02/sub03) for 省道214郎溪段改建工程四期工程 between 郎溪县交通运输局 and 安徽水利开发股份有限公司 (contract price 491,232,526.88元), together with the owner's approval letter on page 5 linking Project Manager 王文年 to this contract. 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "manager_performance_contract",
@@ -552,48 +557,51 @@
               "source_sha256": "5939c4e63bf92e9171a10b17899fda82e0a2047c7fba58d998d39fa4033ec526",
               "page_start": 3,
               "page_end": 4,
-              "quote": "合同协议书 郎溪县交通运输局 安徽水利开发股份有限公司 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 签约合同价：人民币（大写）肆亿玖仟壹佰贰拾叁万贰仟伍佰贰拾陆元捌角捌分（¥491232526.88元）",
+              "quote": "合同协议书\n郎溪县交通运输局\n省道214郎溪县段\n安徽水利开发股份有限公司\n491232526.88",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "合同协议书",
                 "郎溪县交通运输局",
+                "省道214郎溪县段",
                 "安徽水利开发股份有限公司",
-                "省道214郎溪段改建工程四期工程",
                 "491232526.88"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原件阅读顺序记录发包人、工程名、承包人及金额；原标注调整了词序，名称漏“县”。金额保留原件值，不能迁就OCR漏位。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 3,
               "page_end": 4,
-              "quote": "合同协议书 郎溪县交通运输局 安徽水利开发股份有限公司 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 签约合同价：人民币（大写）肆亿玖仟壹佰贰拾叁万贰仟伍佰贰拾陆元捌角捌分（¥491232526.88元）",
+              "quote": "合同协议书\n郎溪县交通运输局\n省道214郎溪县段\n安徽水利开发股份有限公司\n491232526.88",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "合同协议书",
                 "郎溪县交通运输局",
+                "省道214郎溪县段",
                 "安徽水利开发股份有限公司",
-                "省道214郎溪段改建工程四期工程",
                 "491232526.88"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原件阅读顺序记录发包人、工程名、承包人及金额；原标注调整了词序，名称漏“县”。金额保留原件值，不能迁就OCR漏位。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 3,
               "page_end": 4,
-              "quote": "合同协议书 郎溪县交通运输局 安徽水利开发股份有限公司 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 签约合同价：人民币（大写）肆亿玖仟壹佰贰拾叁万贰仟伍佰贰拾陆元捌角捌分（¥491232526.88元）",
+              "quote": "合同协议书\n郎溪县交通运输局\n省道214郎溪县段\n安徽水利开发股份有限公司\n491232526.88",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "合同协议书",
                 "郎溪县交通运输局",
+                "省道214郎溪县段",
                 "安徽水利开发股份有限公司",
-                "省道214郎溪段改建工程四期工程",
                 "491232526.88"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原件阅读顺序记录发包人、工程名、承包人及金额；原标注调整了词序，名称漏“县”。金额保留原件值，不能迁就OCR漏位。"
             }
           ]
         },
@@ -654,7 +662,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Visually verified the scanned Notice of Award (中标通知书 皖建施招-LX-2014-061) on page 2 of sub06 (and identical copies in sub02 page 2 and sub03 page 2) for 省道214郎溪段改建工程四期工程.",
+      "review_note": "Visually verified the scanned Notice of Award (中标通知书 皖建施招-LX-2014-061) on page 2 of sub06 (and identical copies in sub02 page 2 and sub03 page 2) for 省道214郎溪段改建工程四期工程. 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "manager_performance_award_notice",
@@ -665,48 +673,51 @@
               "source_sha256": "5939c4e63bf92e9171a10b17899fda82e0a2047c7fba58d998d39fa4033ec526",
               "page_start": 2,
               "page_end": 2,
-              "quote": "中标通知书 编号：皖建施招-LX-2014-061 工程名称 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 中标单位 安徽水利开发股份有限公司 中标价 49123.25万元",
+              "quote": "中标通知书\n皖建施招-LX-2014-061\n安徽水利开发股份有限公司\n省道214郎溪段改建工程四期工程\n491232526.88",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "中标通知书",
                 "皖建施招-LX-2014-061",
-                "省道214郎溪段改建工程四期工程",
                 "安徽水利开发股份有限公司",
-                "49123.25万元"
-              ]
+                "省道214郎溪段改建工程四期工程",
+                "491232526.88"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。原件金额为491232526.88元，不是引文中的49123.25万元；修正阅读顺序。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 2,
               "page_end": 2,
-              "quote": "中标通知书 编号：皖建施招-LX-2014-061 工程名称 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 中标单位 安徽水利开发股份有限公司 中标价 49123.25万元",
+              "quote": "中标通知书\n皖建施招-LX-2014-061\n安徽水利开发股份有限公司\n省道214郎溪段改建工程四期工程\n491232526.88",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "中标通知书",
                 "皖建施招-LX-2014-061",
-                "省道214郎溪段改建工程四期工程",
                 "安徽水利开发股份有限公司",
-                "49123.25万元"
-              ]
+                "省道214郎溪段改建工程四期工程",
+                "491232526.88"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。原件金额为491232526.88元，不是引文中的49123.25万元；修正阅读顺序。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 2,
               "page_end": 2,
-              "quote": "中标通知书 编号：皖建施招-LX-2014-061 工程名称 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 中标单位 安徽水利开发股份有限公司 中标价 49123.25万元",
+              "quote": "中标通知书\n皖建施招-LX-2014-061\n安徽水利开发股份有限公司\n省道214郎溪段改建工程四期工程\n491232526.88",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "中标通知书",
                 "皖建施招-LX-2014-061",
-                "省道214郎溪段改建工程四期工程",
                 "安徽水利开发股份有限公司",
-                "49123.25万元"
-              ]
+                "省道214郎溪段改建工程四期工程",
+                "491232526.88"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。原件金额为491232526.88元，不是引文中的49123.25万元；修正阅读顺序。"
             }
           ]
         }
@@ -719,7 +730,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Visually verified all 3 pages of the scanned Highway Engineering Handover Acceptance Certificate (公路工程（合同段）交工验收证书) in sub06 pages 6-8 (and duplicate copies in sub02/sub03 pages 6-8): page 6 contains the project particulars and handover date (2017-11-30); page 7 contains the construction unit (安徽水利开发股份有限公司) seal and Project Manager 王文年 signature; page 8 contains the official seals of the supervision unit (安徽虹桥交通建设监理有限公司), design unit (中交第一公路勘察设计研究院有限公司), and owner/construction unit (郎溪县交通运输局).",
+      "review_note": "Visually verified all 3 pages of the scanned Highway Engineering Handover Acceptance Certificate (公路工程（合同段）交工验收证书) in sub06 pages 6-8 (and duplicate copies in sub02/sub03 pages 6-8): page 6 contains the project particulars and handover date (2017-11-30); page 7 contains the construction unit (安徽水利开发股份有限公司) seal and Project Manager 王文年 signature; page 8 contains the official seals of the supervision unit (安徽虹桥交通建设监理有限公司), design unit (中交第一公路勘察设计研究院有限公司), and owner/construction unit (郎溪县交通运输局). 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "acceptance_certificate_main",
@@ -730,42 +741,45 @@
               "source_sha256": "5939c4e63bf92e9171a10b17899fda82e0a2047c7fba58d998d39fa4033ec526",
               "page_start": 6,
               "page_end": 6,
-              "quote": "公路工程（合同段）交工验收证书 合同段名称：省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 交工验收时间：2017年11月30日",
+              "quote": "公路工程（合同段）交工验收证书\n2017年11月30日\n省道214郎溪段改建工程四期工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "公路工程（合同段）交工验收证书",
-                "省道214郎溪段改建工程四期工程",
-                "2017年11月30日"
-              ]
+                "2017年11月30日",
+                "省道214郎溪段改建工程四期工程"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原页顺序记录：交工日期在工程名之前；不改变日期、工程或必要条件。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 6,
               "page_end": 6,
-              "quote": "公路工程（合同段）交工验收证书 合同段名称：省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 交工验收时间：2017年11月30日",
+              "quote": "公路工程（合同段）交工验收证书\n2017年11月30日\n省道214郎溪段改建工程四期工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "公路工程（合同段）交工验收证书",
-                "省道214郎溪段改建工程四期工程",
-                "2017年11月30日"
-              ]
+                "2017年11月30日",
+                "省道214郎溪段改建工程四期工程"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原页顺序记录：交工日期在工程名之前；不改变日期、工程或必要条件。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 6,
               "page_end": 6,
-              "quote": "公路工程（合同段）交工验收证书 合同段名称：省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 交工验收时间：2017年11月30日",
+              "quote": "公路工程（合同段）交工验收证书\n2017年11月30日\n省道214郎溪段改建工程四期工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "公路工程（合同段）交工验收证书",
-                "省道214郎溪段改建工程四期工程",
-                "2017年11月30日"
-              ]
+                "2017年11月30日",
+                "省道214郎溪段改建工程四期工程"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原页顺序记录：交工日期在工程名之前；不改变日期、工程或必要条件。"
             }
           ]
         },
@@ -877,7 +891,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Verified proposed Chief Engineer (项目总工) role assignment for 王曙 in sub14 page 1 and sub05 page 8 (native_pdf), and visually verified his Senior Engineer Qualification Certificate (高级工程师, 专业名称 路桥工程, 证书编号 (2018)934000648) in sub05 page 12.",
+      "review_note": "Verified proposed Chief Engineer (项目总工) role assignment for 王曙 in sub14 page 1 and sub05 page 8 (native_pdf), and visually verified his Senior Engineer Qualification Certificate (高级工程师, 专业名称 路桥工程, 证书编号 (2018)934000648) in sub05 page 12. 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "proposed_chief_engineer_role",
@@ -924,15 +938,16 @@
               "source_sha256": "eeef5313d88c38eea113626321c1fb194d986aedad476849113d461542e44b25",
               "page_start": 12,
               "page_end": 12,
-              "quote": "安徽省人力资源和社会保障厅 姓名 王曙 工作单位 安徽水利开发股份有限公司 专业名称 路桥工程 资格名称 高级工程师 评审时间 2018年11月18日",
+              "quote": "王曙\n路桥工程\n高级工程师\n2018.11.24",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "王曙",
                 "路桥工程",
                 "高级工程师",
-                "2018年11月18日"
-              ]
+                "2018.11.24"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。评审时间为2018.11.24，原标注2018年11月18日错误。"
             }
           ]
         }
@@ -995,7 +1010,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Visually verified the scanned Huishang Bank Electronic Receipt (徽商银行电子回单) in sub12 page 1 showing payer 安徽水利开发有限公司, payee 郎溪县公共资源交易中心, amount 人民币 500,000.00元 (伍拾万元整), and remark S604皖南交旅融合（飞毕路美丽公路）项目投标保证金.",
+      "review_note": "Visually verified the scanned Huishang Bank Electronic Receipt (徽商银行电子回单) in sub12 page 1 showing payer 安徽水利开发有限公司, payee 郎溪县公共资源交易中心, amount 人民币 500,000.00元 (伍拾万元整), and remark S604皖南交旅融合（飞毕路美丽公路）项目投标保证金. 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "bid_bond_receipt_amount",
@@ -1006,16 +1021,20 @@
               "source_sha256": "3f534d559e10d1de49f8028e6ba22291b1c5c326f049ba175b412b2ed3c2d672",
               "page_start": 1,
               "page_end": 1,
-              "quote": "徽商银行电子回单 付款人户名 安徽水利开发有限公司 收款人户名 郎溪县公共资源交易中心 金额 人民币 500,000.00元 人民币(大写) 伍拾万元整 附言 S604皖南交旅融合（飞毕路美丽公路）项目投标保证金",
+              "quote": "电子回单\n付款账户\n安徽水利开发有限公司\n收款账户\n郎溪县数据资源管理局\n500,000.00\n伍拾万元整\n投标保证金",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "徽商银行电子回单",
+                "电子回单",
+                "付款账户",
                 "安徽水利开发有限公司",
+                "收款账户",
+                "郎溪县数据资源管理局",
                 "500,000.00",
                 "伍拾万元整",
                 "投标保证金"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。收款户名为郎溪县数据资源管理局；原页没有“电子汇兑/汇兑汇出”字样，按实际回单付款/收款及渠道字段记录。"
             }
           ]
         }
@@ -1028,7 +1047,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Visually verified the scanned Huishang Bank Electronic Receipt (徽商银行电子回单) in sub12 page 1 showing payment method 业务种类: 电子汇兑, 交易类型: 汇兑汇出 from payer basic account at 徽商银行蚌埠科技支行.",
+      "review_note": "Visually verified the scanned Huishang Bank Electronic Receipt (徽商银行电子回单) in sub12 page 1 showing payment method 业务种类: 电子汇兑, 交易类型: 汇兑汇出 from payer basic account at 徽商银行蚌埠科技支行. 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "bid_bond_payment_method",
@@ -1039,15 +1058,20 @@
               "source_sha256": "3f534d559e10d1de49f8028e6ba22291b1c5c326f049ba175b412b2ed3c2d672",
               "page_start": 1,
               "page_end": 1,
-              "quote": "徽商银行电子回单 业务种类 电子汇兑 交易类型 汇兑汇出 付款人开户行 徽商银行蚌埠科技支行 金额 人民币 500,000.00元",
+              "quote": "电子回单\n付款账户\n安徽水利开发有限公司\n收款账户\n郎溪县数据资源管理局\n500,000.00\n交易渠道\n交易银行综合金融服务平台",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "徽商银行电子回单",
-                "电子汇兑",
-                "汇兑汇出",
-                "500,000.00"
-              ]
+                "电子回单",
+                "付款账户",
+                "安徽水利开发有限公司",
+                "收款账户",
+                "郎溪县数据资源管理局",
+                "500,000.00",
+                "交易渠道",
+                "交易银行综合金融服务平台"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。收款户名为郎溪县数据资源管理局；原页没有“电子汇兑/汇兑汇出”字样，按实际回单付款/收款及渠道字段记录。"
             }
           ]
         }
@@ -1402,7 +1426,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Verified cross-document consistency between the current bidder entity name (安徽水利开发有限公司 in sub16 page 1 / sys01 page 2, native_pdf) and the registered employer on Project Manager 王文年's First-Class Registered Constructor Certificate (聘用企业 安徽水利开发有限公司 in sub05 page 3, visual_pdf).",
+      "review_note": "Verified cross-document consistency between the current bidder entity name (安徽水利开发有限公司 in sub16 page 1 / sys01 page 2, native_pdf) and the registered employer on Project Manager 王文年's First-Class Registered Constructor Certificate (聘用企业 安徽水利开发有限公司 in sub05 page 3, visual_pdf). 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "bidder_entity_identity",
@@ -1445,15 +1469,18 @@
               "source_sha256": "eeef5313d88c38eea113626321c1fb194d986aedad476849113d461542e44b25",
               "page_start": 3,
               "page_end": 3,
-              "quote": "中华人民共和国一级注册建造师注册证书 姓名 王文年 聘用企业 安徽水利开发有限公司 注册编号 皖1342011201207116",
+              "quote": "中华人民共和国一级建造师注册证书\n王文年\n皖1342011201207116\n聘用企业\n安徽水利开发有限公司\n公路工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "一级注册建造师注册证书",
+                "中华人民共和国一级建造师注册证书",
                 "王文年",
+                "皖1342011201207116",
                 "聘用企业",
-                "安徽水利开发有限公司"
-              ]
+                "安徽水利开发有限公司",
+                "公路工程"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。修正证书标题；原件注册专业有效期为2022-05-16至2025-05-15，非上传标签所写日期。"
             }
           ]
         }
@@ -1632,7 +1659,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Verified proposed Dedicated Safety Officer (专职安全员) role assignments in sub14 page 1 / sub07 page 1 / sub08 pages 16 & 22 (native_pdf) for 张磊 and 陈亮亮 (either satisfies the 1-person requirement), and visually verified their Anhui Provincial Department of Transport Safety Production Assessment C-Certificates (皖交安C(19)G04171 on sub08 pages 18-19 and 皖交安C(19)G01914 on sub08 pages 24-25).",
+      "review_note": "Verified proposed Dedicated Safety Officer (专职安全员) role assignments in sub14 page 1 / sub07 page 1 / sub08 pages 16 & 22 (native_pdf) for 张磊 and 陈亮亮 (either satisfies the 1-person requirement), and visually verified their Anhui Provincial Department of Transport Safety Production Assessment C-Certificates (皖交安C(19)G04171 on sub08 pages 18-19 and 皖交安C(19)G01914 on sub08 pages 24-25). 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "proposed_safety_officer_role",
@@ -1673,26 +1700,28 @@
               "source_sha256": "13d6aa4445d380204c27efbe59708b82c0cd771062553e65df6afd8c438d2793",
               "page_start": 16,
               "page_end": 16,
-              "quote": "姓 名 张磊 年 龄 35 专 业 公路与城市道路工程 技术职称 初级 学 历 专科 拟在本标段 工程任职 安全员",
+              "quote": "（八）拟委任的其他管理和技术人员简历表④\n姓\n名\n张磊\n年\n龄\n29\n专\n业\n路桥工程\n技术职称\n初级\n学\n历\n专科\n拟在本标段\n工程任职\n专职安全员\n工作年限\n7年\n类似施工经验年限\n7年\n毕业学校\n2015年7月毕业于黄山学院学校工程造价专业，学制2.5年\n经\n历\n时间\n参加过的类似工程项目名称\n担任职务\n发包人及\n联系电话\n2015.11-\n2017.12\n大广高速公路信丰北互通建设项目土建\n工程\n专职安全员\n赣州高速公路有限责任公\n司0797-8289921\n2017.12-\n2020.1\nG206小关至桐城段公路改（扩）建工程\nPPP\n专职安全员\n桐城市交通运输局\n0556-6209609\n获奖情况\n无\n说明在岗情况\n目前未在其他项目上任职，现从事工作为：项目生产工作。\n□目前虽在其他项目上任职，\n但本项目中标后能够从该项目撤离，目前\n任职项目：\n，担任职位：\n。\n备\n注\n注：1.本表人员应与表（八）中所列人员相一致。\n2.投标人应根据招标文件第二章“投标人须知”第3.5.6 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
                 "张磊",
                 "安全员"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub08",
               "source_sha256": "13d6aa4445d380204c27efbe59708b82c0cd771062553e65df6afd8c438d2793",
               "page_start": 22,
               "page_end": 22,
-              "quote": "姓 名 陈亮亮 年 龄 34 专 业 土木工程 技术职称 中级 学 历 本科 拟在本标段 工程任职 安全员",
+              "quote": "（八）拟委任的其他管理和技术人员简历表⑤\n姓\n名\n陈亮亮\n年\n龄\n43\n专\n业\n路桥工程\n技术职称\n中级\n学\n历\n专科\n拟在本标段\n工程任职\n专职安全员\n工作年限\n10年\n类似施工经验年限\n10年\n毕业学校\n2015年7月毕业于东北财经大学学校工程质量监督与管理专业，学制2.5年\n经\n历\n时间\n参加过的类似工程项目名称\n担任职务\n发包人及\n联系电话\n2016.2-\n2017.1\n合安高速安庆互通移位改建工程\n专职安全员\n安庆市交通投资有限公司\n0556-5571660\n2017.2-\n2018.12\nG220阜南会龙至洪河桥段改建工程（会\n龙至王大湖段）施工1标段\n专职安全员\n阜南县重点工程建设管理\n服务中心\n0558-2660999\n获奖情况\n无\n说明在岗情况\n目前未在其他项目上任职，现从事工作为：项目生产工作。\n□目前虽在其他项目上任职，\n但本项目中标后能够从该项目撤离，目前\n任职项目：\n，担任职位：\n。\n备\n注\n注：1.本表人员应与表（八）中所列人员相一致。\n2.投标人应根据招标文件第二章“投标人须知”第3.5.6 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
                 "陈亮亮",
                 "安全员"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             }
           ]
         },
@@ -1717,20 +1746,6 @@
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub08",
               "source_sha256": "13d6aa4445d380204c27efbe59708b82c0cd771062553e65df6afd8c438d2793",
-              "page_start": 19,
-              "page_end": 19,
-              "quote": "张磊 安徽水利开发有限公司 皖交安C(19)G04171 安徽省交通运输厅 有效(2025-08-19到期)",
-              "source_verified": true,
-              "verification_basis": "visual_pdf",
-              "quote_parts": [
-                "张磊",
-                "皖交安C(19)G04171",
-                "安徽省交通运输厅"
-              ]
-            },
-            {
-              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub08",
-              "source_sha256": "13d6aa4445d380204c27efbe59708b82c0cd771062553e65df6afd8c438d2793",
               "page_start": 24,
               "page_end": 24,
               "quote": "公路水运工程施工企业主要负责人和安全生产管理人员安全生产考核合格证书 姓名 陈亮亮 企业名称 安徽水利开发有限公司 证书编号 皖交安C(19)G01914 发证机关 安徽省交通运输厅",
@@ -1740,20 +1755,6 @@
                 "安全生产考核合格证书",
                 "陈亮亮",
                 "皖交安C(19)G01914"
-              ]
-            },
-            {
-              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub08",
-              "source_sha256": "13d6aa4445d380204c27efbe59708b82c0cd771062553e65df6afd8c438d2793",
-              "page_start": 25,
-              "page_end": 25,
-              "quote": "陈亮亮 安徽水利开发有限公司 皖交安C(19)G01914 安徽省交通运输厅 有效(2023-12-25到期)",
-              "source_verified": true,
-              "verification_basis": "visual_pdf",
-              "quote_parts": [
-                "陈亮亮",
-                "皖交安C(19)G01914",
-                "安徽省交通运输厅"
               ]
             }
           ]
@@ -1817,7 +1818,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Verified current bidder entity name (安徽水利开发有限公司 in sub16 page 1 / sys01 page 2, native_pdf) and visually verified the National Highway Construction Market Credit Information Management System Enterprise Qualification Directory webpage screenshot (全国公路建设市场信用信息管理系统企业资质名录网页截图) in sub16 page 11 showing '在名录中' and '名称：安徽水利开发有限公司'.",
+      "review_note": "Verified current bidder entity name (安徽水利开发有限公司 in sub16 page 1 / sys01 page 2, native_pdf) and visually verified the National Highway Construction Market Credit Information Management System Enterprise Qualification Directory webpage screenshot (全国公路建设市场信用信息管理系统企业资质名录网页截图) in sub16 page 11 showing '在名录中' and '名称：安徽水利开发有限公司'. 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "bidder_entity_identity",
@@ -1860,15 +1861,15 @@
               "source_sha256": "f659509752abb644729bce0e6cc9816d7de94d526f1021bd93350f01a9948816",
               "page_start": 11,
               "page_end": 11,
-              "quote": "全国公路建设市场信用信息管理系统企业资质名录网页截图 在名录中 名称 安徽水利开发有限公司 曾用名 安徽水利开发股份有限公司 统一社会信用代码 91340300MA2RJ2XJXJ 公路工程施工总承包特级",
+              "quote": "企业名称\n安徽水利开发有限公司\n施工企业",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "在名录中",
+                "企业名称",
                 "安徽水利开发有限公司",
-                "91340300MA2RJ2XJXJ",
-                "公路工程施工总承包特级"
-              ]
+                "施工企业"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。目视确认资质名录截图；原页未出现标注中的“在名录中”、曾用名及统一信用代码。此组只证明名录中的企业名称，不以资质等级代替名称一致性。"
             }
           ]
         }
@@ -2169,7 +2170,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Verified the complete minimum Project Manager performance evidence groups for scoring 6 points (identical baseline project 省道214郎溪段改建工程四期工程 as T0011): summary/credit screenshot (sub06 p1/p9, sub02 p1, sub03 p1), owner approval changing Project Manager to 王文年 (sub06/sub02/sub03 p5), and Handover Acceptance Certificate (sub06/sub02/sub03 p6).",
+      "review_note": "Verified the complete minimum Project Manager performance evidence groups for scoring 6 points (identical baseline project 省道214郎溪段改建工程四期工程 as T0011): summary/credit screenshot (sub06 p1/p9, sub02 p1, sub03 p1), owner approval changing Project Manager to 王文年 (sub06/sub02/sub03 p5), and Handover Acceptance Certificate (sub06/sub02/sub03 p6). 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "manager_performance_summary_or_credit",
@@ -2180,7 +2181,7 @@
               "source_sha256": "5939c4e63bf92e9171a10b17899fda82e0a2047c7fba58d998d39fa4033ec526",
               "page_start": 1,
               "page_end": 1,
-              "quote": "省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段） 49123.2526 万元 2017-11-30 王文年 路线全长15.15km，采用双向四车道一级公路标准建设",
+              "quote": "（六）项目经理近年完成的类似项目情况表\n序号\n01\n项目名称\n省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段）\n项目所在地\n宣城市郎溪县\n发包人名称\n郎溪县交通运输局\n发包人地址\n宣城市郎溪县\n发包人电话\n0563-7016990\n合同价格\n49123.2526 万元\n开工日期\n2015-04-01\n交工日期\n2017-11-30\n承担的工作\n路基、路面、桥梁、绿化及交通安全设施等\n工程质量\n合格\n项目经理（或注册建\n造师）\n王文年\n技术负责人\n侯帅\n监理单位及联系电话\n安徽虹桥交通建设监理有限公司\n0551-63839383\n总监理工程师及电话\n项知正15855386665\n项目描述\n项目主要内容包括：路线全长15.15km，采用双向四车道一级\n公路标准建设，路基宽24.5米;路面类型为沥青混凝土路面。桥涵\n工程：大桥2座（郎川河大桥：全长758米，桥跨布置为（9×\n40+50+90+50+5×40）米，主桥长190米，最大跨径90米，采用现\n浇连续箱梁、斜拉桥，引桥为先简支后连续预应力砼T型梁；新郎\n川河大桥：全长679.5米，左幅桥跨布置为（9×40+31.5+7×40）\n米，右幅桥跨布置为（3×40+31.5+13×40）米，跨主河槽三孔设\n置装饰性钢管拱，采用先简支后连续预应力砼T型梁）；中桥6座；\n车行天桥3座；涵洞42道。交通安全设施工程等。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.5 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2190,14 +2191,15 @@
                 "王文年",
                 "15.15km",
                 "一级公路"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 1,
               "page_end": 1,
-              "quote": "省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段） 49123.2526 万元 2017-11-30 王文年 路线全长15.15km，采用双向四车道一级公路标准建设",
+              "quote": "（三）投标人近年完成的类似项目情况表01\n序号\n01\n项目名称\n省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段）\n项目所在地\n宣城市郎溪县\n发包人名称\n郎溪县交通运输局\n发包人地址\n宣城市郎溪县\n发包人电话\n0563-7016990\n合同价格\n49123.2526 万元\n开工日期\n2015-04-01\n交工日期\n2017-11-30\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n合格\n项目经理（或注册建\n造师）\n王文年\n技术负责人\n侯帅\n监理单位及联系电话\n安徽虹桥交通建设监理有限公司\n0551-63839383\n总监理工程师及电话\n项知正15855386665\n项目描述\n项目主要内容包括：路线全长15.15km，采用双向四车道一级\n公路标准建设，路基宽24.5米;路面类型为沥青混凝土路面。桥涵\n工程：大桥2座（郎川河大桥：全长758米，桥跨布置为（9×\n40+50+90+50+5×40）米，主桥长190米，最大跨径90米，采用现\n浇连续箱梁、斜拉桥，引桥为先简支后连续预应力砼T型梁；新郎\n川河大桥：全长679.5米，左幅桥跨布置为（9×40+31.5+7×40）\n米，右幅桥跨布置为（3×40+31.5+13×40）米，跨主河槽三孔设\n置装饰性钢管拱，采用先简支后连续预应力砼T型梁）；中桥6座；\n车行天桥3座；涵洞42道。交通安全设施工程等。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2207,14 +2209,15 @@
                 "王文年",
                 "15.15km",
                 "一级公路"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 1,
               "page_end": 1,
-              "quote": "省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段） 49123.2526 万元 2017-11-30 王文年 路线全长15.15km，采用双向四车道一级公路标准建设",
+              "quote": "（三）投标人近年完成的类似项目情况表01\n序号\n01\n项目名称\n省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段）\n项目所在地\n宣城市郎溪县\n发包人名称\n郎溪县交通运输局\n发包人地址\n宣城市郎溪县\n发包人电话\n0563-7016990\n合同价格\n49123.2526 万元\n开工日期\n2015-04-01\n交工日期\n2017-11-30\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n合格\n项目经理（或注册建\n造师）\n王文年\n技术负责人\n侯帅\n监理单位及联系电话\n安徽虹桥交通建设监理有限公司\n0551-63839383\n总监理工程师及电话\n项知正15855386665\n项目描述\n项目主要内容包括：路线全长15.15km，采用双向四车道一级\n公路标准建设，路基宽24.5米;路面类型为沥青混凝土路面。桥涵\n工程：大桥2座（郎川河大桥：全长758米，桥跨布置为（9×\n40+50+90+50+5×40）米，主桥长190米，最大跨径90米，采用现\n浇连续箱梁、斜拉桥，引桥为先简支后连续预应力砼T型梁；新郎\n川河大桥：全长679.5米，左幅桥跨布置为（9×40+31.5+7×40）\n米，右幅桥跨布置为（3×40+31.5+13×40）米，跨主河槽三孔设\n置装饰性钢管拱，采用先简支后连续预应力砼T型梁）；中桥6座；\n车行天桥3座；涵洞42道。交通安全设施工程等。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2224,7 +2227,8 @@
                 "王文年",
                 "15.15km",
                 "一级公路"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub06",
@@ -2302,54 +2306,60 @@
               "source_sha256": "5939c4e63bf92e9171a10b17899fda82e0a2047c7fba58d998d39fa4033ec526",
               "page_start": 6,
               "page_end": 6,
-              "quote": "公路工程（合同段）交工验收证书 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 交工验收时间：2017年11月30日 路线全长15.15km，采用双向四车道一级公路标准建设 路基工程 路面工程 桥涵工程",
+              "quote": "公路工程（合同段）交工验收证书\n2017年11月30日\n省道214郎溪段改建工程四期工程\n15.15km\n一级公路\n路基工程\n路面工程\n桥涵工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "交工验收证书",
+                "公路工程（合同段）交工验收证书",
                 "2017年11月30日",
+                "省道214郎溪段改建工程四期工程",
                 "15.15km",
                 "一级公路",
                 "路基工程",
                 "路面工程",
                 "桥涵工程"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原页顺序记录：交工日期在工程名之前；不改变日期、工程或必要条件。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 6,
               "page_end": 6,
-              "quote": "公路工程（合同段）交工验收证书 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 交工验收时间：2017年11月30日 路线全长15.15km，采用双向四车道一级公路标准建设 路基工程 路面工程 桥涵工程",
+              "quote": "公路工程（合同段）交工验收证书\n2017年11月30日\n省道214郎溪段改建工程四期工程\n15.15km\n一级公路\n路基工程\n路面工程\n桥涵工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "交工验收证书",
+                "公路工程（合同段）交工验收证书",
                 "2017年11月30日",
+                "省道214郎溪段改建工程四期工程",
                 "15.15km",
                 "一级公路",
                 "路基工程",
                 "路面工程",
                 "桥涵工程"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原页顺序记录：交工日期在工程名之前；不改变日期、工程或必要条件。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 6,
               "page_end": 6,
-              "quote": "公路工程（合同段）交工验收证书 省道214郎溪段改建工程四期工程（郎溪县城至十字铺工业园） 交工验收时间：2017年11月30日 路线全长15.15km，采用双向四车道一级公路标准建设 路基工程 路面工程 桥涵工程",
+              "quote": "公路工程（合同段）交工验收证书\n2017年11月30日\n省道214郎溪段改建工程四期工程\n15.15km\n一级公路\n路基工程\n路面工程\n桥涵工程",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "交工验收证书",
+                "公路工程（合同段）交工验收证书",
                 "2017年11月30日",
+                "省道214郎溪段改建工程四期工程",
                 "15.15km",
                 "一级公路",
                 "路基工程",
                 "路面工程",
                 "桥涵工程"
-              ]
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。按原页顺序记录：交工日期在工程名之前；不改变日期、工程或必要条件。"
             }
           ]
         }
@@ -2387,7 +2397,7 @@
       "evidence_status": "present",
       "annotation_complete": true,
       "reviewer": "assistant-source-review-2026-10-20",
-      "review_note": "Verified all 4 projects marked '资格审查用业绩/商务文件评分用业绩' in sub02 (and duplicate sub03) that satisfy handover >= 2017-01-01, highway class >= Class III, length >= 15km or amount >= 5000万元, and scope including roadbed, pavement, and bridges/culverts (1 baseline + 3 additional projects = 12 points max): (1) Project 01: 省道214郎溪段改建工程四期工程 (15.15km, 49123.2526万元, 一级公路, 2017-11-30交工, sub02/sub03 p1 & p6); (2) Project 02: S214郎溪段改建五期工程 (47075.07万元, 一级公路, 2019-12-30交工, sub02/sub03 p10 & p13); (3) Project 04: 大广高速公路信丰北互通建设项目 (5549.1896万元, 高速公路, 2017-12-28交工, sub02/sub03 p26 & p29); (4) Project 05: S331诸佛庵至沿河段公路升级改造工程 (17.166km, 9528.5022万元, 二级公路, 2018-09-18交工, sub02/sub03 p33 & p36).",
+      "review_note": "Verified all 4 projects marked '资格审查用业绩/商务文件评分用业绩' in sub02 (and duplicate sub03) that satisfy handover >= 2017-01-01, highway class >= Class III, length >= 15km or amount >= 5000万元, and scope including roadbed, pavement, and bridges/culverts (1 baseline + 3 additional projects = 12 points max): (1) Project 01: 省道214郎溪段改建工程四期工程 (15.15km, 49123.2526万元, 一级公路, 2017-11-30交工, sub02/sub03 p1 & p6); (2) Project 02: S214郎溪段改建五期工程 (47075.07万元, 一级公路, 2019-12-30交工, sub02/sub03 p10 & p13); (3) Project 04: 大广高速公路信丰北互通建设项目 (5549.1896万元, 高速公路, 2017-12-28交工, sub02/sub03 p26 & p29); (4) Project 05: S331诸佛庵至沿河段公路升级改造工程 (17.166km, 9528.5022万元, 二级公路, 2018-09-18交工, sub02/sub03 p33 & p36). 本轮扫描页纠错见visual_reference_repairs.json；仍为助手核对，不升级人工审定。",
       "evidence_groups": [
         {
           "group_id": "project_01_s214_phase4",
@@ -2398,7 +2408,7 @@
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 1,
               "page_end": 1,
-              "quote": "省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段） 49123.2526 万元 2017-11-30 王文年 路线全长15.15km，采用双向四车道一级公路标准建设",
+              "quote": "（三）投标人近年完成的类似项目情况表01\n序号\n01\n项目名称\n省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段）\n项目所在地\n宣城市郎溪县\n发包人名称\n郎溪县交通运输局\n发包人地址\n宣城市郎溪县\n发包人电话\n0563-7016990\n合同价格\n49123.2526 万元\n开工日期\n2015-04-01\n交工日期\n2017-11-30\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n合格\n项目经理（或注册建\n造师）\n王文年\n技术负责人\n侯帅\n监理单位及联系电话\n安徽虹桥交通建设监理有限公司\n0551-63839383\n总监理工程师及电话\n项知正15855386665\n项目描述\n项目主要内容包括：路线全长15.15km，采用双向四车道一级\n公路标准建设，路基宽24.5米;路面类型为沥青混凝土路面。桥涵\n工程：大桥2座（郎川河大桥：全长758米，桥跨布置为（9×\n40+50+90+50+5×40）米，主桥长190米，最大跨径90米，采用现\n浇连续箱梁、斜拉桥，引桥为先简支后连续预应力砼T型梁；新郎\n川河大桥：全长679.5米，左幅桥跨布置为（9×40+31.5+7×40）\n米，右幅桥跨布置为（3×40+31.5+13×40）米，跨主河槽三孔设\n置装饰性钢管拱，采用先简支后连续预应力砼T型梁）；中桥6座；\n车行天桥3座；涵洞42道。交通安全设施工程等。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2407,14 +2417,15 @@
                 "2017-11-30",
                 "15.15km",
                 "一级公路"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 1,
               "page_end": 1,
-              "quote": "省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段） 49123.2526 万元 2017-11-30 王文年 路线全长15.15km，采用双向四车道一级公路标准建设",
+              "quote": "（三）投标人近年完成的类似项目情况表01\n序号\n01\n项目名称\n省道214 郎溪段改建工程四期工程（郎溪县城十字铺工业园段）\n项目所在地\n宣城市郎溪县\n发包人名称\n郎溪县交通运输局\n发包人地址\n宣城市郎溪县\n发包人电话\n0563-7016990\n合同价格\n49123.2526 万元\n开工日期\n2015-04-01\n交工日期\n2017-11-30\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n合格\n项目经理（或注册建\n造师）\n王文年\n技术负责人\n侯帅\n监理单位及联系电话\n安徽虹桥交通建设监理有限公司\n0551-63839383\n总监理工程师及电话\n项知正15855386665\n项目描述\n项目主要内容包括：路线全长15.15km，采用双向四车道一级\n公路标准建设，路基宽24.5米;路面类型为沥青混凝土路面。桥涵\n工程：大桥2座（郎川河大桥：全长758米，桥跨布置为（9×\n40+50+90+50+5×40）米，主桥长190米，最大跨径90米，采用现\n浇连续箱梁、斜拉桥，引桥为先简支后连续预应力砼T型梁；新郎\n川河大桥：全长679.5米，左幅桥跨布置为（9×40+31.5+7×40）\n米，右幅桥跨布置为（3×40+31.5+13×40）米，跨主河槽三孔设\n置装饰性钢管拱，采用先简支后连续预应力砼T型梁）；中桥6座；\n车行天桥3座；涵洞42道。交通安全设施工程等。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2423,7 +2434,8 @@
                 "2017-11-30",
                 "15.15km",
                 "一级公路"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
@@ -2453,7 +2465,7 @@
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 10,
               "page_end": 10,
-              "quote": "S214 郎溪段改建五期工程（含G235 十字至七塔段规划线位） 47075.07 万元 2019-12-30 全长13.78km（含规划线路2.75km），按一级公路标准建设 采用沥青砼路面 大桥911m/4 座 盖板涵39 道，涵洞17 道",
+              "quote": "（三）投标人近年完成的类似项目情况表02\n序号\n02\n项目名称\nS214 郎溪段改建五期工程（含G235 十字至七塔段规划线位）\n项目所在地\n郎溪县\n发包人名称\n郎溪县省道建设管理有限公司\n发包人地址\n郎溪县\n发包人电话\n0563-7026961\n合同价格\n47075.07 万元\n开工日期\n2017-3-18\n交工日期\n2019-12-30\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n合格\n项目经理（或注册建\n造师）\n乔乐同\n技术负责人\n储根水\n监理单位及联系电话\n扬州华建交通工程咨询监理有限公司\n0514-87456818\n总监理工程师及电话\n马国忠0514-87456818\n项目描述\n本合同段主要工程量：本标段起讫桩号为\nK40+663.973~K51+695.584,全长13.78km（含规划线路2.75km），按\n一级公路标准建设，双向四车道，路基宽24.5m,行车道4*3.75m,中\n央分隔带宽2.0m 标准横断面为：0.75m 土路肩+2.5m 硬路肩+2*3.75m\n行车道+0.5m 左侧路缘带+2m 中央分隔带+0.5m 右侧路缘带+2*3.75m\n行车道+2.5m 硬路肩+0.75m 土路肩。采用沥青砼路面，4cm 细粒式SBS\n改性沥青混凝土（AC-13C），6cm 中粒式SBS 改性沥青混凝土（AC-20C），\n8cm 粗粒式普通沥青混凝土（AC-25C）：基层采用36cm 水泥水稳碎石，\n底基层采用18cm 低剂量水泥水稳碎石。全线主线总长1021m/7 座，\n其中：大桥911m/4 座、中桥110m/3 座，隧道1 座（左线845m 有限\n815m），平面交叉6 处，盖板涵39 道，涵洞17 道，总填方量120.52\n万㎡，总挖方量106.83 万㎡，水稳碎石8.95 万㎡，砼8.47 万㎡、\nS214 二、三、四期绿化及环境保护。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2465,14 +2477,15 @@
                 "沥青砼路面",
                 "大桥",
                 "涵洞"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 10,
               "page_end": 10,
-              "quote": "S214 郎溪段改建五期工程（含G235 十字至七塔段规划线位） 47075.07 万元 2019-12-30 全长13.78km（含规划线路2.75km），按一级公路标准建设 采用沥青砼路面 大桥911m/4 座 盖板涵39 道，涵洞17 道",
+              "quote": "（三）投标人近年完成的类似项目情况表02\n序号\n02\n项目名称\nS214 郎溪段改建五期工程（含G235 十字至七塔段规划线位）\n项目所在地\n郎溪县\n发包人名称\n郎溪县省道建设管理有限公司\n发包人地址\n郎溪县\n发包人电话\n0563-7026961\n合同价格\n47075.07 万元\n开工日期\n2017-3-18\n交工日期\n2019-12-30\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n合格\n项目经理（或注册建\n造师）\n乔乐同\n技术负责人\n储根水\n监理单位及联系电话\n扬州华建交通工程咨询监理有限公司\n0514-87456818\n总监理工程师及电话\n马国忠0514-87456818\n项目描述\n本合同段主要工程量：本标段起讫桩号为\nK40+663.973~K51+695.584,全长13.78km（含规划线路2.75km），按\n一级公路标准建设，双向四车道，路基宽24.5m,行车道4*3.75m,中\n央分隔带宽2.0m 标准横断面为：0.75m 土路肩+2.5m 硬路肩+2*3.75m\n行车道+0.5m 左侧路缘带+2m 中央分隔带+0.5m 右侧路缘带+2*3.75m\n行车道+2.5m 硬路肩+0.75m 土路肩。采用沥青砼路面，4cm 细粒式SBS\n改性沥青混凝土（AC-13C），6cm 中粒式SBS 改性沥青混凝土（AC-20C），\n8cm 粗粒式普通沥青混凝土（AC-25C）：基层采用36cm 水泥水稳碎石，\n底基层采用18cm 低剂量水泥水稳碎石。全线主线总长1021m/7 座，\n其中：大桥911m/4 座、中桥110m/3 座，隧道1 座（左线845m 有限\n815m），平面交叉6 处，盖板涵39 道，涵洞17 道，总填方量120.52\n万㎡，总挖方量106.83 万㎡，水稳碎石8.95 万㎡，砼8.47 万㎡、\nS214 二、三、四期绿化及环境保护。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2484,24 +2497,27 @@
                 "沥青砼路面",
                 "大桥",
                 "涵洞"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
-              "page_start": 13,
-              "page_end": 13,
-              "quote": "S214郎溪段改建五期工程（含G235十字至七塔段规划线位）交工验收报告 工程造价为21562万元 交工日期：2019.12.30 路基路面工程 桥梁工程 涵洞工程",
+              "page_start": 14,
+              "page_end": 14,
+              "quote": "公路工程交工验收证书\n2019年12月30日\nG235国道十字至七塔段\n13.78km\n一级公路\n沥青砼路面\n47075.07",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "S214郎溪段改建五期工程",
-                "21562万元",
-                "2019.12.30",
-                "路基路面工程",
-                "桥梁工程",
-                "涵洞工程"
-              ]
+                "公路工程交工验收证书",
+                "2019年12月30日",
+                "G235国道十字至七塔段",
+                "13.78km",
+                "一级公路",
+                "沥青砼路面",
+                "47075.07"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。第13页为合同尾页，验收证在第14页；原引文21562万元无依据，原件价款47075.07万元。"
             }
           ]
         },
@@ -2514,7 +2530,7 @@
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 26,
               "page_end": 26,
-              "quote": "大广高速公路信丰北互通建设项目 5549.1896 万元 2017-12-28 高速公路主线加宽段长约0.986 公里 路基土石方1.62 万方 涵洞通道23 座 桥梁1 座 上面层4cm 厚（AC-13）",
+              "quote": "（三）投标人近年完成的类似项目情况表04\n序号\n04\n项目名称\n大广高速公路信丰北互通建设项目\n项目所在地\n赣州市\n发包人名称\n赣州高速公路有限责任公司\n发包人地址\n赣州市\n发包人电话\n0797-8289921\n合同价格\n5549.1896 万元\n开工日期\n2015-11-16\n交工日期\n2017-12-28\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n优良\n项目经理（或注册建\n造师）\n李道润\n技术负责人\n邹忠诚\n监理单位及联系电话\n赣州诚正公路工程监理有限公司\n0797-8198136\n总监理工程师及电话\n典的龙0797-8198136\n项目描述\n本合同段主要工程量：K3076+561.4～K3077+574.403，高速公路\n主线加宽段长约0.986 公里，连接线长0.77 公里，匝道长1.638 公\n里。路基土石方1.62 万方，填方45.38 万方，防护及排水圬工0.94\n万方。涵洞通道23 座（钢筋砼暗盖板涵、盖板通道13 座，钢筋砼圆\n管涵10 座）。桥梁1 座（A 匝道跨线桥，中桥33 延米/1 座）。上面\n层4cm 厚（AC-13）4.56 万平方米，中面层6cm 厚（AC-20）4.56 万\n平方米，上基层8cm 厚（ATB-25）4.15 万平方米，20 厘米厚水稳碎\n石4.21 万平方米，15 厘米厚水稳碎石下基层3.03 万平方米，30 厘\n米厚级配碎石2.07 万平方米。植草70650 平方米，声屏障349.2m3。\n单面波形护栏6071 延米，双面波形护栏408 米，各类护栏端头31 个，\n单柱式标志18 套，双柱式标志13 套，单悬臂标志23 套，双悬臂标\n志1 套，门架式标志2 套，以及里程碑、百米桩，标线4578 平方米，\n轮廓标志578 个，隔离栅3204 米。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2526,14 +2542,15 @@
                 "涵洞通道23",
                 "桥梁1",
                 "AC-13"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 26,
               "page_end": 26,
-              "quote": "大广高速公路信丰北互通建设项目 5549.1896 万元 2017-12-28 高速公路主线加宽段长约0.986 公里 路基土石方1.62 万方 涵洞通道23 座 桥梁1 座 上面层4cm 厚（AC-13）",
+              "quote": "（三）投标人近年完成的类似项目情况表04\n序号\n04\n项目名称\n大广高速公路信丰北互通建设项目\n项目所在地\n赣州市\n发包人名称\n赣州高速公路有限责任公司\n发包人地址\n赣州市\n发包人电话\n0797-8289921\n合同价格\n5549.1896 万元\n开工日期\n2015-11-16\n交工日期\n2017-12-28\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n优良\n项目经理（或注册建\n造师）\n李道润\n技术负责人\n邹忠诚\n监理单位及联系电话\n赣州诚正公路工程监理有限公司\n0797-8198136\n总监理工程师及电话\n典的龙0797-8198136\n项目描述\n本合同段主要工程量：K3076+561.4～K3077+574.403，高速公路\n主线加宽段长约0.986 公里，连接线长0.77 公里，匝道长1.638 公\n里。路基土石方1.62 万方，填方45.38 万方，防护及排水圬工0.94\n万方。涵洞通道23 座（钢筋砼暗盖板涵、盖板通道13 座，钢筋砼圆\n管涵10 座）。桥梁1 座（A 匝道跨线桥，中桥33 延米/1 座）。上面\n层4cm 厚（AC-13）4.56 万平方米，中面层6cm 厚（AC-20）4.56 万\n平方米，上基层8cm 厚（ATB-25）4.15 万平方米，20 厘米厚水稳碎\n石4.21 万平方米，15 厘米厚水稳碎石下基层3.03 万平方米，30 厘\n米厚级配碎石2.07 万平方米。植草70650 平方米，声屏障349.2m3。\n单面波形护栏6071 延米，双面波形护栏408 米，各类护栏端头31 个，\n单柱式标志18 套，双柱式标志13 套，单悬臂标志23 套，双悬臂标\n志1 套，门架式标志2 套，以及里程碑、百米桩，标线4578 平方米，\n轮廓标志578 个，隔离栅3204 米。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2545,23 +2562,26 @@
                 "涵洞通道23",
                 "桥梁1",
                 "AC-13"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
-              "page_start": 29,
-              "page_end": 29,
-              "quote": "公路工程（合同段）交工验收证书 大广高速公路信丰北互通建设项目 交工验收时间：2017年12月28日 包括路基工程，路面工程，桥涵工程（桥梁1座，涵洞23座）",
+              "page_start": 30,
+              "page_end": 30,
+              "quote": "公路工程（合同段）交工验收证书\n2017年12月28日\n大广高速公路信丰北互通建设项目\n路基土石方\n涵洞通道23\n桥梁1",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
-                "大广高速公路信丰北互通建设项目",
+                "公路工程（合同段）交工验收证书",
                 "2017年12月28日",
-                "路基工程",
-                "路面工程",
-                "桥涵工程"
-              ]
+                "大广高速公路信丰北互通建设项目",
+                "路基土石方",
+                "涵洞通道23",
+                "桥梁1"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。第29页是合同尾页，验收证在第30页；以原件工程内容片段替代概述。"
             }
           ]
         },
@@ -2574,7 +2594,7 @@
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 33,
               "page_end": 33,
-              "quote": "S331 诸佛庵至沿河段公路升级改造工程 9528.5022 万元 2018-9-18 长约17.166KM；主要工程量：路基填方49.92 万m3 沥青混凝土面层13.07 万m2，中桥2 座，小桥4 座，涵洞36 道",
+              "quote": "（三）投标人近年完成的类似项目情况表05\n序号\n05\n项目名称\nS331 诸佛庵至沿河段公路升级改造工程\n项目所在地\n六安市霍山县\n发包人名称\n霍山县国省干线公路重点工程建设指挥部\n发包人地址\n六安市霍山县\n发包人电话\n0564-5026713\n合同价格\n9528.5022 万元\n开工日期\n2017-4-5\n交工日期\n2018-9-18\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n合格\n项目经理（或注册建\n造师）\n李道润\n技术负责人\n韩茂海\n监理单位及联系电话\n安徽省高等级公路工程监理有限公司\n0551-63813022\n总监理工程师及电话\n李乾科0551-63813022\n项目描述\n本合同段主要工程量：本项目起讫桩号为K0+000-K17+166.095,\n长约17.166KM；主要工程量：路基填方49.92 万m3，挖方44.49 万\nm3，破碎砾石底基层15.9 万m2，水泥稳定碎石基层11.08 万m2，沥\n青混凝土面层13.07 万m2，中桥2 座，小桥4 座，涵洞36 道，挡墙\n防护3.31 万m3 等。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2585,14 +2605,15 @@
                 "路基填方",
                 "沥青混凝土面层",
                 "中桥2"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub03",
               "source_sha256": "2c7ccb149ca7882d75cba513872d70c2c150a5762d86f8a924193c4e6fd337b7",
               "page_start": 33,
               "page_end": 33,
-              "quote": "S331 诸佛庵至沿河段公路升级改造工程 9528.5022 万元 2018-9-18 长约17.166KM；主要工程量：路基填方49.92 万m3 沥青混凝土面层13.07 万m2，中桥2 座，小桥4 座，涵洞36 道",
+              "quote": "（三）投标人近年完成的类似项目情况表05\n序号\n05\n项目名称\nS331 诸佛庵至沿河段公路升级改造工程\n项目所在地\n六安市霍山县\n发包人名称\n霍山县国省干线公路重点工程建设指挥部\n发包人地址\n六安市霍山县\n发包人电话\n0564-5026713\n合同价格\n9528.5022 万元\n开工日期\n2017-4-5\n交工日期\n2018-9-18\n承担的工作\n合同及工程量清单内的全部工程内容\n工程质量\n合格\n项目经理（或注册建\n造师）\n李道润\n技术负责人\n韩茂海\n监理单位及联系电话\n安徽省高等级公路工程监理有限公司\n0551-63813022\n总监理工程师及电话\n李乾科0551-63813022\n项目描述\n本合同段主要工程量：本项目起讫桩号为K0+000-K17+166.095,\n长约17.166KM；主要工程量：路基填方49.92 万m3，挖方44.49 万\nm3，破碎砾石底基层15.9 万m2，水泥稳定碎石基层11.08 万m2，沥\n青混凝土面层13.07 万m2，中桥2 座，小桥4 座，涵洞36 道，挡墙\n防护3.31 万m3 等。\n备注\n资格审查用业绩\n商务文件评分用业绩\n注：投标人应根据招标文件第二章“投标人须知”第3.5.3 项的要求在本表后附相关证明材料。\nS604皖南交旅融合（飞毕路美丽公路）项目\n商务文件",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
@@ -2603,23 +2624,27 @@
                 "路基填方",
                 "沥青混凝土面层",
                 "中桥2"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub02",
               "source_sha256": "651f89513695e038532f1e200d3c587ad2eda13b1e0b0765a4fc7423c438fc8c",
               "page_start": 36,
               "page_end": 36,
-              "quote": "工程交（竣）工验收证明书 S331诸佛庵至沿河段公路升级改造工程 95285022.00元 2018年9月18日 全长17.166km，二级公路标准，工程施工内容包括路基、路面、中桥2座、小桥4座、涵洞36道",
+              "quote": "S331诸佛庵至沿河段公路升级改造工程\n公路工程交工验收证书\n2018年9月18日\n路基填方\n沥青混凝土面层\n中桥2\n95285021.56",
               "source_verified": true,
               "verification_basis": "visual_pdf",
               "quote_parts": [
                 "S331诸佛庵至沿河段公路升级改造工程",
-                "95285022.00",
+                "公路工程交工验收证书",
                 "2018年9月18日",
-                "17.166km",
-                "二级公路"
-              ]
+                "路基填方",
+                "沥青混凝土面层",
+                "中桥2",
+                "95285021.56"
+              ],
+              "verification_note": "2026-10-20本轮直接目视核对原页；以下为按阅读顺序记录的必要文字片段，不是连续自然段。本页原合同价为95285021.56元，非原标签95285022.00；本页无17.166km/二级公路字样，长度来自情况表，不能放入本页引文。"
             }
           ]
         }
@@ -2718,28 +2743,30 @@
               "source_sha256": "b68149dcf140169b682731d8c5bb4945d5de2632f4c5adf8574964087863eddf",
               "page_start": 41,
               "page_end": 41,
-              "quote": "工期保证项目 主要内容 人员保证 所有驾机作业的施工人员均为我公司专业施工队伍抽调的业务骨干",
+              "quote": "序号\n工期保证项目\n主要内容\n率。\n2\n人员保证\n所有驾机作业的施工人员均为我公司专业施工队伍抽调的业务骨\n干；定人定机，持证上岗；计划设备生产按一个半班考虑，人员\n按每台2 人配备，确保设备能运行就有人上机。\n3\n施工安排保证\n根据本标段的特点，在施工安排时，充分发挥各种设备的特性，\n进行合理调配，施工过程中注意多创造工作面，减少设备运行相\n互干扰。\n4\n施工管理与物\n资供应\n做好技术管理工作，及时对开挖施工进行施工测量和放样，做好\n施工测量控制，以免造成损失和拖延工期。\n做好天气预报工作，对天气变化及时掌握，采取工作面有良好的\n防范措施，将天气对施工的影响降到最小限度。\n做好物资供应工作，根据工程需要，及时订购施工所需燃油、机\n械配件等物资，保证施工使用需要。\n5\n油料供应保证\n做好市场调查，在工程区附近选择几个生产管理好、油料供应可\n靠稳定的加油站，作为待定的供销商，并根据施工计划，提前订\n购。设备器材科设专人负责油料的采购及供应工作，多方采集供\n货渠道，确保油料正常供应。\n施工现场设立1 个30t 的贮油罐，增加油料储备量，油罐油料用\n完后，及时补充制定各工序的操作规程和质量标准，强化施工现\n场管理，做到文明施工，努力实现施工作业，施工管理标准化、\n科学化，使施工生产有条不紊。另外配备2 台10t 柴油罐车为现\n场机械设备补充柴油。做好雨季施工的管理与安排，尽量减少雨\n季对施工的影响。\n6\n加大投入\n合理加大机械设备的投入和施工人员的投入。我公司针对本标段\n的特点，在机械设备和劳动力上增加投入，提高机械化作业程度，\n充分满足工程所需的人、财、物要求。\n7\n加强质量和成\n品管理\n施工质量的好坏和成品的保护也是影响工期的一个重要因素，如\n工程质量不好，需返工，这样将严重拖延工期，如成品保护不好，\n需要重新处理，也将对工期产生影响。\n我公司在施工中，将派专人负责质量的跟踪，严禁出现返工等现",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
                 "工期保证项目",
                 "人员保证",
                 "所有驾机作业的施工人员"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             },
             {
               "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub19",
               "source_sha256": "b68149dcf140169b682731d8c5bb4945d5de2632f4c5adf8574964087863eddf",
               "page_start": 271,
               "page_end": 271,
-              "quote": "4.9 工期保证措施 表4.9-1 工期保证措施 工期保证项目 主要内容 设备保证",
+              "quote": "4.9 工期保证措施\n表4.9-1 工期保证措施\n序号\n工期保证项目\n主要内容\n1\n设备保证\n土方开挖运输过程中进行设备配备时，按最高强度进行配置，并\n备用一定的设备量。设备选型时，在保证能够正常施工的情况下，\n尽量减少设备类型。为保证施工设备的正常运转，本标段设置专\n业机械维修队，对本标段使用的施工设备进行维修和保养，保证\n设备随坏随修，并严格设备的保养制度，以提高机械设备的利用\n率。\n2\n人员保证\n所有驾机作业的施工人员均为我公司专业施工队伍抽调的业务骨\n干；定人定机，持证上岗；计划设备生产按一个半班考虑，人员\n按每台2 人配备，确保设备能运行就有人上机。\n3\n施工安排保证\n根据本标段的特点，在施工安排时，充分发挥各种设备的特性，\n进行合理调配，施工过程中注意多创造工作面，减少设备运行相\n互干扰。\n4\n施工管理与物\n资供应\n做好技术管理工作，及时对开挖施工进行施工测量和放样，做好\n施工测量控制，以免造成损失和拖延工期。\n做好天气预报工作，对天气变化及时掌握，采取工作面有良好的\n防范措施，将天气对施工的影响降到最小限度。\n做好物资供应工作，根据工程需要，及时订购施工所需燃油、机\n械配件等物资，保证施工使用需要。\n5\n油料供应保证\n做好市场调查，在工程区附近选择几个生产管理好、油料供应可\n靠稳定的加油站，作为待定的供销商，并根据施工计划，提前订\n购。设备器材科设专人负责油料的采购及供应工作，多方采集供\n货渠道，确保油料正常供应。\n施工现场设立1 个30t 的贮油罐，增加油料储备量，油罐油料用\n完后，及时补充制定各工序的操作规程和质量标准，强化施工现\n场管理，做到文明施工，努力实现施工作业，施工管理标准化、\n科学化，使施工生产有条不紊。另外配备2 台10t 柴油罐车为现\n场机械设备补充柴油。做好雨季施工的管理与安排，尽量减少雨\n季对施工的影响。",
               "source_verified": true,
               "verification_basis": "native_pdf",
               "quote_parts": [
                 "4.9 工期保证措施",
                 "工期保证项目",
                 "设备保证"
-              ]
+              ],
+              "verification_note": "2026-10-20：以原PDF该页完整原生文本修复非连续/不准确引文；quote_parts已逐项核对，保持不变。"
             }
           ]
         },

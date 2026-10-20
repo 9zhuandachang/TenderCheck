@@ -8,14 +8,29 @@ from pathlib import Path
 from unittest.mock import Mock
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from evaluate_compliance_reasoning import build_cases, compute_metrics
+from run_reasoning_diagnostics import build_cases
+from src.evaluation.pipeline_diagnostics import summarize_pipeline, compare_human_end_to_end
 from src.extraction import DeepSeekSlotExtractor, HeuristicSlotExtractor
-from src.extraction.evidence import evidence_context
+from src.extraction.evidence import evidence_context, numeric_in_quote
 from src.extraction.schema import BidEvidenceSlots, TenderConstraintSlots, StructuredExtractionResult
 from src.rules import ComplianceRuleEngine
 
 
 class EvidenceReasoningTests(unittest.TestCase):
+    def test_table_numeric_validation_preserves_cell_boundaries(self):
+        self.assertTrue(numeric_in_quote(74.82, '71.17%\n73.16\n74.82'))
+        self.assertTrue(numeric_in_quote(1234.50, '金额 １，２３４.５０ 元'))
+        self.assertFalse(numeric_in_quote(1234, '12\n34'))
+        self.assertFalse(numeric_in_quote(12, '1,2'))
+        self.assertFalse(numeric_in_quote(73.16, '173.16'))
+
+    def test_unrelated_conflict_without_relevant_evidence_stays_unknown(self):
+        result=self.extract()
+        result.bid_slots.evidence_found=False
+        result.bid_slots.conflict_detected=True
+        result.bid_slots.evidence_references=[]
+        self.assertEqual(self.engine.evaluate(result).verdict,'INSUFFICIENT_EVIDENCE')
+
     def setUp(self):
         self.passage=dict(rank=1,document_id='bid',source_sha256='sha',page_start=4,page_end=4,
                           parent_text='我方承诺工期为365日历天。',extracted_kv={'duration_days':360})
@@ -120,7 +135,7 @@ class EvidenceReasoningTests(unittest.TestCase):
 
     def test_conflict_and_unknown_qualitative_have_separate_results(self):
         result=self.extract();result.bid_slots.conflict_detected=True
-        self.assertEqual(self.engine.evaluate(result).verdict,'CONFLICTING_EVIDENCE')
+        self.assertEqual(self.engine.evaluate(result).verdict,'INSUFFICIENT_EVIDENCE')
         result.bid_slots.conflict_detected=False;result.tender_slots=TenderConstraintSlots()
         self.assertEqual(self.engine.evaluate(result).verdict,'INSUFFICIENT_EVIDENCE')
 
@@ -145,11 +160,11 @@ class EvidenceReasoningTests(unittest.TestCase):
 
     def test_unlabelled_data_has_no_accuracy_and_abstentions_not_true_negatives(self):
         cases=[{'clause_id':'q'}];results=[dict(clause_id='q',verdict='INSUFFICIENT_EVIDENCE')]
-        self.assertIsNone(compute_metrics(cases,results)['verdict_accuracy'])
-        labels=dict(schema_version=1,cases_sha256='hash',queries=[dict(clause_id='q',
+        self.assertNotIn('verdict_accuracy',summarize_pipeline(cases,results))
+        labels=dict(schema_version=1,evaluation_scope='end_to_end_compliance',cases_sha256='hash',queries=[dict(clause_id='q',
                     review_status='human_verified',reviewer='tester',review_note='synthetic test',expected_verdict='NON_COMPLIANT')])
-        self.assertEqual(compute_metrics(cases,results,labels,'hash')['verdict_accuracy'],0)
-        with self.assertRaises(ValueError):compute_metrics(cases,results,labels,'wrong')
+        self.assertEqual(compare_human_end_to_end(cases,results,labels,'hash')['end_to_end_verdict_accuracy'],0)
+        with self.assertRaises(ValueError):compare_human_end_to_end(cases,results,labels,'wrong')
 
     def test_zero_scoring_is_not_noncompliance_and_no_max_score_fallback(self):
         result=self.extract()
