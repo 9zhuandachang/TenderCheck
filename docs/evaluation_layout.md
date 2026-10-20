@@ -11,7 +11,7 @@
 | 下游流程诊断 | `SystemCode/run_reasoning_diagnostics.py` | 冻结检索实际返回段落；默认无结论标准答案 | 检查抽取、引用校验和规则能否运行，统计输出状态 |
 | 离线回放 | `SystemCode/replay_compliance_responses.py` | 已保存的原始模型响应＋冻结输入 | 不调用模型，观察代码变更对流程输出的影响 |
 | 抽取模块正式评测 | 待建立独立数据和入口 | 固定证据＋人工核对的事实、约束、主体和引用 | **尚未建立**，不能用合规状态统计替代 |
-| 规则模块正式评测 | 待建立独立数据和入口 | 已确认的结构化约束／事实＋预期结论和分数 | **尚未建立**；现有单元测试是代码回归检查 |
+| 规则模块正式评测 | `SystemCode/evaluate_rule_engine.py` | `SystemCode/data/rule_eval/s604_rule_validation_suite.json`（已确认的结构化约束／事实＋预期结论和分数） | **已建立独立入口与 69 条覆盖 R01–R09 的正例/反例/边界/单位不符/缺失/主体错配/冲突基准集**（不调用 RAG 或 LLM，单列错误放行、错误拒绝、合理弃判与评分错误） |
 
 `SystemCode/evaluate_compliance_reasoning.py` 保留为旧命令兼容入口，执行相同的流程诊断并提示迁移。旧名称不再意味着存在正式规则评测集。
 
@@ -30,11 +30,17 @@ SystemCode/data/reasoning_diagnostics/s604/
   compliance_calibrated_reference.json
   README.md                         # 仅供诊断，不是正式金标准
 
+SystemCode/data/rule_eval/
+  s604_clause_rule_mapping.json     # S604 全量 359 条招标需求到形式化规则/人工复核的映射
+  s604_rule_validation_suite.json   # 69 条独立于 RAG/LLM 的结构化规则验证基准集
+  s604_rule_eval_report.json        # 规则引擎独立验证自动比较报告 (JSON)
+
 SystemCode/tests/
   test_evidence_metrics.py          # 检索计分实现的测试
   test_extraction_semantics.py
   test_extraction_rules_v6.py       # 抽取校验的正反例回归
   test_compliance_rules.py          # 规则实现的回归测试
+  test_rule_contracts_and_suite.py  # Step 1-3 规则清单映射、契约与 69 条独立基准集回归测试
   test_pipeline_diagnostics.py      # 防止混用标签、指标与统计
 ```
 
@@ -50,15 +56,13 @@ SystemCode/tests/
 - “证据不足”可能来自检索、抽取、引用校验或规则条件缺失，不能仅凭总状态确定错误环节。逐条原文、抽取问题和规则解释用于排查。
 - 助手结论比较只有显式传 `--reference_labels` 才执行，单独输出 `reference_comparison.json`；一致率不进入主诊断统计。
 - 未来若用 `--labels` 做人工结论比较，标签必须另行提供，具有 `evaluation_scope=end_to_end_compliance`、案例哈希和人工核对记录；结果单独写入 `human_end_to_end_comparison.json`。它仍是端到端结论指标，不能解释为单独的抽取或规则准确率。
-- 单元测试通过数量不等于真实数据集准确率。正式模块评测应包含独立于本轮调试样本的正例、反例、边界、缺失及冲突案例。
+- 单元测试通过数量不等于真实数据集准确率。正式规则模块评测（`SystemCode/evaluate_rule_engine.py`）使用独立于 RAG 与 LLM 的结构化正例、反例、边界、缺失、主体错配及冲突案例，单独报告错误放行、错误拒绝、合理弃判及评分错误。
 
-操作命令见 [流程诊断说明](evidence_reasoning.md)，RAG 指标见 [检索评测说明](passage_rag_evaluation.md)，后续工作见 [计划清单](extraction_rules_plan.md)。
+操作命令见 [流程诊断说明](evidence_reasoning.md)，RAG 指标见 [检索评测说明](passage_rag_evaluation.md)，规则清单与输入契约见 [规则清单与契约规范](rule_inventory_and_contracts.md)，后续工作见 [计划清单](extraction_rules_plan.md)。
 
 ## 本次整理验证
 
-- 81 项单元／回归测试通过，旧命令入口仍可使用。
+- 87 项单元／回归测试通过，旧命令入口仍可使用。
+- 独立规则评测基准集（69 条）100% 通过（0 错误放行、0 错误拒绝、17 合理弃判、0 过度弃判、0 评分错误）。
 - 原 50 条 RAG 标注哈希保持 `993c0e964e0030c04787bdb81cfb35e278191427b125c49cb60f2c982e6d1c87`。
 - 两份助手参考迁移前后内容一致。
-- 零 API 回放与整理前的 v6 回放比较，全部 50 条抽取对象和规则报告逐项相同；本轮只调整组织和统计口径。
-- 新诊断输出位于本地 `SystemCode/reports/rag_experiments/s604_pipeline_diagnostics_layout_check/`，默认主报告不含准确率或“待标注合规样本数”。
-- 正式抽取、规则评测数据集和入口仍待按计划另行建立。该验证记录描述整理时的状态，不代表远程发布。

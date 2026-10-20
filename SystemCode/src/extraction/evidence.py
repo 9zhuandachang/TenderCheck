@@ -5,7 +5,15 @@ import re
 import unicodedata
 from decimal import Decimal
 from src.evaluation.evidence import compact
-from .semantics import explicit_numeric_operator, required_qualification_role, role_names, has_document_body, qualification_owned_by, text_fact_supported
+from .semantics import (
+    explicit_numeric_operator,
+    required_qualification_role,
+    role_names,
+    has_document_body,
+    qualification_owned_by,
+    text_fact_supported,
+    manager_performance_linked,
+)
 from .conflicts import verify_conflict_pairs
 
 
@@ -121,9 +129,7 @@ def ground_extraction(result, context):
         current_names = set().union(*(role_names(p['text'],'project_manager') for p in evidence
             if re.search(r'拟派|拟任|拟委任|项目管理机构',p['text'])))
         documents = [by_id[r['evidence_id']]['text'] for r in verified if r['field']=='document_present']
-        if len(current_names) != 1 or not any(
-                re.search(r'项目经理\s*[:：|]\s*'+re.escape(next(iter(current_names)))+r'(?=\s|[|，,；;。]|$)',text)
-                for text in documents):
+        if len(current_names) != 1 or not manager_performance_linked(documents, next(iter(current_names))):
             issues.append('Performance document lacks a link to the currently proposed project manager')
 
     if b.conflict_detected:
@@ -185,6 +191,14 @@ def ground_extraction(result, context):
         for ref in verified:
             if ref['field'] in required_fields and (ref['field'],ref['evidence_id'],ref['quote']) not in supported_references:
                 issues.append(f'Qualification citation lacks subject attribution: {ref["field"]}/{ref["evidence_id"]}')
+        # A self-filled basic info table (投标人基本情况表) without certificate number/validity cannot certify statutory license validity.
+        if not b.evidence_source_type:
+            qual_passages = [by_id[r['evidence_id']]['text'] for r in verified if r['field'] == 'actual_text' and r['evidence_id'] in by_id]
+            if qual_passages and all(
+                '基本情况表' in p and not re.search(r'有效期|证书编号|许可证编号|发证机关', p)
+                for p in qual_passages
+            ):
+                b.evidence_source_type = 'SELF_DECLARED_TABLE'
 
     facts = ('document_present','actual_numeric','actual_unit','secondary_actual_numeric','actual_text','actual_domain','upper_amount_text',
              'entity_primary','entity_secondary','certificate_valid','prohibition_violated',

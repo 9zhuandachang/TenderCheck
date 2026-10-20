@@ -1,0 +1,2774 @@
+{
+  "schema_version": 1,
+  "evaluation_scope": "standalone_rule_engine_verification",
+  "project_id": "2022/11.11-S604皖南交旅融合（飞毕路美丽公路）项目",
+  "review_status": "human_constructed_deterministic",
+  "total_cases": 69,
+  "cases": [
+    {
+      "case_id": "R01_POS_01",
+      "clause_id": "T0002",
+      "rule_family": "R01_NUMERIC_BOUND",
+      "case_type": "positive",
+      "description": "投标总价低于最高投标限价且暂列金额等于800万元 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R01_NUMERIC_BOUND",
+      "input": {
+        "clause_id": "T0002",
+        "requirement_text": "项目招标控制价115046243.64元，含暂列金8000000.00元。",
+        "category": "Commercial",
+        "tender_slots": {
+          "constraint_type": "NUMERIC_BOUND",
+          "target_field": "bid_price_yuan",
+          "operator": "<=",
+          "expected_numeric": 115046243.64,
+          "expected_unit": "元",
+          "secondary_numeric": 8000000.0
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 97984949.58,
+          "actual_unit": "元",
+          "secondary_actual_numeric": 8000000.0
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R01_NEG_01",
+      "clause_id": "T0002",
+      "rule_family": "R01_NUMERIC_BOUND",
+      "case_type": "negative",
+      "description": "投标总价低于控制价但暂列金被擅自修改为750万元 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R01_NUMERIC_BOUND",
+      "input": {
+        "clause_id": "T0002",
+        "requirement_text": "项目招标控制价115046243.64元，含暂列金8000000.00元。",
+        "category": "Commercial",
+        "tender_slots": {
+          "constraint_type": "NUMERIC_BOUND",
+          "target_field": "bid_price_yuan",
+          "operator": "<=",
+          "expected_numeric": 115046243.64,
+          "expected_unit": "元",
+          "secondary_numeric": 8000000.0
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 97984949.58,
+          "actual_unit": "元",
+          "secondary_actual_numeric": 7500000.0
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R01_BND_EQ_01",
+      "clause_id": "T0001",
+      "rule_family": "R01_NUMERIC_BOUND",
+      "case_type": "boundary_equal",
+      "description": "计划工期恰好等于360日历天阈值 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R01_NUMERIC_BOUND",
+      "input": {
+        "clause_id": "T0001",
+        "requirement_text": "计划工期为360日历天。",
+        "category": "Schedule",
+        "tender_slots": {
+          "constraint_type": "NUMERIC_BOUND",
+          "target_field": "duration_days",
+          "operator": "<=",
+          "expected_numeric": 360,
+          "expected_unit": "日历天"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 360,
+          "actual_unit": "日历天"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R01_BND_OVER_01",
+      "clause_id": "T0001",
+      "rule_family": "R01_NUMERIC_BOUND",
+      "case_type": "boundary_just_over",
+      "description": "计划工期为361日历天（刚越界1天） -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R01_NUMERIC_BOUND",
+      "input": {
+        "clause_id": "T0001",
+        "requirement_text": "计划工期为360日历天。",
+        "category": "Schedule",
+        "tender_slots": {
+          "constraint_type": "NUMERIC_BOUND",
+          "target_field": "duration_days",
+          "operator": "<=",
+          "expected_numeric": 360,
+          "expected_unit": "日历天"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 361,
+          "actual_unit": "日历天"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R01_BND_OVER_02",
+      "clause_id": "T0135",
+      "rule_family": "R01_NUMERIC_BOUND",
+      "case_type": "boundary_just_over",
+      "description": "投标报价高于控制价0.01元（115046243.65元 > 115046243.64元） -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R01_NUMERIC_BOUND",
+      "input": {
+        "clause_id": "T0135",
+        "requirement_text": "投标报价不得超过最高投标限价。",
+        "category": "Commercial",
+        "tender_slots": {
+          "constraint_type": "NUMERIC_BOUND",
+          "target_field": "bid_price_yuan",
+          "operator": "<=",
+          "expected_numeric": 115046243.64,
+          "expected_unit": "元"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 115046243.65,
+          "actual_unit": "元"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R01_UNIT_01",
+      "clause_id": "T0001",
+      "rule_family": "R01_NUMERIC_BOUND",
+      "case_type": "unit_mismatch",
+      "description": "工期要求单位为日历天，投标响应为12个月（不同量纲禁止换算猜测） -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R01_NUMERIC_BOUND",
+      "input": {
+        "clause_id": "T0001",
+        "requirement_text": "计划工期为360日历天。",
+        "category": "Schedule",
+        "tender_slots": {
+          "constraint_type": "NUMERIC_BOUND",
+          "target_field": "duration_days",
+          "operator": "<=",
+          "expected_numeric": 360,
+          "expected_unit": "日历天"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 12,
+          "actual_unit": "个月"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R01_MISS_01",
+      "clause_id": "T0037",
+      "rule_family": "R01_NUMERIC_BOUND",
+      "case_type": "missing_info",
+      "description": "仅承诺在投标有效期内不撤销，未显式给出90日数值 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R01_NUMERIC_BOUND",
+      "input": {
+        "clause_id": "T0037",
+        "requirement_text": "投标有效期自投标文件递交截止日起90日。",
+        "category": "Schedule",
+        "tender_slots": {
+          "constraint_type": "NUMERIC_BOUND",
+          "target_field": "bid_validity_days",
+          "operator": "==",
+          "expected_numeric": 90,
+          "expected_unit": "日"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": null,
+          "actual_unit": ""
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R01_SUBJ_01",
+      "clause_id": "T0023",
+      "rule_family": "R01_NUMERIC_BOUND",
+      "case_type": "subject_mismatch",
+      "description": "保证金回单金额为50万元但付款人主体与投标人不一致触发归属校验拦截 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R01_NUMERIC_BOUND",
+      "input": {
+        "clause_id": "T0023",
+        "requirement_text": "投标保证金为人民币50万元。",
+        "category": "Commercial",
+        "tender_slots": {
+          "constraint_type": "NUMERIC_BOUND",
+          "target_field": "bid_bond_amount",
+          "operator": "==",
+          "expected_numeric": 50,
+          "expected_unit": "万元"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 50,
+          "actual_unit": "万元"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": [
+          "Numeric fact belongs to a third-party entity rather than the bidder"
+        ]
+      }
+    },
+    {
+      "case_id": "R01_CONFLICT_01",
+      "clause_id": "T0001",
+      "rule_family": "R01_NUMERIC_BOUND",
+      "case_type": "conflict",
+      "description": "商务投标函工期360日历天与技术标工期300日历天存在双侧已验证冲突 -> CONFLICTING_EVIDENCE",
+      "expected_verdict": "CONFLICTING_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R01_NUMERIC_BOUND",
+      "input": {
+        "clause_id": "T0001",
+        "requirement_text": "计划工期为360日历天。",
+        "category": "Schedule",
+        "tender_slots": {
+          "constraint_type": "NUMERIC_BOUND",
+          "target_field": "duration_days",
+          "operator": "<=",
+          "expected_numeric": 360,
+          "expected_unit": "日历天"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 360,
+          "actual_unit": "日历天",
+          "conflict_detected": true,
+          "conflict_pairs": [
+            {
+              "subject": "安徽水利开发有限公司",
+              "role": "bidder",
+              "aspect": "工期",
+              "period": "本标段",
+              "left": {
+                "evidence_id": "E1",
+                "quote": "工期：360日历天",
+                "value": "360日历天"
+              },
+              "right": {
+                "evidence_id": "E2",
+                "quote": "工期：300日历天",
+                "value": "300日历天"
+              }
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R02_POS_01_EXTENSION",
+      "clause_id": "T0004",
+      "rule_family": "R02_QUALIFICATION_HIERARCHY",
+      "case_type": "positive",
+      "description": "公路工程施工总承包特级>=三级，原证有效期2021-12-31但住建部统一延续至2022-12-31覆盖评审基准日2022-11-11 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R02_QUALIFICATION_HIERARCHY",
+      "input": {
+        "clause_id": "T0004",
+        "requirement_text": "投标人须具备公路工程施工总承包三级及以上资质。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "QUALIFICATION_LEVEL",
+          "target_field": "enterprise_qual",
+          "operator": "LEVEL_GE",
+          "expected_text": "公路工程施工总承包三级",
+          "required_domain": "公路工程",
+          "review_reference_date": "2022-11-11",
+          "requires_validity_date": true,
+          "allow_extension_notice": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_text": "公路工程施工总承包特级",
+          "actual_domain": "公路工程",
+          "valid_to": "2021-12-31",
+          "extension_valid_to": "2022-12-31",
+          "evidence_source_type": "CERTIFICATE_SCAN"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R02_MISS_01_T0004_TRAP",
+      "clause_id": "T0004",
+      "rule_family": "R02_QUALIFICATION_HIERARCHY",
+      "case_type": "missing_info",
+      "description": "T0004典型假阳性阻断：仅从《投标人基本情况表》提取到特级资质，未核实证书有效期与延期证明 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R02_QUALIFICATION_HIERARCHY",
+      "input": {
+        "clause_id": "T0004",
+        "requirement_text": "投标人须具备公路工程施工总承包三级及以上资质。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "QUALIFICATION_LEVEL",
+          "target_field": "enterprise_qual",
+          "operator": "LEVEL_GE",
+          "expected_text": "公路工程施工总承包三级",
+          "required_domain": "公路工程",
+          "review_reference_date": "2022-11-11",
+          "requires_validity_date": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_text": "公路工程施工总承包特级",
+          "actual_domain": "公路工程",
+          "certificate_valid": null,
+          "evidence_source_type": "SELF_DECLARED_TABLE"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R02_NEG_01_EXPIRED",
+      "clause_id": "T0004",
+      "rule_family": "R02_QUALIFICATION_HIERARCHY",
+      "case_type": "negative",
+      "description": "证书有效期至2021-12-31，早于评审基准日2022-11-11且无有效延期文件 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R02_QUALIFICATION_HIERARCHY",
+      "input": {
+        "clause_id": "T0004",
+        "requirement_text": "投标人须具备公路工程施工总承包三级及以上资质。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "QUALIFICATION_LEVEL",
+          "target_field": "enterprise_qual",
+          "operator": "LEVEL_GE",
+          "expected_text": "公路工程施工总承包三级",
+          "required_domain": "公路工程",
+          "review_reference_date": "2022-11-11",
+          "requires_validity_date": true,
+          "allow_extension_notice": false
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_text": "公路工程施工总承包特级",
+          "actual_domain": "公路工程",
+          "valid_to": "2021-12-31",
+          "certificate_valid": false,
+          "evidence_source_type": "CERTIFICATE_SCAN"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R02_BND_EQ_01_DATE",
+      "clause_id": "T0005",
+      "rule_family": "R02_QUALIFICATION_HIERARCHY",
+      "case_type": "boundary_equal",
+      "description": "安全生产许可证有效期至2022-11-11（恰好等于评审基准日2022-11-11） -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R02_QUALIFICATION_HIERARCHY",
+      "input": {
+        "clause_id": "T0005",
+        "requirement_text": "投标人须具有有效安全生产许可证。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "QUALIFICATION_LEVEL",
+          "target_field": "safety_license",
+          "operator": "LEVEL_GE",
+          "expected_text": "有效安全生产许可证",
+          "review_reference_date": "2022-11-11",
+          "requires_validity_date": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_text": "安全生产许可证",
+          "valid_to": "2022-11-11",
+          "evidence_source_type": "CERTIFICATE_SCAN"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R02_BND_OVER_01_DATE",
+      "clause_id": "T0005",
+      "rule_family": "R02_QUALIFICATION_HIERARCHY",
+      "case_type": "boundary_just_over",
+      "description": "安全生产许可证有效期至2022-11-10（比评审基准日2022-11-11早1天过期） -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R02_QUALIFICATION_HIERARCHY",
+      "input": {
+        "clause_id": "T0005",
+        "requirement_text": "投标人须具有有效安全生产许可证。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "QUALIFICATION_LEVEL",
+          "target_field": "safety_license",
+          "operator": "LEVEL_GE",
+          "expected_text": "有效安全生产许可证",
+          "review_reference_date": "2022-11-11",
+          "requires_validity_date": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_text": "安全生产许可证",
+          "valid_to": "2022-11-10",
+          "evidence_source_type": "CERTIFICATE_SCAN"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R02_POS_02_MANAGER_B_CERT",
+      "clause_id": "T0009",
+      "rule_family": "R02_QUALIFICATION_HIERARCHY",
+      "case_type": "positive",
+      "description": "项目经理王文年持有有效交安B证（有效期至2024-09-03 >= 2022-11-11） -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R02_QUALIFICATION_HIERARCHY",
+      "input": {
+        "clause_id": "T0009",
+        "requirement_text": "项目经理须具有有效安全生产考核合格证书。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "QUALIFICATION_LEVEL",
+          "target_field": "safety_b",
+          "operator": "LEVEL_GE",
+          "expected_text": "安全生产考核合格证书",
+          "required_role": "project_manager",
+          "review_reference_date": "2022-11-11",
+          "requires_validity_date": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_text": "安全生产考核合格证书(B证)",
+          "subject_role": "项目经理",
+          "certificate_holder": "王文年",
+          "valid_to": "2024-09-03",
+          "evidence_source_type": "CERTIFICATE_SCAN"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R02_POS_03_CHIEF_ENG_DOMAIN",
+      "clause_id": "T0015",
+      "rule_family": "R02_QUALIFICATION_HIERARCHY",
+      "case_type": "positive",
+      "description": "项目总工王曙具有路桥工程专业高级工程师职称（属于公路工程相关专业且高级>=中级） -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R02_QUALIFICATION_HIERARCHY",
+      "input": {
+        "clause_id": "T0015",
+        "requirement_text": "项目总工须具有公路工程相关专业中级及以上职称，相关专业包括公路工程、桥梁、公路与桥梁、交通土建、隧道（地下结构）、交通工程等。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "QUALIFICATION_LEVEL",
+          "target_field": "chief_engineer_title",
+          "operator": "LEVEL_GE",
+          "expected_text": "中级工程师",
+          "required_domain": "公路工程相关专业",
+          "required_role": "chief_engineer"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_text": "高级工程师",
+          "actual_domain": "路桥工程",
+          "subject_role": "项目总工",
+          "certificate_holder": "王曙"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R02_SUBJ_01_ROLE_MISMATCH",
+      "clause_id": "T0007",
+      "rule_family": "R02_QUALIFICATION_HIERARCHY",
+      "case_type": "subject_mismatch",
+      "description": "提供的一级注册建造师证书持有人为项目总工而非拟任项目经理 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R02_QUALIFICATION_HIERARCHY",
+      "input": {
+        "clause_id": "T0007",
+        "requirement_text": "项目经理须具有公路工程专业一级注册建造师资格。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "QUALIFICATION_LEVEL",
+          "target_field": "constructor",
+          "operator": "LEVEL_GE",
+          "expected_text": "一级注册建造师",
+          "required_domain": "公路工程",
+          "required_role": "project_manager",
+          "review_reference_date": "2022-11-11"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_text": "一级注册建造师",
+          "actual_domain": "公路工程",
+          "subject_role": "项目总工",
+          "valid_to": "2025-05-15"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R02_MISS_02_NO_REF_DATE",
+      "clause_id": "T0007",
+      "rule_family": "R02_QUALIFICATION_HIERARCHY",
+      "case_type": "missing_info",
+      "description": "提取了证书截止日期2025-05-15但未配置项目评审基准日期(review_reference_date) -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R02_QUALIFICATION_HIERARCHY",
+      "input": {
+        "clause_id": "T0007",
+        "requirement_text": "项目经理须具有公路工程专业一级注册建造师资格。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "QUALIFICATION_LEVEL",
+          "target_field": "constructor",
+          "operator": "LEVEL_GE",
+          "expected_text": "一级注册建造师",
+          "required_domain": "公路工程",
+          "requires_validity_date": true,
+          "review_reference_date": ""
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_text": "一级注册建造师",
+          "actual_domain": "公路工程",
+          "valid_to": "2025-05-15"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R02_CONFLICT_01_CERT_DATE",
+      "clause_id": "T0005",
+      "rule_family": "R02_QUALIFICATION_HIERARCHY",
+      "case_type": "conflict",
+      "description": "安全生产许可证扫描件与汇总表载明有效期互相冲突 -> CONFLICTING_EVIDENCE",
+      "expected_verdict": "CONFLICTING_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R02_QUALIFICATION_HIERARCHY",
+      "input": {
+        "clause_id": "T0005",
+        "requirement_text": "投标人须具有有效安全生产许可证。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "QUALIFICATION_LEVEL",
+          "target_field": "safety_license",
+          "operator": "LEVEL_GE",
+          "expected_text": "有效安全生产许可证",
+          "review_reference_date": "2022-11-11"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_text": "安全生产许可证",
+          "conflict_detected": true,
+          "conflict_pairs": [
+            {
+              "subject": "安徽水利开发有限公司",
+              "role": "bidder",
+              "aspect": "安全生产许可证有效期",
+              "period": "2022投标期",
+              "left": {
+                "evidence_id": "E1",
+                "quote": "有效期至2025年3月31日",
+                "value": "2025-03-31"
+              },
+              "right": {
+                "evidence_id": "E2",
+                "quote": "有效期至2021年12月31日",
+                "value": "2021-12-31"
+              }
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R03_POS_01",
+      "clause_id": "T0127",
+      "rule_family": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "case_type": "positive",
+      "description": "已标价工程量清单报价与投标函大小写金额完全一致 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "input": {
+        "clause_id": "T0127",
+        "requirement_text": "采用固化清单时，已标价清单投标报价须与投标函大写报价一致。",
+        "category": "Consistency",
+        "tender_slots": {
+          "constraint_type": "ENTITY_CONSISTENCY",
+          "target_field": "rmb_upper_consistency",
+          "operator": "CONSISTENT"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 97984949.58,
+          "upper_amount_text": "玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分",
+          "entity_primary": "97984949.58",
+          "entity_secondary": "97984949.58"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R03_NEG_01",
+      "clause_id": "T0127",
+      "rule_family": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "case_type": "negative",
+      "description": "投标函大写金额漏写捌分（伍角整 vs 97984949.58） -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "input": {
+        "clause_id": "T0127",
+        "requirement_text": "采用固化清单时，已标价清单投标报价须与投标函大写报价一致。",
+        "category": "Consistency",
+        "tender_slots": {
+          "constraint_type": "ENTITY_CONSISTENCY",
+          "target_field": "rmb_upper_consistency",
+          "operator": "CONSISTENT"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 97984949.58,
+          "upper_amount_text": "玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角整",
+          "entity_primary": "97984949.58",
+          "entity_secondary": "97984949.58"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R03_BND_EQ_01_PAREN_NORM",
+      "clause_id": "T0106",
+      "rule_family": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "case_type": "boundary_equal",
+      "description": "企业名称全角/半角括号规范化后完全一致 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "input": {
+        "clause_id": "T0106",
+        "requirement_text": "投标人名称须与交通运输部施工资质企业名录相应企业名称完全一致。",
+        "category": "Consistency",
+        "tender_slots": {
+          "constraint_type": "ENTITY_CONSISTENCY",
+          "target_field": "entity_name_consistency",
+          "operator": "CONSISTENT"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "entity_primary": "安徽水利开发有限公司（总部）",
+          "entity_secondary": "安徽水利开发有限公司(总部)"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R03_BND_OVER_01_ONE_CENT",
+      "clause_id": "T0127",
+      "rule_family": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "case_type": "boundary_just_over",
+      "description": "投标函总价与清单汇总表总价相差0.01元（97984949.58 vs 97984949.59） -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "input": {
+        "clause_id": "T0127",
+        "requirement_text": "采用固化清单时，已标价清单投标报价须与投标函大写报价一致。",
+        "category": "Consistency",
+        "tender_slots": {
+          "constraint_type": "ENTITY_CONSISTENCY",
+          "target_field": "rmb_upper_consistency",
+          "operator": "CONSISTENT"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 97984949.58,
+          "upper_amount_text": "玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分",
+          "entity_primary": "97984949.58",
+          "entity_secondary": "97984949.59"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R03_SUBJ_01",
+      "clause_id": "T0069",
+      "rule_family": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "case_type": "subject_mismatch",
+      "description": "项目经理建造师注册证书聘用单位为子公司，与投标人名称不一致 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "input": {
+        "clause_id": "T0069",
+        "requirement_text": "项目经理注册证书注册单位须与投标人名称一致。",
+        "category": "Consistency",
+        "tender_slots": {
+          "constraint_type": "ENTITY_CONSISTENCY",
+          "target_field": "employer_consistency",
+          "operator": "CONSISTENT"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "entity_primary": "安徽水利开发有限公司",
+          "entity_secondary": "安徽水利第一工程局有限公司"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R03_MISS_01",
+      "clause_id": "T0106",
+      "rule_family": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "case_type": "missing_info",
+      "description": "仅提取到投标人名称，缺少交通部名录截图中的企业名称比对源 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "input": {
+        "clause_id": "T0106",
+        "requirement_text": "投标人名称须与交通运输部施工资质企业名录相应企业名称完全一致。",
+        "category": "Consistency",
+        "tender_slots": {
+          "constraint_type": "ENTITY_CONSISTENCY",
+          "target_field": "entity_name_consistency",
+          "operator": "CONSISTENT"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "entity_primary": "安徽水利开发有限公司",
+          "entity_secondary": ""
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R03_CONFLICT_01",
+      "clause_id": "T0188",
+      "rule_family": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "case_type": "conflict",
+      "description": "商务文件不同章节记载的投标人名称前后矛盾 -> CONFLICTING_EVIDENCE",
+      "expected_verdict": "CONFLICTING_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R03_RMB_UPPER_AND_CONSISTENCY",
+      "input": {
+        "clause_id": "T0188",
+        "requirement_text": "商务技术文件投标人名称须与营业执照、资质证书及安全生产许可证一致。",
+        "category": "Consistency",
+        "tender_slots": {
+          "constraint_type": "ENTITY_CONSISTENCY",
+          "target_field": "entity_name_consistency",
+          "operator": "CONSISTENT"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "entity_primary": "安徽水利开发有限公司",
+          "entity_secondary": "安徽水利开发有限公司",
+          "conflict_detected": true,
+          "conflict_pairs": [
+            {
+              "subject": "安徽水利开发有限公司",
+              "role": "bidder",
+              "aspect": "投标人名称",
+              "period": "本标段",
+              "left": {
+                "evidence_id": "E1",
+                "quote": "投标人名称：安徽水利开发有限公司",
+                "value": "安徽水利开发有限公司"
+              },
+              "right": {
+                "evidence_id": "E2",
+                "quote": "投标人名称：安徽建工水利开发有限公司",
+                "value": "安徽建工水利开发有限公司"
+              }
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R04_POS_01_MULTI_SEAL",
+      "clause_id": "T0014",
+      "rule_family": "R04_DOCUMENT_AND_SEAL",
+      "case_type": "positive",
+      "description": "交工验收证书齐全且具备建设、设计、监理、施工四方单位印章 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R04_DOCUMENT_AND_SEAL",
+      "input": {
+        "clause_id": "T0014",
+        "requirement_text": "项目经理业绩须提供交工或竣工验收证明，须有建设、设计、监理、施工单位等盖章确认。",
+        "category": "Document",
+        "tender_slots": {
+          "constraint_type": "DOCUMENT_PRESENCE_AND_SEAL",
+          "target_field": "acceptance_certificate",
+          "operator": "PRESENT",
+          "requires_official_seal": true,
+          "required_seal_parties": [
+            "建设单位",
+            "设计单位",
+            "监理单位",
+            "施工单位"
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "document_present": true,
+          "has_official_seal": true,
+          "observed_seal_parties": [
+            "建设单位",
+            "设计单位",
+            "监理单位",
+            "施工单位"
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R04_NEG_01_MISSING_PARTY_SEAL",
+      "clause_id": "T0014",
+      "rule_family": "R04_DOCUMENT_AND_SEAL",
+      "case_type": "negative",
+      "description": "交工验收证明仅有建设、监理、施工三方盖章，缺少设计单位盖章 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R04_DOCUMENT_AND_SEAL",
+      "input": {
+        "clause_id": "T0014",
+        "requirement_text": "项目经理业绩须提供交工或竣工验收证明，须有建设、设计、监理、施工单位等盖章确认。",
+        "category": "Document",
+        "tender_slots": {
+          "constraint_type": "DOCUMENT_PRESENCE_AND_SEAL",
+          "target_field": "acceptance_certificate",
+          "operator": "PRESENT",
+          "requires_official_seal": true,
+          "required_seal_parties": [
+            "建设单位",
+            "设计单位",
+            "监理单位",
+            "施工单位"
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "document_present": true,
+          "has_official_seal": true,
+          "observed_seal_parties": [
+            "建设单位",
+            "监理单位",
+            "施工单位"
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R04_MISS_01_SEAL_UNCONFIRMED",
+      "clause_id": "T0014",
+      "rule_family": "R04_DOCUMENT_AND_SEAL",
+      "case_type": "missing_info",
+      "description": "已提供交工验收证明正文，但OCR纯文本未确认四方印章明细 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R04_DOCUMENT_AND_SEAL",
+      "input": {
+        "clause_id": "T0014",
+        "requirement_text": "项目经理业绩须提供交工或竣工验收证明，须有建设、设计、监理、施工单位等盖章确认。",
+        "category": "Document",
+        "tender_slots": {
+          "constraint_type": "DOCUMENT_PRESENCE_AND_SEAL",
+          "target_field": "acceptance_certificate",
+          "operator": "PRESENT",
+          "requires_official_seal": true,
+          "required_seal_parties": [
+            "建设单位",
+            "设计单位",
+            "监理单位",
+            "施工单位"
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "document_present": true,
+          "has_official_seal": null,
+          "observed_seal_parties": []
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R04_NEG_02_DOC_ABSENT",
+      "clause_id": "T0112",
+      "rule_family": "R04_DOCUMENT_AND_SEAL",
+      "case_type": "negative",
+      "description": "商务文件明确缺失不含报价的投标函 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R04_DOCUMENT_AND_SEAL",
+      "input": {
+        "clause_id": "T0112",
+        "requirement_text": "商务文件须包括不含报价的投标函。",
+        "category": "Document",
+        "tender_slots": {
+          "constraint_type": "DOCUMENT_PRESENCE_AND_SEAL",
+          "target_field": "non_price_letter",
+          "operator": "PRESENT"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "document_present": false
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R04_SUBJ_01_OTHER_MANAGER_AWARD",
+      "clause_id": "T0013",
+      "rule_family": "R04_DOCUMENT_AND_SEAL",
+      "case_type": "subject_mismatch",
+      "description": "中标通知书载明项目经理为他人且无变更为当前拟任经理的批复 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R04_DOCUMENT_AND_SEAL",
+      "input": {
+        "clause_id": "T0013",
+        "requirement_text": "项目经理业绩须提供中标通知书。",
+        "category": "Document",
+        "tender_slots": {
+          "constraint_type": "DOCUMENT_PRESENCE_AND_SEAL",
+          "target_field": "award_notice",
+          "operator": "PRESENT"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "document_present": true
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": [
+          "Performance document lacks a link to the currently proposed project manager"
+        ]
+      }
+    },
+    {
+      "case_id": "R04_POS_02_SIGNATURE_PRESENT",
+      "clause_id": "T0294",
+      "rule_family": "R04_DOCUMENT_AND_SEAL",
+      "case_type": "positive",
+      "description": "项目经理履约承诺函存在且已确认项目经理本人签字 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R04_DOCUMENT_AND_SEAL",
+      "input": {
+        "clause_id": "T0294",
+        "requirement_text": "项目经理履约承诺函须本人签字。",
+        "category": "Document",
+        "tender_slots": {
+          "constraint_type": "DOCUMENT_PRESENCE_AND_SEAL",
+          "target_field": "manager_commitment_letter",
+          "operator": "PRESENT",
+          "requires_signature": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "document_present": true,
+          "has_signature": true
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R05_POS_01",
+      "clause_id": "T0033",
+      "rule_family": "R05_PROHIBITION_AND_COMMITMENT",
+      "case_type": "positive",
+      "description": "拟分包项目情况表填‘无’，明确响应不允许分包 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R05_PROHIBITION_AND_COMMITMENT",
+      "input": {
+        "clause_id": "T0033",
+        "requirement_text": "本项目不允许分包。",
+        "category": "Technical",
+        "tender_slots": {
+          "constraint_type": "PROHIBITION_AND_COMMITMENT",
+          "target_field": "no_subcontracting",
+          "operator": "NOT_VIOLATED"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "prohibition_violated": false,
+          "commitment_fulfilled": true
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R05_POS_02_OR_PATH_WITHDRAWAL",
+      "clause_id": "T0056",
+      "rule_family": "R05_PROHIBITION_AND_COMMITMENT",
+      "case_type": "boundary_equal",
+      "description": "项目经理虽有在建项目，但按格式二明确承诺中标后签合同前变更至本项目全面履约 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R05_PROHIBITION_AND_COMMITMENT",
+      "input": {
+        "clause_id": "T0056",
+        "requirement_text": "拟派经理已任其他项目经理的，须在投标文件承诺本项目中标后签合同前能够变更至本项目全面履约。",
+        "category": "Document",
+        "tender_slots": {
+          "constraint_type": "PROHIBITION_AND_COMMITMENT",
+          "target_field": "manager_withdrawal_commitment",
+          "operator": "NOT_VIOLATED"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "prohibition_violated": false,
+          "commitment_fulfilled": true
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R05_NEG_01",
+      "clause_id": "T0016",
+      "rule_family": "R05_PROHIBITION_AND_COMMITMENT",
+      "case_type": "negative",
+      "description": "不接受联合体投标，但投标人提交了联合体协议书以联合体形式投标 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R05_PROHIBITION_AND_COMMITMENT",
+      "input": {
+        "clause_id": "T0016",
+        "requirement_text": "本次招标不接受联合体投标。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "PROHIBITION_AND_COMMITMENT",
+          "target_field": "no_joint_venture",
+          "operator": "NOT_VIOLATED"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "prohibition_violated": true,
+          "commitment_fulfilled": false
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R05_MISS_01_EXTERNAL_FACT",
+      "clause_id": "T0099",
+      "rule_family": "R05_PROHIBITION_AND_COMMITMENT",
+      "case_type": "missing_info",
+      "description": "T0099失信被执行人核查：仅有投标人诚信承诺书自述，未完成信用中国外部核验 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R05_PROHIBITION_AND_COMMITMENT",
+      "input": {
+        "clause_id": "T0099",
+        "requirement_text": "投标人不得被信用中国列入失信被执行人名单。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "PROHIBITION_AND_COMMITMENT",
+          "target_field": "no_dishonest_blacklist",
+          "operator": "NOT_VIOLATED",
+          "requires_external_verification": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "prohibition_violated": false,
+          "commitment_fulfilled": true,
+          "evidence_source_type": "COMMITMENT_LETTER"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R05_CONFLICT_01_T0057",
+      "clause_id": "T0057",
+      "rule_family": "R05_PROHIBITION_AND_COMMITMENT",
+      "case_type": "conflict",
+      "description": "T0057项目经理在岗冲突：投标函第4页声明在建拟变更，第5页承诺书又声明无在建工程 -> CONFLICTING_EVIDENCE",
+      "expected_verdict": "CONFLICTING_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R05_PROHIBITION_AND_COMMITMENT",
+      "input": {
+        "clause_id": "T0057",
+        "requirement_text": "拟派经理已任其他项目经理时，不得虚假承诺未在其他项目任项目经理。",
+        "category": "Integrity",
+        "tender_slots": {
+          "constraint_type": "PROHIBITION_AND_COMMITMENT",
+          "target_field": "no_false_active_declaration",
+          "operator": "NOT_VIOLATED"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "conflict_detected": true,
+          "conflict_pairs": [
+            {
+              "subject": "王文年",
+              "role": "project_manager",
+              "aspect": "在建项目状态",
+              "period": "投标截止时",
+              "left": {
+                "evidence_id": "E1",
+                "quote": "现任G345项目经理",
+                "value": "在建"
+              },
+              "right": {
+                "evidence_id": "E2",
+                "quote": "拟派项目经理无在建工程",
+                "value": "无在建"
+              }
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R05_MISS_02_UNVERIFIED_CONFLICT",
+      "clause_id": "T0033",
+      "rule_family": "R05_PROHIBITION_AND_COMMITMENT",
+      "case_type": "missing_info",
+      "description": "T0033单侧冲突拦截：模型标记conflict_detected=True但缺少双方conflict_pairs引用 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R05_PROHIBITION_AND_COMMITMENT",
+      "input": {
+        "clause_id": "T0033",
+        "requirement_text": "本项目不允许分包。",
+        "category": "Technical",
+        "tender_slots": {
+          "constraint_type": "PROHIBITION_AND_COMMITMENT",
+          "target_field": "no_subcontracting",
+          "operator": "NOT_VIOLATED"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "conflict_detected": true,
+          "conflict_pairs": []
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R06_POS_01_DEBT_6PTS",
+      "clause_id": "T0214",
+      "rule_family": "R06_QUALITATIVE_AND_SCORING",
+      "case_type": "positive",
+      "description": "2021年资产负债率74.82% < 75%，落入第一档 -> SCORED (6.0分)",
+      "expected_verdict": "SCORED",
+      "expected_score": 6.0,
+      "expected_rule_id": "R06_QUALITATIVE_AND_SCORING",
+      "input": {
+        "clause_id": "T0214",
+        "requirement_text": "资产负债率75%以下得6分，75%（含）—80%（含）得4分，80%—85%（含）得2分，85%以上不得分；按原文档位保留。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "QUALITATIVE_OR_SCORING",
+          "target_field": "debt_ratio_score",
+          "operator": "SCORE_BRACKET",
+          "expected_unit": "%",
+          "scoring_max_points": 6.0,
+          "scoring_bands": [
+            {
+              "min": null,
+              "max": 75,
+              "min_inclusive": false,
+              "max_inclusive": false,
+              "points": 6.0
+            },
+            {
+              "min": 75,
+              "max": 80,
+              "min_inclusive": true,
+              "max_inclusive": true,
+              "points": 4.0
+            },
+            {
+              "min": 80,
+              "max": 85,
+              "min_inclusive": false,
+              "max_inclusive": true,
+              "points": 2.0
+            },
+            {
+              "min": 85,
+              "max": null,
+              "min_inclusive": false,
+              "max_inclusive": false,
+              "points": 0.0
+            }
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 74.82,
+          "actual_unit": "%"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R06_BND_EQ_01_DEBT_75",
+      "clause_id": "T0214",
+      "rule_family": "R06_QUALITATIVE_AND_SCORING",
+      "case_type": "boundary_equal",
+      "description": "资产负债率恰好等于75.0%，按‘75%（含）—80%（含）得4分’边界 -> SCORED (4.0分)",
+      "expected_verdict": "SCORED",
+      "expected_score": 4.0,
+      "expected_rule_id": "R06_QUALITATIVE_AND_SCORING",
+      "input": {
+        "clause_id": "T0214",
+        "requirement_text": "资产负债率75%以下得6分，75%（含）—80%（含）得4分，80%—85%（含）得2分，85%以上不得分；按原文档位保留。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "QUALITATIVE_OR_SCORING",
+          "target_field": "debt_ratio_score",
+          "operator": "SCORE_BRACKET",
+          "expected_unit": "%",
+          "scoring_max_points": 6.0,
+          "scoring_bands": [
+            {
+              "min": null,
+              "max": 75,
+              "min_inclusive": false,
+              "max_inclusive": false,
+              "points": 6.0
+            },
+            {
+              "min": 75,
+              "max": 80,
+              "min_inclusive": true,
+              "max_inclusive": true,
+              "points": 4.0
+            },
+            {
+              "min": 80,
+              "max": 85,
+              "min_inclusive": false,
+              "max_inclusive": true,
+              "points": 2.0
+            },
+            {
+              "min": 85,
+              "max": null,
+              "min_inclusive": false,
+              "max_inclusive": false,
+              "points": 0.0
+            }
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 75.0,
+          "actual_unit": "%"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R06_BND_OVER_01_DEBT_ZERO",
+      "clause_id": "T0214",
+      "rule_family": "R06_QUALITATIVE_AND_SCORING",
+      "case_type": "boundary_just_over",
+      "description": "资产负债率85.01% > 85%，得0分但属于正常计分结果而非废标 -> SCORED (0.0分)",
+      "expected_verdict": "SCORED",
+      "expected_score": 0.0,
+      "expected_rule_id": "R06_QUALITATIVE_AND_SCORING",
+      "input": {
+        "clause_id": "T0214",
+        "requirement_text": "资产负债率75%以下得6分，75%（含）—80%（含）得4分，80%—85%（含）得2分，85%以上不得分；按原文档位保留。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "QUALITATIVE_OR_SCORING",
+          "target_field": "debt_ratio_score",
+          "operator": "SCORE_BRACKET",
+          "expected_unit": "%",
+          "scoring_max_points": 6.0,
+          "scoring_bands": [
+            {
+              "min": null,
+              "max": 75,
+              "min_inclusive": false,
+              "max_inclusive": false,
+              "points": 6.0
+            },
+            {
+              "min": 75,
+              "max": 80,
+              "min_inclusive": true,
+              "max_inclusive": true,
+              "points": 4.0
+            },
+            {
+              "min": 80,
+              "max": 85,
+              "min_inclusive": false,
+              "max_inclusive": true,
+              "points": 2.0
+            },
+            {
+              "min": 85,
+              "max": null,
+              "min_inclusive": false,
+              "max_inclusive": false,
+              "points": 0.0
+            }
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 85.01,
+          "actual_unit": "%"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R06_UNIT_01_DEBT",
+      "clause_id": "T0214",
+      "rule_family": "R06_QUALITATIVE_AND_SCORING",
+      "case_type": "unit_mismatch",
+      "description": "资产负债率抽取值为0.7482但单位缺失或非百分比(%) -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R06_QUALITATIVE_AND_SCORING",
+      "input": {
+        "clause_id": "T0214",
+        "requirement_text": "资产负债率75%以下得6分，75%（含）—80%（含）得4分，80%—85%（含）得2分，85%以上不得分；按原文档位保留。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "QUALITATIVE_OR_SCORING",
+          "target_field": "debt_ratio_score",
+          "operator": "SCORE_BRACKET",
+          "expected_unit": "%",
+          "scoring_max_points": 6.0,
+          "scoring_bands": [
+            {
+              "min": null,
+              "max": 75,
+              "min_inclusive": false,
+              "max_inclusive": false,
+              "points": 6.0
+            },
+            {
+              "min": 75,
+              "max": 80,
+              "min_inclusive": true,
+              "max_inclusive": true,
+              "points": 4.0
+            }
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_numeric": 0.7482,
+          "actual_unit": "ratio"
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R06_POS_02_CREDIT_MULTI_YEAR",
+      "clause_id": "T0220",
+      "rule_family": "R06_QUALITATIVE_AND_SCORING",
+      "case_type": "positive",
+      "description": "T0220信用等级计分：2019/2020安徽省AA级，2021无省等级但交通部AA级 -> 3年AA得5.0分",
+      "expected_verdict": "SCORED",
+      "expected_score": 5.0,
+      "expected_rule_id": "R06_QUALITATIVE_AND_SCORING",
+      "input": {
+        "clause_id": "T0220",
+        "requirement_text": "公路施工信用等级2019、2020、2021三年均AA得5分，两年AA得4分，一年AA得3分，无AA得0分，满分5分；各年度优先用安徽省交通厅等级，无省等级用交通部等级。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "QUALITATIVE_OR_SCORING",
+          "target_field": "credit_score",
+          "scoring_mode": "CREDIT_MULTI_YEAR",
+          "scoring_max_points": 5.0
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "credit_ratings": [
+            {
+              "year": 2019,
+              "provincial_grade": "AA",
+              "national_grade": "A"
+            },
+            {
+              "year": 2020,
+              "provincial_grade": "AA",
+              "national_grade": "AA"
+            },
+            {
+              "year": 2021,
+              "provincial_grade": "",
+              "national_grade": "AA"
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R06_MISS_01_CREDIT_YEAR",
+      "clause_id": "T0220",
+      "rule_family": "R06_QUALITATIVE_AND_SCORING",
+      "case_type": "missing_info",
+      "description": "T0220信用等级仅提取到2019、2020两年数据，缺少2021年度等级 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R06_QUALITATIVE_AND_SCORING",
+      "input": {
+        "clause_id": "T0220",
+        "requirement_text": "公路施工信用等级2019、2020、2021三年均AA得5分，两年AA得4分，一年AA得3分，无AA得0分，满分5分。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "QUALITATIVE_OR_SCORING",
+          "target_field": "credit_score",
+          "scoring_mode": "CREDIT_MULTI_YEAR",
+          "scoring_max_points": 5.0
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "credit_ratings": [
+            {
+              "year": 2019,
+              "provincial_grade": "AA",
+              "national_grade": "AA"
+            },
+            {
+              "year": 2020,
+              "provincial_grade": "AA",
+              "national_grade": "AA"
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R06_NEG_01_QUALITY_TARGET",
+      "clause_id": "T0028",
+      "rule_family": "R06_QUALITATIVE_AND_SCORING",
+      "case_type": "negative",
+      "description": "交工验收质量评定响应为不合格 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R06_OBJECTIVE_TARGET",
+      "input": {
+        "clause_id": "T0028",
+        "requirement_text": "标段交工验收质量评定须为合格。",
+        "category": "Technical",
+        "tender_slots": {
+          "constraint_type": "QUALITATIVE_OR_SCORING",
+          "target_field": "quality_target",
+          "operator": "QUALITATIVE_MATCH"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "qualitative_match": false,
+          "evidence_references": [
+            {
+              "field": "qualitative_match",
+              "evidence_id": "E1",
+              "quote": "交工验收质量评定为不合格"
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R06_HUMAN_01_SUBJECTIVE",
+      "clause_id": "T0222",
+      "rule_family": "R06_QUALITATIVE_AND_SCORING",
+      "case_type": "human_review_routed",
+      "description": "T0222施工组织设计主观优良/一般/差打分 -> 路由至UNSUPPORTED_RULE交由人工评审",
+      "expected_verdict": "UNSUPPORTED_RULE",
+      "expected_score": null,
+      "expected_rule_id": "R06_QUALITATIVE_AND_SCORING",
+      "input": {
+        "clause_id": "T0222",
+        "requirement_text": "总体施工组织布置规划按工程特点、总体筹划、目标节点、关键工序、工期保障及场地布置评审：优良0.75≤F≤1分，一般0.5≤F＜0.75分，差0≤F＜0.5分。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "QUALITATIVE_OR_SCORING",
+          "target_field": "subjective_tech_score",
+          "requires_human_review": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "document_present": true
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R07_POS_01_ROAD_ENG",
+      "clause_id": "T0078",
+      "rule_family": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "case_type": "positive",
+      "description": "配备道路工程师1人（王雷，路桥工程中级工程师） -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "input": {
+        "clause_id": "T0078",
+        "requirement_text": "须配备道路工程师1人，具公路工程相关专业中级工程师及以上职称。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "STAFFING_COUNT_AND_QUALIFICATION",
+          "required_role": "road_engineer",
+          "required_count": 1,
+          "count_mode": "AT_LEAST_N_QUALIFIED",
+          "expected_text": "中级工程师",
+          "required_domain": "公路工程相关专业"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "personnel_records": [
+            {
+              "name": "王雷",
+              "role": "道路工程师",
+              "qualification_text": "中级工程师",
+              "domain": "路桥工程"
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R07_POS_02_SAFETY_OFFICERS",
+      "clause_id": "T0081",
+      "rule_family": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "case_type": "positive",
+      "description": "要求配备专职安全员1人，实际配备张磊、陈亮亮2人且均持安徽省交通厅核发有效交安C证 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "input": {
+        "clause_id": "T0081",
+        "requirement_text": "须配备专职安全员1人，具省级及以上交通运输主管部门核发的专职安全员C证。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "STAFFING_COUNT_AND_QUALIFICATION",
+          "required_role": "safety_officer",
+          "required_count": 1,
+          "count_mode": "AT_LEAST_N_QUALIFIED",
+          "expected_text": "省级交通运输主管部门核发的专职安全员C证",
+          "review_reference_date": "2022-11-11",
+          "requires_validity_date": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "personnel_records": [
+            {
+              "name": "张磊",
+              "role": "专职安全员",
+              "qualification_text": "安徽省交通运输厅专职安全员C证",
+              "valid_to": "2025-08-19"
+            },
+            {
+              "name": "陈亮亮",
+              "role": "专职安全员",
+              "qualification_text": "安徽省交通运输厅专职安全员C证",
+              "valid_to": "2023-12-25"
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R07_BND_EQ_01_EXACT_TWO_PERSONS",
+      "clause_id": "T0081",
+      "rule_family": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "case_type": "boundary_equal",
+      "description": "要求配备专职安全员2人且社保满6个月，实际配备2人、社保恰好6个月、C证有效期恰好至2022-11-11 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "input": {
+        "clause_id": "T0081",
+        "requirement_text": "须配备专职安全员2人，具省级及以上交通运输主管部门核发的专职安全员C证，且连续缴纳社保满6个月。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "STAFFING_COUNT_AND_QUALIFICATION",
+          "required_role": "safety_officer",
+          "required_count": 2,
+          "count_mode": "AT_LEAST_N_QUALIFIED",
+          "expected_text": "省级交通运输主管部门核发的专职安全员C证",
+          "review_reference_date": "2022-11-11",
+          "requires_validity_date": true,
+          "required_social_security_months": 6,
+          "requires_employer_match": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "personnel_records": [
+            {
+              "name": "张磊",
+              "role": "专职安全员",
+              "qualification_text": "安徽省交通运输厅专职安全员C证",
+              "valid_to": "2022-11-11",
+              "social_security_months": 6,
+              "employer_matches_bidder": true
+            },
+            {
+              "name": "陈亮亮",
+              "role": "专职安全员",
+              "qualification_text": "安徽省交通运输厅专职安全员C证",
+              "valid_to": "2023-12-25",
+              "social_security_months": 6,
+              "employer_matches_bidder": true
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R07_SUBJ_01_SPLICING_TRAP",
+      "clause_id": "T0078",
+      "rule_family": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "case_type": "subject_mismatch",
+      "description": "跨人资格拼接阻断：王雷任道路工程师但仅为助理工程师，陈春海为高级工程师但任桥梁工程师 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "input": {
+        "clause_id": "T0078",
+        "requirement_text": "须配备道路工程师1人，具公路工程相关专业中级工程师及以上职称。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "STAFFING_COUNT_AND_QUALIFICATION",
+          "required_role": "road_engineer",
+          "required_count": 1,
+          "count_mode": "AT_LEAST_N_QUALIFIED",
+          "expected_text": "中级工程师",
+          "required_domain": "公路工程相关专业"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "personnel_records": [
+            {
+              "name": "王雷",
+              "role": "道路工程师",
+              "qualification_text": "助理工程师",
+              "domain": "路桥工程"
+            },
+            {
+              "name": "陈春海",
+              "role": "桥梁工程师",
+              "qualification_text": "高级工程师",
+              "domain": "道路与桥梁"
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R07_NEG_01_ALL_PROPOSED_MODE",
+      "clause_id": "T0081",
+      "rule_family": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "case_type": "negative",
+      "description": "在‘每人均须满足(ALL_PROPOSED_QUALIFIED)’模式下，拟派2名安全员中1人C证已过期 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "input": {
+        "clause_id": "T0081",
+        "requirement_text": "须配备专职安全员，且拟派安全员每人均须持有效专职安全员C证。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "STAFFING_COUNT_AND_QUALIFICATION",
+          "required_role": "safety_officer",
+          "required_count": 1,
+          "count_mode": "ALL_PROPOSED_QUALIFIED",
+          "expected_text": "省级交通运输主管部门核发的专职安全员C证",
+          "review_reference_date": "2022-11-11",
+          "requires_validity_date": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "personnel_records": [
+            {
+              "name": "张磊",
+              "role": "专职安全员",
+              "qualification_text": "安徽省交通运输厅专职安全员C证",
+              "valid_to": "2025-08-19"
+            },
+            {
+              "name": "赵六",
+              "role": "专职安全员",
+              "qualification_text": "安徽省交通运输厅专职安全员C证",
+              "valid_to": "2021-05-01"
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R07_BND_OVER_01_HEADCOUNT",
+      "clause_id": "T0081",
+      "rule_family": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "case_type": "boundary_just_over",
+      "description": "要求配备专职安全员2人，实际仅配备1名合格人员（即使重复录入同一姓名也不重复计数） -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "input": {
+        "clause_id": "T0081",
+        "requirement_text": "须配备专职安全员2人，具省级及以上交通运输主管部门核发的专职安全员C证。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "STAFFING_COUNT_AND_QUALIFICATION",
+          "required_role": "safety_officer",
+          "required_count": 2,
+          "count_mode": "AT_LEAST_N_QUALIFIED",
+          "expected_text": "省级交通运输主管部门核发的专职安全员C证",
+          "review_reference_date": "2022-11-11",
+          "requires_validity_date": true
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "personnel_records": [
+            {
+              "name": "张磊",
+              "role": "专职安全员",
+              "qualification_text": "安徽省交通运输厅专职安全员C证",
+              "valid_to": "2025-08-19"
+            },
+            {
+              "name": "张磊",
+              "role": "专职安全员",
+              "qualification_text": "安徽省交通运输厅专职安全员C证",
+              "valid_to": "2025-08-19"
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R07_MISS_01_DOMAIN_MISSING",
+      "clause_id": "T0079",
+      "rule_family": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "case_type": "missing_info",
+      "description": "桥梁工程师陈春海提取到中级职称，但职称证扫描件未识别出专业名称 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R07_STAFFING_COUNT_AND_QUALIFICATION",
+      "input": {
+        "clause_id": "T0079",
+        "requirement_text": "须配备桥梁工程师1人，具公路工程相关专业中级工程师及以上职称。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "STAFFING_COUNT_AND_QUALIFICATION",
+          "required_role": "bridge_engineer",
+          "required_count": 1,
+          "count_mode": "AT_LEAST_N_QUALIFIED",
+          "expected_text": "中级工程师",
+          "required_domain": "公路工程相关专业"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "personnel_records": [
+            {
+              "name": "陈春海",
+              "role": "桥梁工程师",
+              "qualification_text": "中级工程师",
+              "domain": ""
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R08_POS_01_MANAGER_PERF_WITH_CHANGE",
+      "clause_id": "T0011",
+      "rule_family": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "case_type": "positive",
+      "description": "项目经理王文年完成S214四期改建工程（原合同经理向阳，经郎建指〔2015〕2号批复变更为王文年并交工验收，一级公路15.15km/49123万元，含路基路面桥涵） -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "input": {
+        "clause_id": "T0011",
+        "requirement_text": "拟派项目经理须于2017年1月1日至投标截止时间以项目经理身份至少完成一个新建、改建或扩建三级及以上公路施工项目，单合同含长度≥15公里或金额≥5000万元，内容包括路基、路面及桥涵，时间以交工或竣工验收时间为准。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "PERFORMANCE_CHAIN_AND_SCORING",
+          "required_role": "project_manager",
+          "min_date": "2017-01-01",
+          "review_reference_date": "2022-11-11",
+          "allowed_construction_types": [
+            "新建",
+            "改建",
+            "扩建"
+          ],
+          "required_highway_grade": "三级公路",
+          "min_length_km": 15.0,
+          "min_amount_wanyuan": 5000.0,
+          "required_scopes": [
+            "路基",
+            "路面",
+            "桥涵"
+          ],
+          "required_proof_docs": [
+            "合同",
+            "中标通知书",
+            "交工验收证明"
+          ],
+          "required_seal_parties": [
+            "建设单位",
+            "设计单位",
+            "监理单位",
+            "施工单位"
+          ],
+          "min_project_count": 1
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "proposed_person_name": "王文年",
+          "performance_records": [
+            {
+              "project_name": "省道214郎溪段改建工程四期工程",
+              "person_name": "向阳",
+              "handover_person_name": "王文年",
+              "role_change_approved": true,
+              "performed_role": "项目经理",
+              "completion_date": "2017-11-30",
+              "construction_type": "改建",
+              "highway_grade": "一级公路",
+              "length_km": 15.15,
+              "contract_amount_wanyuan": 49123.25,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ],
+              "proof_docs": [
+                "合同",
+                "中标通知书",
+                "交工验收证明"
+              ],
+              "seal_parties": [
+                "建设单位",
+                "设计单位",
+                "监理单位",
+                "施工单位"
+              ]
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R08_POS_03_T0209_BASE_SCORE",
+      "clause_id": "T0209",
+      "rule_family": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "case_type": "positive",
+      "description": "T0209拟任项目经理业绩满足招标最低要求得6分 -> SCORED (6.0分)",
+      "expected_verdict": "SCORED",
+      "expected_score": 6.0,
+      "expected_rule_id": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "input": {
+        "clause_id": "T0209",
+        "requirement_text": "拟任项目经理业绩满足招标最低要求得6分。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "PERFORMANCE_CHAIN_AND_SCORING",
+          "required_role": "project_manager",
+          "min_date": "2017-01-01",
+          "review_reference_date": "2022-11-11",
+          "allowed_construction_types": [
+            "新建",
+            "改建",
+            "扩建"
+          ],
+          "required_highway_grade": "三级公路",
+          "min_length_km": 15.0,
+          "min_amount_wanyuan": 5000.0,
+          "required_scopes": [
+            "路基",
+            "路面",
+            "桥涵"
+          ],
+          "min_project_count": 1,
+          "scoring_mode": "BASE_QUAL_SCORE",
+          "scoring_max_points": 6.0
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "proposed_person_name": "王文年",
+          "performance_records": [
+            {
+              "project_name": "省道214郎溪段改建工程四期工程",
+              "person_name": "向阳",
+              "handover_person_name": "王文年",
+              "role_change_approved": true,
+              "performed_role": "项目经理",
+              "completion_date": "2017-11-30",
+              "construction_type": "改建",
+              "highway_grade": "一级公路",
+              "length_km": 15.15,
+              "contract_amount_wanyuan": 49123.25,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R08_MISS_01_MISSING_CHANGE_APPROVAL",
+      "clause_id": "T0011",
+      "rule_family": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "case_type": "missing_info",
+      "description": "合同原项目经理为向阳，当前拟任项目经理为王文年，检索结果漏掉业主变更批复(role_change_approved=None) -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "input": {
+        "clause_id": "T0011",
+        "requirement_text": "拟派项目经理须于2017年1月1日至投标截止时间以项目经理身份至少完成一个新建、改建或扩建三级及以上公路施工项目，单合同含长度≥15公里或金额≥5000万元，内容包括路基、路面及桥涵，时间以交工或竣工验收时间为准。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "PERFORMANCE_CHAIN_AND_SCORING",
+          "required_role": "project_manager",
+          "min_date": "2017-01-01",
+          "review_reference_date": "2022-11-11",
+          "allowed_construction_types": [
+            "新建",
+            "改建",
+            "扩建"
+          ],
+          "required_highway_grade": "三级公路",
+          "min_length_km": 15.0,
+          "min_amount_wanyuan": 5000.0,
+          "required_scopes": [
+            "路基",
+            "路面",
+            "桥涵"
+          ],
+          "min_project_count": 1
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "proposed_person_name": "王文年",
+          "performance_records": [
+            {
+              "project_name": "省道214郎溪段改建工程四期工程",
+              "person_name": "向阳",
+              "handover_person_name": "王文年",
+              "role_change_approved": null,
+              "performed_role": "项目经理",
+              "completion_date": "2017-11-30",
+              "construction_type": "改建",
+              "highway_grade": "一级公路",
+              "length_km": 15.15,
+              "contract_amount_wanyuan": 49123.25,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R08_SUBJ_01_OTHER_PERSON_PERF",
+      "clause_id": "T0011",
+      "rule_family": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "case_type": "subject_mismatch",
+      "description": "提供的业绩项目经理为李四，当前拟任项目经理为王文年，且无变更批复(role_change_approved=False) -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "input": {
+        "clause_id": "T0011",
+        "requirement_text": "拟派项目经理须于2017年1月1日至投标截止时间以项目经理身份至少完成一个新建、改建或扩建三级及以上公路施工项目，单合同含长度≥15公里或金额≥5000万元，内容包括路基、路面及桥涵，时间以交工或竣工验收时间为准。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "PERFORMANCE_CHAIN_AND_SCORING",
+          "required_role": "project_manager",
+          "min_date": "2017-01-01",
+          "review_reference_date": "2022-11-11",
+          "allowed_construction_types": [
+            "新建",
+            "改建",
+            "扩建"
+          ],
+          "required_highway_grade": "三级公路",
+          "min_length_km": 15.0,
+          "min_amount_wanyuan": 5000.0,
+          "required_scopes": [
+            "路基",
+            "路面",
+            "桥涵"
+          ],
+          "min_project_count": 1
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "proposed_person_name": "王文年",
+          "performance_records": [
+            {
+              "project_name": "某高速公路一标",
+              "person_name": "李四",
+              "handover_person_name": "李四",
+              "role_change_approved": false,
+              "performed_role": "项目经理",
+              "completion_date": "2019-06-01",
+              "construction_type": "新建",
+              "highway_grade": "高速公路",
+              "length_km": 22.0,
+              "contract_amount_wanyuan": 12000.0,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R08_SUBJ_02_T0359_ADDENDUM_ROLE",
+      "clause_id": "T0359",
+      "rule_family": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "case_type": "subject_mismatch",
+      "description": "T0359答疑澄清修改后要求项目总工以‘项目总工’身份完成业绩：若以项目副总工或施工员身份完成则不计分 -> SCORED (0.0分)",
+      "expected_verdict": "SCORED",
+      "expected_score": 0.0,
+      "expected_rule_id": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "input": {
+        "clause_id": "T0359",
+        "requirement_text": "项目总工评分：自2017年1月1日以来，以交工日期为准，以项目总工身份完成一个单合同含长度不少于15公里或单合同金额不少于5000万元的新建、改建或扩建三级及以上公路施工项目总工业绩，施工内容包括路基、路面及桥涵，得4分，本项最高4分。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "PERFORMANCE_CHAIN_AND_SCORING",
+          "required_role": "chief_engineer",
+          "min_date": "2017-01-01",
+          "review_reference_date": "2022-11-11",
+          "allowed_construction_types": [
+            "新建",
+            "改建",
+            "扩建"
+          ],
+          "required_highway_grade": "三级公路",
+          "min_length_km": 15.0,
+          "min_amount_wanyuan": 5000.0,
+          "required_scopes": [
+            "路基",
+            "路面",
+            "桥涵"
+          ],
+          "min_project_count": 1,
+          "scoring_mode": "SINGLE_PROJECT_BONUS",
+          "scoring_max_points": 4.0
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "proposed_person_name": "王曙",
+          "performance_records": [
+            {
+              "project_name": "某一级公路工程",
+              "person_name": "王曙",
+              "performed_role": "道路工程师",
+              "completion_date": "2020-05-01",
+              "construction_type": "新建",
+              "highway_grade": "一级公路",
+              "length_km": 20.0,
+              "contract_amount_wanyuan": 8000.0,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R08_NEG_01_MISSING_BRIDGE_SCOPE",
+      "clause_id": "T0011",
+      "rule_family": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "case_type": "negative",
+      "description": "业绩满足时间、等级及里程，但施工内容仅含路基、路面，缺少桥涵工程 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "input": {
+        "clause_id": "T0011",
+        "requirement_text": "拟派项目经理须于2017年1月1日至投标截止时间以项目经理身份至少完成一个新建、改建或扩建三级及以上公路施工项目，单合同含长度≥15公里或金额≥5000万元，内容包括路基、路面及桥涵，时间以交工或竣工验收时间为准。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "PERFORMANCE_CHAIN_AND_SCORING",
+          "required_role": "project_manager",
+          "min_date": "2017-01-01",
+          "review_reference_date": "2022-11-11",
+          "allowed_construction_types": [
+            "新建",
+            "改建",
+            "扩建"
+          ],
+          "required_highway_grade": "三级公路",
+          "min_length_km": 15.0,
+          "min_amount_wanyuan": 5000.0,
+          "required_scopes": [
+            "路基",
+            "路面",
+            "桥涵"
+          ],
+          "min_project_count": 1
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "proposed_person_name": "王文年",
+          "performance_records": [
+            {
+              "project_name": "某二级公路改建项目",
+              "person_name": "王文年",
+              "performed_role": "项目经理",
+              "completion_date": "2020-10-15",
+              "construction_type": "改建",
+              "highway_grade": "二级公路",
+              "length_km": 18.5,
+              "contract_amount_wanyuan": 4200.0,
+              "scopes": [
+                "路基",
+                "路面"
+              ]
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R08_BND_EQ_01_OR_SCALE",
+      "clause_id": "T0011",
+      "rule_family": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "case_type": "boundary_equal",
+      "description": "单合同长度12公里(<15公里)但合同金额恰好等于5000.0万元(满足OR条件)，交工时间恰好为2017-01-01 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "input": {
+        "clause_id": "T0011",
+        "requirement_text": "拟派项目经理须于2017年1月1日至投标截止时间以项目经理身份至少完成一个新建、改建或扩建三级及以上公路施工项目，单合同含长度≥15公里或金额≥5000万元，内容包括路基、路面及桥涵，时间以交工或竣工验收时间为准。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "PERFORMANCE_CHAIN_AND_SCORING",
+          "required_role": "project_manager",
+          "min_date": "2017-01-01",
+          "review_reference_date": "2022-11-11",
+          "allowed_construction_types": [
+            "新建",
+            "改建",
+            "扩建"
+          ],
+          "required_highway_grade": "三级公路",
+          "min_length_km": 15.0,
+          "min_amount_wanyuan": 5000.0,
+          "required_scopes": [
+            "路基",
+            "路面",
+            "桥涵"
+          ],
+          "min_project_count": 1
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "proposed_person_name": "王文年",
+          "performance_records": [
+            {
+              "project_name": "某三级公路扩建工程",
+              "person_name": "王文年",
+              "performed_role": "项目经理",
+              "completion_date": "2017-01-01",
+              "construction_type": "扩建",
+              "highway_grade": "三级公路",
+              "length_km": 12.0,
+              "contract_amount_wanyuan": 5000.0,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R08_BND_OVER_01_DATE_AND_STRICT_GT",
+      "clause_id": "T0210",
+      "rule_family": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "case_type": "boundary_just_over",
+      "description": "T0210要求长度‘超过15公里(>15)’或金额>=5000万元：某项目长度恰好15.0km且金额4999.99万元 -> 不满足，得0.0分(SCORED)",
+      "expected_verdict": "SCORED",
+      "expected_score": 0.0,
+      "expected_rule_id": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "input": {
+        "clause_id": "T0210",
+        "requirement_text": "2017年1月1日以来以交工日为准，项目经理以项目经理身份完成一个单合同含长度超过15公里或金额≥5000万元的新建、改建或扩建三级及以上公路施工项目，含路基、路面及桥涵，得4分，本项最高4分。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "PERFORMANCE_CHAIN_AND_SCORING",
+          "required_role": "project_manager",
+          "min_date": "2017-01-01",
+          "review_reference_date": "2022-11-11",
+          "allowed_construction_types": [
+            "新建",
+            "改建",
+            "扩建"
+          ],
+          "required_highway_grade": "三级公路",
+          "min_length_km": 15.0,
+          "length_strict_gt": true,
+          "min_amount_wanyuan": 5000.0,
+          "required_scopes": [
+            "路基",
+            "路面",
+            "桥涵"
+          ],
+          "min_project_count": 1,
+          "scoring_mode": "SINGLE_PROJECT_BONUS",
+          "scoring_max_points": 4.0
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "proposed_person_name": "王文年",
+          "performance_records": [
+            {
+              "project_name": "边界测试公路工程",
+              "person_name": "王文年",
+              "performed_role": "项目经理",
+              "completion_date": "2019-05-01",
+              "construction_type": "新建",
+              "highway_grade": "二级公路",
+              "length_km": 15.0,
+              "contract_amount_wanyuan": 4999.99,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R08_POS_02_ADDITIVE_SCORING_T0216",
+      "clause_id": "T0216",
+      "rule_family": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "case_type": "positive",
+      "description": "T0216企业业绩累加计分：提供4项合格公路施工业绩（每项4分，4×4=16分，按满分上限封顶得12.0分） -> SCORED (12.0分)",
+      "expected_verdict": "SCORED",
+      "expected_score": 12.0,
+      "expected_rule_id": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "input": {
+        "clause_id": "T0216",
+        "requirement_text": "2017年1月1日以来以交工或竣工时间为准，每增加一个单合同含长度≥15公里或金额≥5000万元的新建、改建或扩建三级及以上公路施工业绩，含路基、路面及桥涵，得4分，最高12分。",
+        "category": "Scoring",
+        "tender_slots": {
+          "constraint_type": "PERFORMANCE_CHAIN_AND_SCORING",
+          "min_date": "2017-01-01",
+          "review_reference_date": "2022-11-11",
+          "allowed_construction_types": [
+            "新建",
+            "改建",
+            "扩建"
+          ],
+          "required_highway_grade": "三级公路",
+          "min_length_km": 15.0,
+          "min_amount_wanyuan": 5000.0,
+          "required_scopes": [
+            "路基",
+            "路面",
+            "桥涵"
+          ],
+          "scoring_mode": "PER_PROJECT_ADDITIVE",
+          "points_per_project": 4.0,
+          "scoring_max_points": 12.0
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "performance_records": [
+            {
+              "project_name": "S214四期工程",
+              "completion_date": "2017-11-30",
+              "construction_type": "改建",
+              "highway_grade": "一级公路",
+              "length_km": 15.15,
+              "contract_amount_wanyuan": 49123.25,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            },
+            {
+              "project_name": "S214五期工程",
+              "completion_date": "2019-12-20",
+              "construction_type": "改建",
+              "highway_grade": "一级公路",
+              "length_km": 16.2,
+              "contract_amount_wanyuan": 32000.0,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            },
+            {
+              "project_name": "大广高速互通立交工程",
+              "completion_date": "2020-08-15",
+              "construction_type": "新建",
+              "highway_grade": "高速公路",
+              "length_km": 3.5,
+              "contract_amount_wanyuan": 15800.0,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            },
+            {
+              "project_name": "S331改建工程",
+              "completion_date": "2021-06-18",
+              "construction_type": "改建",
+              "highway_grade": "二级公路",
+              "length_km": 18.0,
+              "contract_amount_wanyuan": 9528.5,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R08_UNIT_01_PERF_SCALE",
+      "clause_id": "T0011",
+      "rule_family": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "case_type": "unit_mismatch",
+      "description": "业绩规模单位不一致：长度单位为米(m)而非公里，且金额未提供 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R08_PERFORMANCE_CHAIN_AND_SCORING",
+      "input": {
+        "clause_id": "T0011",
+        "requirement_text": "拟派项目经理须于2017年1月1日至投标截止时间以项目经理身份至少完成一个新建、改建或扩建三级及以上公路施工项目，单合同含长度≥15公里或金额≥5000万元，内容包括路基、路面及桥涵，时间以交工或竣工验收时间为准。",
+        "category": "Qualification",
+        "tender_slots": {
+          "constraint_type": "PERFORMANCE_CHAIN_AND_SCORING",
+          "required_role": "project_manager",
+          "min_date": "2017-01-01",
+          "review_reference_date": "2022-11-11",
+          "allowed_construction_types": [
+            "新建",
+            "改建",
+            "扩建"
+          ],
+          "required_highway_grade": "三级公路",
+          "min_length_km": 15.0,
+          "min_amount_wanyuan": 5000.0,
+          "required_scopes": [
+            "路基",
+            "路面",
+            "桥涵"
+          ],
+          "min_project_count": 1
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "proposed_person_name": "王文年",
+          "performance_records": [
+            {
+              "project_name": "某公路项目",
+              "person_name": "王文年",
+              "performed_role": "项目经理",
+              "completion_date": "2019-06-01",
+              "construction_type": "新建",
+              "highway_grade": "二级公路",
+              "length_km": 15500,
+              "length_unit": "米",
+              "contract_amount_wanyuan": null,
+              "scopes": [
+                "路基",
+                "路面",
+                "桥涵"
+              ]
+            }
+          ]
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R09_POS_01_T0059_EXACT",
+      "clause_id": "T0059",
+      "rule_family": "R09_FORMULA_BOUND",
+      "case_type": "positive",
+      "description": "T0059安全生产费净基数1.5%核算：(89984949.58 - 1324528.73 - 224066.11 - 134439.67) × 1.5% = 1324528.73元 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R09_FORMULA_BOUND",
+      "input": {
+        "clause_id": "T0059",
+        "requirement_text": "安全生产费为第100—700章合计报价总额的1.5%，基数不含安全生产费、建筑工程一切险及第三者责任险保险费。",
+        "category": "Commercial",
+        "tender_slots": {
+          "constraint_type": "FORMULA_BOUND",
+          "formula_type": "NET_BASE_RATIO",
+          "formula_rate": 0.015,
+          "operator": ">=",
+          "expected_unit": "元",
+          "base_field": "chapter_100_700_total",
+          "target_field": "safety_fee",
+          "deduction_fields": [
+            "safety_fee",
+            "all_risks_insurance",
+            "third_party_insurance"
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_unit": "元",
+          "component_amounts": {
+            "chapter_100_700_total": 89984949.58,
+            "safety_fee": 1324528.73,
+            "all_risks_insurance": 224066.11,
+            "third_party_insurance": 134439.67
+          }
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R09_BND_EQ_01_PERF_BOND",
+      "clause_id": "T0049",
+      "rule_family": "R09_FORMULA_BOUND",
+      "case_type": "boundary_equal",
+      "description": "履约担保金额恰好等于中标价(97984949.58元)的10%即9798494.96元 -> COMPLIANT",
+      "expected_verdict": "COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R09_FORMULA_BOUND",
+      "input": {
+        "clause_id": "T0049",
+        "requirement_text": "履约担保金额为中标价10%。",
+        "category": "Commercial",
+        "tender_slots": {
+          "constraint_type": "FORMULA_BOUND",
+          "formula_type": "GROSS_RATIO",
+          "formula_rate": 0.1,
+          "operator": "==",
+          "expected_unit": "元",
+          "base_field": "bid_price",
+          "target_field": "performance_bond"
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_unit": "元",
+          "component_amounts": {
+            "bid_price": 97984949.58,
+            "performance_bond": 9798494.96
+          }
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R09_BND_OVER_01_T0059_UNDERPAID",
+      "clause_id": "T0059",
+      "rule_family": "R09_FORMULA_BOUND",
+      "case_type": "boundary_just_over",
+      "description": "安全生产费报价为1324528.00元，比净基数的1.5%(1324528.73元)少0.73元 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R09_FORMULA_BOUND",
+      "input": {
+        "clause_id": "T0059",
+        "requirement_text": "安全生产费为第100—700章合计报价总额的1.5%，基数不含安全生产费、建筑工程一切险及第三者责任险保险费。",
+        "category": "Commercial",
+        "tender_slots": {
+          "constraint_type": "FORMULA_BOUND",
+          "formula_type": "NET_BASE_RATIO",
+          "formula_rate": 0.015,
+          "operator": ">=",
+          "expected_unit": "元",
+          "base_field": "chapter_100_700_total",
+          "target_field": "safety_fee",
+          "deduction_fields": [
+            "safety_fee",
+            "all_risks_insurance",
+            "third_party_insurance"
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_unit": "元",
+          "component_amounts": {
+            "chapter_100_700_total": 89984949.58,
+            "safety_fee": 1324528.0,
+            "all_risks_insurance": 224066.11,
+            "third_party_insurance": 134439.67
+          }
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R09_NEG_01_ZERO_SAFETY_FEE",
+      "clause_id": "T0059",
+      "rule_family": "R09_FORMULA_BOUND",
+      "case_type": "negative",
+      "description": "安全生产费填报为0元，未按1.5%计取 -> NON_COMPLIANT",
+      "expected_verdict": "NON_COMPLIANT",
+      "expected_score": null,
+      "expected_rule_id": "R09_FORMULA_BOUND",
+      "input": {
+        "clause_id": "T0059",
+        "requirement_text": "安全生产费为第100—700章合计报价总额的1.5%，基数不含安全生产费、建筑工程一切险及第三者责任险保险费。",
+        "category": "Commercial",
+        "tender_slots": {
+          "constraint_type": "FORMULA_BOUND",
+          "formula_type": "NET_BASE_RATIO",
+          "formula_rate": 0.015,
+          "operator": ">=",
+          "expected_unit": "元",
+          "base_field": "chapter_100_700_total",
+          "target_field": "safety_fee",
+          "deduction_fields": [
+            "safety_fee",
+            "all_risks_insurance",
+            "third_party_insurance"
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_unit": "元",
+          "component_amounts": {
+            "chapter_100_700_total": 89984949.58,
+            "safety_fee": 0.0,
+            "all_risks_insurance": 224066.11,
+            "third_party_insurance": 134439.67
+          }
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R09_MISS_01_MISSING_INSURANCE",
+      "clause_id": "T0059",
+      "rule_family": "R09_FORMULA_BOUND",
+      "case_type": "missing_info",
+      "description": "仅提取到第100-700章合计和安全生产费，缺少建筑工程一切险及第三者责任险金额 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R09_FORMULA_BOUND",
+      "input": {
+        "clause_id": "T0059",
+        "requirement_text": "安全生产费为第100—700章合计报价总额的1.5%，基数不含安全生产费、建筑工程一切险及第三者责任险保险费。",
+        "category": "Commercial",
+        "tender_slots": {
+          "constraint_type": "FORMULA_BOUND",
+          "formula_type": "NET_BASE_RATIO",
+          "formula_rate": 0.015,
+          "operator": ">=",
+          "expected_unit": "元",
+          "base_field": "chapter_100_700_total",
+          "target_field": "safety_fee",
+          "deduction_fields": [
+            "safety_fee",
+            "all_risks_insurance",
+            "third_party_insurance"
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_unit": "元",
+          "component_amounts": {
+            "chapter_100_700_total": 89984949.58,
+            "safety_fee": 1324528.73
+          }
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    },
+    {
+      "case_id": "R09_UNIT_01_MISMATCH",
+      "clause_id": "T0059",
+      "rule_family": "R09_FORMULA_BOUND",
+      "case_type": "unit_mismatch",
+      "description": "招标要求以元为单位核算公式，投标提取单位为万元 -> INSUFFICIENT_EVIDENCE",
+      "expected_verdict": "INSUFFICIENT_EVIDENCE",
+      "expected_score": null,
+      "expected_rule_id": "R09_FORMULA_BOUND",
+      "input": {
+        "clause_id": "T0059",
+        "requirement_text": "安全生产费为第100—700章合计报价总额的1.5%，基数不含安全生产费、建筑工程一切险及第三者责任险保险费。",
+        "category": "Commercial",
+        "tender_slots": {
+          "constraint_type": "FORMULA_BOUND",
+          "formula_type": "NET_BASE_RATIO",
+          "formula_rate": 0.015,
+          "operator": ">=",
+          "expected_unit": "元",
+          "base_field": "chapter_100_700_total",
+          "target_field": "safety_fee",
+          "deduction_fields": [
+            "safety_fee",
+            "all_risks_insurance",
+            "third_party_insurance"
+          ]
+        },
+        "bid_slots": {
+          "evidence_found": true,
+          "actual_unit": "万元",
+          "component_amounts": {
+            "chapter_100_700_total": 8998.49,
+            "safety_fee": 132.45,
+            "all_risks_insurance": 22.41,
+            "third_party_insurance": 13.44
+          }
+        },
+        "extractor_backend": "deterministic_fixture",
+        "extraction_issues": []
+      }
+    }
+  ]
+}

@@ -53,8 +53,15 @@ def explicit_numeric_operator(text, value):
 
 
 def required_qualification_role(requirement):
-    for label, role in (('道路工程师', 'road_engineer'), ('桥梁工程师', 'bridge_engineer'),
-                        ('专职安全员', 'safety_officer')):
+    for label, role in (
+        ('道路工程师', 'road_engineer'),
+        ('桥梁工程师', 'bridge_engineer'),
+        ('合同工程师', 'contract_engineer'),
+        ('专职安全员', 'safety_officer'),
+        ('测量工程师', 'survey_engineer'),
+        ('试验工程师', 'test_engineer'),
+        ('施工员', 'construction_officer'),
+    ):
         if label in requirement:
             return role
     if '项目经理' in requirement:
@@ -68,11 +75,18 @@ def required_qualification_role(requirement):
 
 def role_names(text, role):
     """Read explicitly labelled identities; never treat 企业名称 as 投标人名称."""
-    labels = {'bidder': r'投标人(?:名称)?', 'project_manager': r'(?:拟派|拟任|拟委任)?项目经理',
-              'chief_engineer': r'(?:拟派|拟任|拟委任)?(?:项目总工|总工程师)',
-              'road_engineer': r'(?:拟派|拟任|拟委任)?道路工程师',
-              'bridge_engineer': r'(?:拟派|拟任|拟委任)?桥梁工程师',
-              'safety_officer': r'(?:拟派|拟任|拟委任)?专职安全员[0-9]*'}
+    labels = {
+        'bidder': r'投标人(?:名称)?',
+        'project_manager': r'(?:拟派|拟任|拟委任)?项目经理',
+        'chief_engineer': r'(?:拟派|拟任|拟委任)?(?:项目总工|总工程师)',
+        'road_engineer': r'(?:拟派|拟任|拟委任)?道路工程师',
+        'bridge_engineer': r'(?:拟派|拟任|拟委任)?桥梁工程师',
+        'contract_engineer': r'(?:拟派|拟任|拟委任)?合同工程师',
+        'safety_officer': r'(?:拟派|拟任|拟委任)?专职安全员[0-9]*',
+        'survey_engineer': r'(?:拟派|拟任|拟委任)?测量工程师',
+        'test_engineer': r'(?:拟派|拟任|拟委任)?试验工程师',
+        'construction_officer': r'(?:拟派|拟任|拟委任)?施工员[0-9]*',
+    }
     if role not in labels:
         return set()
     # Roles have to be labels followed by a colon or a table-cell separator.
@@ -109,6 +123,27 @@ def role_names(text, role):
                 r'姓\s*名\s*(?:[:：|]\s*|\n\s*)([\u4e00-\u9fff]{2,4})(?=\s|[|，,；;]|$)', resume))
         names = {name for name in names if re.fullmatch(r'[\u4e00-\u9fff]{2,4}', name)}
     return names
+
+
+def manager_performance_linked(documents, current_name):
+    """Verify whether cited performance documents directly name `current_name` as project manager
+    or include an official owner approval changing the project manager to `current_name`."""
+    esc = re.escape(current_name)
+    direct = any(
+        re.search(r'项目经理\s*[:：|]\s*' + esc + r'(?=\s|[|，,；;。]|$)', normalized(text))
+        for text in documents
+    )
+    if direct:
+        return True
+    change_approved = any(
+        re.search(
+            r'(?:项目经理.{0,20}(?:变更为|更换为|调整为)|同意.{0,20}(?:变更为|更换为)|变更后项目经理\s*[:：|]?)\s*'
+            + esc + r'(?=\s|[|，,；;。同志]|$)',
+            re.sub(r'\s+', '', normalized(text)),
+        )
+        for text in documents
+    )
+    return change_approved
 
 
 def has_document_body(quote, requirement=''):
