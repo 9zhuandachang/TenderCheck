@@ -1,0 +1,1013 @@
+{
+  "schema_version": 2,
+  "project_id": "2022/11.11-S604皖南交旅融合（飞毕路美丽公路）项目",
+  "corpus_sha256": "863f75ce33ec5e62dbf57a817beafd7720c14ab51f45043b2695955e81fac60f",
+  "queries": [
+    {
+      "clause_id": "T0001",
+      "requirement": "计划工期为360日历天。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "duration",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "工期:360日历天",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            },
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys02",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 302,
+              "page_end": 302,
+              "quote": "计划工期360日历天,计划开工日期2022年11月21日,计划交工日期2023年11月15日",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0002",
+      "requirement": "项目招标控制价115046243.64元，含暂列金8000000.00元。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "bid_total",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys04",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 859,
+              "page_end": 859,
+              "quote": "人民币(大写)玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分(¥97984949.58元",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        },
+        {
+          "group_id": "provisional_sum",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys05",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 863,
+              "page_end": 863,
+              "quote": "暂列金额(不含计日工总额)8000000",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0003",
+      "requirement": "投标人须具有独立法人资格。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需核对营业执照扫描件的主体、企业类型及可读原文。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0004",
+      "requirement": "投标人须具备公路工程施工总承包三级及以上资质。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需核对资质证书扫描件的企业、专业和等级；基本情况表不足以替代证书。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0005",
+      "requirement": "投标人须具有有效安全生产许可证。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需核对许可证扫描件的主体、编号、有效期。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0007",
+      "requirement": "项目经理须具有公路工程专业一级注册建造师资格。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需核对项目经理注册证书扫描件的姓名、专业和级别。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0009",
+      "requirement": "项目经理须具有有效安全生产考核合格证书。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需核对对应经理的安全考核证书扫描件。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0010",
+      "requirement": "项目经理须未在其他项目任职，或虽任职但本项目中标后能够从原项目撤离。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "manager_mobilization",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "如本次投标项目中标后,合同签订前,拟派本次投标项目的项目经理能够从以上项目变更至本项目,并对本次投标项目全面履约",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0011",
+      "requirement": "拟派项目经理须于2017年1月1日至投标截止时间以项目经理身份至少完成一个新建、改建或扩建三级及以上公路施工项目，单合同含长度≥15公里或金额≥5000万元，内容包括路基、路面及桥涵，时间以交工或竣工验收时间为准。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "复合业绩要求，需关联同一项目的合同、里程/金额、工程内容、验收时间及经理身份。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0012",
+      "requirement": "项目经理业绩须提供合同。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需核对经理对应历史项目的合同扫描件及项目关联。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0013",
+      "requirement": "项目经理业绩须提供中标通知书。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需核对对应历史项目的中标通知书扫描件。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0014",
+      "requirement": "项目经理业绩须提供交工或竣工验收证明，须有建设、设计、监理、施工单位等盖章确认。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需联合核对验收证明各页及各单位盖章，不能只取含验收字样的片段。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0015",
+      "requirement": "项目总工须具有公路工程相关专业中级及以上职称，相关专业包括公路工程、桥梁、公路与桥梁、交通土建、隧道（地下结构）、交通工程等。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需核对总工拟任角色、职称证书专业与级别。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0016",
+      "requirement": "本次招标不接受联合体投标。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "joint_venture_response",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub11",
+              "source_sha256": "45011137d6a380fd061f224420637e19d0d8cafbb469a8a37efa6ee7105a3356",
+              "page_start": 1,
+              "page_end": 1,
+              "quote": "三、联合体协议书无",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0018",
+      "requirement": "投标人不得被宣城市工程建设行业行政主管部门或集中处罚部门记不良行为且截止日仍在披露期内。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "reputation_statement",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub04",
+              "source_sha256": "8cc07f47fdc3e7bb8b7a4858274f9b5f70ddb49e81783068e98b011233f470c6",
+              "page_start": 1,
+              "page_end": 1,
+              "quote": "我公司未被宣城市各级工程建设行业行政主管部门或行使集中处罚权的部门记不良行为,至投标截止之日仍在披露期内的",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0023",
+      "requirement": "投标保证金为人民币50万元。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需核对保证金回单扫描件的项目、金额。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0024",
+      "requirement": "投标保证金可采用银行保函、保证保险、担保保函等保函形式，或电汇、转账。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需核对保证金回单扫描件的支付形式。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0027",
+      "requirement": "计划工期360日历天。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "duration",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "工期:360日历天",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            },
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys02",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 302,
+              "page_end": 302,
+              "quote": "计划工期360日历天,计划开工日期2022年11月21日,计划交工日期2023年11月15日",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0028",
+      "requirement": "标段交工验收质量评定须为合格。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "quality_target",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "标段工程交工验收的质量评定:合格",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0030",
+      "requirement": "安全目标为无生产安全责任事故。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "safety_target",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "安全目标:无生产安全责任事故",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0033",
+      "requirement": "本项目不允许分包。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需目视核对拟分包表中无字样对应的表格单元。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0034",
+      "requirement": "增值税税率须按国家规定执行。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "tax_response",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys04",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 859,
+              "page_end": 859,
+              "quote": "增值税税率按国家规定的相关税率执行",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0037",
+      "requirement": "投标有效期自投标文件递交截止日起90日。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。 投标函引用招标文件规定的期限，没有直接写90日，属于相关响应证据。",
+      "evidence_groups": [
+        {
+          "group_id": "validity_response",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "我方承诺在招标文件规定的投标有效期内不撤销投标文件",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0040",
+      "requirement": "不得挂靠投标。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "anti_affiliation_commitment",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 5,
+              "page_end": 5,
+              "quote": "我方无资质挂靠或参与串标、围标情形,拟派项目经理无在建工程",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0054",
+      "requirement": "招投标活动中不得弄虚作假。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "authenticity_commitment",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "我方在此声明,所递交的投标文件及有关资料内容完整、真实和准确",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0056",
+      "requirement": "拟派经理已任其他项目经理的，须在投标文件承诺本项目中标后签合同前能够变更至本项目全面履约。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "manager_mobilization",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "如本次投标项目中标后,合同签订前,拟派本次投标项目的项目经理能够从以上项目变更至本项目,并对本次投标项目全面履约",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0057",
+      "requirement": "拟派经理已任其他项目经理时，不得虚假承诺未在其他项目任项目经理。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。 保留在岗与无在建两处声明作为冲突检查证据，不能只收集有利声明。",
+      "evidence_groups": [
+        {
+          "group_id": "actual_current_assignment",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "我单位拟派本次投标项目的项目经理已在来安县交通运输局(发包人名称)发包的G345来安至釜山段一级公路改建三期工程(项目名称)担任项目经理岗位",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        },
+        {
+          "group_id": "no_assignment_declaration",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 5,
+              "page_end": 5,
+              "quote": "我方无资质挂靠或参与串标、围标情形,拟派项目经理无在建工程",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0059",
+      "requirement": "安全生产费为第100—700章合计报价总额的1.5%，基数不含安全生产费、建筑工程一切险及第三者责任险保险费。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。 已目视核对原PDF物理864页表格。必要片段按原文顺序匹配费用名称及金额；数量列1被解析清洗不影响本条所需总额证据。未忽略或改写金额数字。",
+      "evidence_groups": [
+        {
+          "group_id": "chapter_total",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys05",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 863,
+              "page_end": 863,
+              "quote": "第100章至第700章合计89984949.58",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        },
+        {
+          "group_id": "insurance_costs",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys05",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 864,
+              "page_end": 864,
+              "quote": "按合同条款规定,提供建筑工程一切险总额1224066.11224066.11-b按合同条款规定,提供第三者责任险总额1134439.67",
+              "source_verified": true,
+              "verification_basis": "native_pdf",
+              "quote_parts": [
+                "按合同条款规定，提供建筑工程一切险",
+                "224066.11",
+                "按合同条款规定，提供第三者责任险",
+                "134439.67"
+              ]
+            }
+          ]
+        },
+        {
+          "group_id": "safety_fee",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys05",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 864,
+              "page_end": 864,
+              "quote": "102-3安全生产费总额11324528.73",
+              "source_verified": true,
+              "verification_basis": "native_pdf",
+              "quote_parts": [
+                "102-3安全生产费",
+                "1324528.73"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0069",
+      "requirement": "项目经理注册证书注册单位须与投标人名称一致。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "跨证据一致性，需注册证书聘用企业与当前投标主体两部分。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0078",
+      "requirement": "须配备道路工程师1人，具公路工程相关专业中级工程师及以上职称。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需拟任角色表与道路工程师职称证明的多证据关联。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0079",
+      "requirement": "须配备桥梁工程师1人，具公路工程相关专业中级工程师及以上职称。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需拟任角色表与桥梁工程师职称证明的多证据关联。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0081",
+      "requirement": "须配备专职安全员1人，具省级及以上交通运输主管部门核发的专职安全员C证。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需拟任安全员与对应C证扫描件关联。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0099",
+      "requirement": "投标人不得被信用中国列入失信被执行人名单。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "credit_declaration",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub04",
+              "source_sha256": "8cc07f47fdc3e7bb8b7a4858274f9b5f70ddb49e81783068e98b011233f470c6",
+              "page_start": 2,
+              "page_end": 2,
+              "quote": "我公司在“信用中国”网站(http://www.creditchina.gov.cn/)中未被列入失信被执行人名单",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0101",
+      "requirement": "投标人自投标截止日追溯3年内不得有行贿犯罪行为。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "bribery_declaration",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub04",
+              "source_sha256": "8cc07f47fdc3e7bb8b7a4858274f9b5f70ddb49e81783068e98b011233f470c6",
+              "page_start": 2,
+              "page_end": 2,
+              "quote": "我公司在近三年内(自投标截止之日向前追溯3年)投标人或其法定代表人、拟委任的项目经理没有任何行贿犯罪行为",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0106",
+      "requirement": "投标人名称须与交通运输部施工资质企业名录相应企业名称完全一致。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需当前投标主体及交通运输部名录的对应记录，信用截图不能直接替代。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0112",
+      "requirement": "商务文件须包括不含报价的投标函。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "non_price_letter",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "愿以报价文件投标函中的投标总报价,按合同约定实施和完成承包工程,修补工程中的任何缺陷",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0113",
+      "requirement": "须提交法定代表人身份证明或授权委托书。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "legal_representative_document",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub10",
+              "source_sha256": "f85ec156531df37f8a0f138cad361a437df11893436c6cce4b503950c5921bfe",
+              "page_start": 1,
+              "page_end": 1,
+              "quote": "法定代表人身份证明或授权委托书法定代表人身份证明投标人:安徽水利开发有限公司单位性质:其他有限责任公司",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0118",
+      "requirement": "报价文件须包括含报价的投标函。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "bid_total",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys04",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 859,
+              "page_end": 859,
+              "quote": "人民币(大写)玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分(¥97984949.58元",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0127",
+      "requirement": "采用固化清单时，已标价清单投标报价须与投标函大写报价一致。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "bid_total",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys04",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 859,
+              "page_end": 859,
+              "quote": "人民币(大写)玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分(¥97984949.58元",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        },
+        {
+          "group_id": "boq_total",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys05",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 863,
+              "page_end": 863,
+              "quote": "投标报价97984949.58",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0133",
+      "requirement": "投标总价须计入安全生产费，按招标规定填写清单第100章安全生产费总额价。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。 已目视核对原PDF物理864页表格。必要片段按原文顺序匹配费用名称及金额；数量列1被解析清洗不影响本条所需总额证据。未忽略或改写金额数字。",
+      "evidence_groups": [
+        {
+          "group_id": "safety_fee",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys05",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 864,
+              "page_end": 864,
+              "quote": "102-3安全生产费总额11324528.73",
+              "source_verified": true,
+              "verification_basis": "native_pdf",
+              "quote_parts": [
+                "102-3安全生产费",
+                "1324528.73"
+              ]
+            }
+          ]
+        },
+        {
+          "group_id": "boq_total",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys05",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 863,
+              "page_end": 863,
+              "quote": "投标报价97984949.58",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0135",
+      "requirement": "投标报价不得超过最高投标限价。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "bid_total",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys04",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 859,
+              "page_end": 859,
+              "quote": "人民币(大写)玖仟柒佰玖拾捌万肆仟玖佰肆拾玖元伍角捌分(¥97984949.58元",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0137",
+      "requirement": "投标有效期内不得撤销投标文件。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "validity_response",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys01",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 4,
+              "page_end": 4,
+              "quote": "我方承诺在招标文件规定的投标有效期内不撤销投标文件",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0152",
+      "requirement": "信誉情况说明须与实际相符，不得弄虚作假。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需定义信誉声明与事实核验的完整证据组；表格填报说明不能作为实际响应证据。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0204",
+      "requirement": "不得更改招标文件暂列金额。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。",
+      "evidence_groups": [
+        {
+          "group_id": "provisional_sum",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sys05",
+              "source_sha256": "ed3afe3ade47773ba7ecea6dcdab1757f8c10ff404541bea91742bfdc4841579",
+              "page_start": 863,
+              "page_end": 863,
+              "quote": "暂列金额(不含计日工总额)8000000",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0209",
+      "requirement": "拟任项目经理业绩满足招标最低要求得6分。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "评分需完整核对经理最低业绩证据组。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0214",
+      "requirement": "资产负债率75%以下得6分，75%（含）—80%（含）得4分，80%—85%（含）得2分，85%以上不得分；按原文档位保留。",
+      "review_status": "assistant_verified",
+      "evidence_status": "present",
+      "annotation_complete": true,
+      "reviewer": "assistant-source-review-2026-10-19",
+      "review_note": "助手核对招标要求与原PDF文本，定义所需证据组并记录已确认位置。不是人工金标准；等价位置可能未穷尽。不判断合规。 此处是投标人填报的年度比率表；未将其等同审计真实性或直接判分。",
+      "evidence_groups": [
+        {
+          "group_id": "reported_balance_ratio",
+          "alternatives": [
+            {
+              "document_id": "11.11-S604皖南交旅融合（飞毕路美丽公路）项目_sub17",
+              "source_sha256": "6b8523827c40d3d861dc67d6760d3202e1e8b82a4a48960a69d71eedc5bb762a",
+              "page_start": 1,
+              "page_end": 1,
+              "quote": "资产负债率%71.17%73.1674.82",
+              "source_verified": true,
+              "verification_basis": "native_pdf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "clause_id": "T0216",
+      "requirement": "2017年1月1日以来以交工或竣工时间为准，每增加一个单合同含长度≥15公里或金额≥5000万元的新建、改建或扩建三级及以上公路施工业绩，含路基、路面及桥涵，得4分，最高12分。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "评分涉及多个独立项目计数和条件，需逐项目核对证据组。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0222",
+      "requirement": "总体施工组织布置规划按工程特点、总体筹划、目标节点、关键工序、工期保障及场地布置评审：优良0.75≤F≤1分，一般0.5≤F＜0.75分，差0≤F＜0.5分。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "总体施工规划的复合证据需要节点、工序、工期保障和场布等多部分。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0225",
+      "requirement": "结合工程特点评审质量管理体系及措施：优良1≤F≤1.5分，一般0.5≤F＜1分，差按原文0≤F＜1分。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需定义质量管理体系及措施的必要证据组，目录标题不足。",
+      "evidence_groups": []
+    },
+    {
+      "clause_id": "T0226",
+      "requirement": "结合工程特点评审安全生产管理体系及措施：优良1≤F≤1.5分，一般0.5≤F＜1分，差按原文0≤F＜1分。",
+      "review_status": "pending",
+      "evidence_status": "unknown",
+      "annotation_complete": false,
+      "reviewer": "",
+      "review_note": "需定义安全管理体系及措施的必要证据组，目录标题不足。",
+      "evidence_groups": []
+    }
+  ]
+}
