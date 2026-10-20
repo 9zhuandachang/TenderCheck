@@ -1,6 +1,6 @@
 # 抽取与规则阶段计划清单
 
-更新日期：2026-10-20。评测用途和代码入口见 [评测分工](evaluation_layout.md)，规则清单与输入契约规范见 [规则清单与契约规范](rule_inventory_and_contracts.md)。
+更新日期：2026-10-20。评测用途和代码入口见 [评测分工](evaluation_layout.md)，规则清单与输入契约规范见 [规则清单与契约规范](rule_inventory_and_contracts.md)，**5080 节点接续构建 LLM 抽取评估集与修改 Prompt 的简明指南见 [LLM 抽取评估集搭建指南](extraction_eval_guide.md)**。
 
 ## 已完成的基础工作
 
