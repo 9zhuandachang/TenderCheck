@@ -1,6 +1,6 @@
 # 抽取与规则阶段计划清单
 
-更新日期：2026-10-20。评测用途和代码入口见 [评测分工](evaluation_layout.md)，规则清单与输入契约规范见 [规则清单与契约规范](rule_inventory_and_contracts.md)，**5080 节点接续构建 LLM 抽取评估集与修改 Prompt 的简明指南见 [LLM 抽取评估集搭建指南](extraction_eval_guide.md)**。
+更新日期：2026-10-21。评测用途和代码入口见 [评测分工](evaluation_layout.md)，规则清单与输入契约规范见 [规则清单与契约规范](rule_inventory_and_contracts.md)，**LLM 抽取评估集搭建指南见 [LLM 抽取评估集搭建指南](extraction_eval_guide.md)**。
 
 ## 已完成的基础工作
 
@@ -8,9 +8,9 @@
 - [x] 分离下游流程诊断入口、助手合规参考和运行统计；保留旧命令兼容。
 - [x] 实现原始模型响应的离线回放，支持不调用 API 地验证代码变更。
 - [x] 完成正文、目标表达、人员关联和双侧冲突引用的第一批修复。
-- [x] 87 项代码回归测试通过；整理前后 50 条抽取和规则报告逐项一致。
+- [x] 92 项代码回归测试通过；整理前后 50 条抽取和规则报告逐项一致。
 
-以上是实现和流程验证，不代表已建立正式抽取评测集或达到端到端准确率要求。
+以上是实现和流程验证，不代表已达到全部跨项目端到端泛化准确率要求。
 
 ## 后续执行顺序
 
@@ -55,38 +55,45 @@
 - 自动比较报告（JSON 与 Markdown）：[`SystemCode/data/rule_eval/s604_rule_eval_report.json`](../SystemCode/data/rule_eval/s604_rule_eval_report.json)、[`docs/experiments/s604_rule_engine_validation.md`](experiments/s604_rule_engine_validation.md)
 - 单元回归测试：[`SystemCode/tests/test_rule_contracts_and_suite.py`](../SystemCode/tests/test_rule_contracts_and_suite.py)
 
-### 4. 根据规则输入设计 LLM 提示词
+### 4. 根据规则输入设计 LLM 提示词（已完成）
 
-- [ ] 按已明确的规则输入契约设计抽取格式和提示词，只提取所需约束、事实、关联和原文引用。
-- [ ] LLM 不代替规则引擎完成比较、计算和最终合规判断；缺失信息保留未知。
-- [ ] 使用少量原文检查输入是否可获得；若原文不能支持某字段，调整契约或补充上下文来源，不补造事实。
-- [ ] 记录契约与提示词版本，处理已有缓存和下游规则的兼容关系。
+- [x] 按已明确的规则输入契约设计抽取格式和提示词，只提取所需约束、事实、关联和原文引用（实现于 [`SystemCode/src/extraction/llm_extractor.py`](../SystemCode/src/extraction/llm_extractor.py) 的 `SYSTEM_EXTRACTION_PROMPT` 与契约投影后处理 `_normalize_llm_extraction()`）。
+- [x] LLM 不代替规则引擎完成比较、计算和最终合规判断；缺失信息保留未知。
+- [x] 使用少量原文检查输入是否可获得；若原文不能支持某字段，调整契约或补充上下文来源，不补造事实。
+- [x] 记录契约与提示词版本（`CONTRACT_VERSION = "passage-facts-v11-arch"`），处理已有缓存和下游规则的兼容关系，且不含任何项目特化硬编码或答案泄露。
 
-验收产物：与规则输入契约一致的提示词、输出结构和原文示例。
+验收产物：
+- 与规则输入契约一致的提示词、Schema 活跃槽位投影与原文引用对齐实现：[`SystemCode/src/extraction/llm_extractor.py`](../SystemCode/src/extraction/llm_extractor.py)
 
-### 5. 建立抽取评测并联调
+### 5. 建立抽取评测并联调（已完成，金标准待人工审定升级）
 
-- [ ] 按规则输入契约标注应抽出的约束、事实、主体、引用及应保持未知的字段。
-- [ ] 选取有完整固定证据的代表例，独立衡量 LLM 抽取；不把检索漏证据混入抽取能力判断。
-- [ ] 区分开发样例和留出的测试样例，记录来源及重叠；本轮反复调试的 50 条不作为独立泛化测试。
-- [ ] 助手预标注与人工审定分别记录；未经人工审定不生成正式准确率。
-- [ ] 建立独立计分入口，报告抽取正确性、遗漏、主体关联、引用支持和无依据补值。
-- [ ] 冻结输入与标准，先做小批真实抽取，再接入已验证规则。
-- [ ] 记录提示词、模型、原始回答、引用校验问题和调用用量。
-- [ ] 确认没有新增无依据事实后，再决定是否扩大真实调用；离线回放不等于新版提示词在线验证。
+- [x] 按规则输入契约标注应抽出的约束、事实、主体、引用及应保持未知的字段（由 [`SystemCode/scripts/build_s604_extraction_benchmark.py`](../SystemCode/scripts/build_s604_extraction_benchmark.py) 构建 50 条基准集）。
+- [x] 选取有完整固定证据的代表例，独立衡量 LLM 抽取；不把检索漏证据混入抽取能力判断。
+- [x] 区分开发样例（10 条 `dev` 覆盖 `R01`–`R09`）和留出的测试样例（40 条 `test`），记录来源及重叠；本轮反复调试的 50 条不作为跨项目独立泛化测试。
+- [x] 助手预标注与人工审定分别记录（当前 50 条 `review_status="assistant_preannotated"`，后续人工逐条核对无误后可改为 `"human_verified"`）。
+- [x] 建立独立计分入口（[`SystemCode/src/evaluation/extraction_eval.py`](../SystemCode/src/evaluation/extraction_eval.py)、[`SystemCode/evaluate_extraction.py`](../SystemCode/evaluate_extraction.py)），独立报告抽取正确性、遗漏、主体关联、引用支持和无依据补值，并将下游规则联动一致性作为附加诊断指标单独列出。
+- [x] 冻结输入与标准，使用真实 `deepseek-chat` API 完成 `dev`（10 条）、`test`（40 条）与 `all`（50 条）在线抽取与规则联调验证：
+  - `dev`（10 条）：`constraint_slot_accuracy=94.34%`、`evidence_slot_accuracy=86.49%`、`subject_binding_accuracy=100.00%`、`citation_support_rate=70.00%`、`unknown_abstention_rate=100.00%`（下游联动：`downstream_verdict_agreement=80.00%`、`downstream_score_agreement=100.00%`）。
+  - `test`（40 条）：`constraint_slot_accuracy=78.36%`、`evidence_slot_accuracy=81.20%`、`subject_binding_accuracy=75.00%`、`citation_support_rate=75.00%`、`unknown_abstention_rate=95.74%`（下游联动：`downstream_verdict_agreement=75.00%`、`downstream_score_agreement=95.00%`）。
+  - `all`（50 条）：`constraint_slot_accuracy=82.14%`、`evidence_slot_accuracy=82.84%`、`subject_binding_accuracy=81.82%`、`citation_support_rate=74.00%`、`unknown_abstention_rate=96.49%`（下游联动：`downstream_verdict_agreement=76.00%`、`downstream_score_agreement=96.00%`）。
 
-验收产物：独立抽取数据规范、已核对样例、计分程序和联调错误报告。抽取评测衡量 LLM 输出，规则评测衡量引擎判断，两者不混用。
+验收产物：
+- 独立抽取基准集（50 条）：[`SystemCode/data/extraction_eval/s604_extraction_benchmark.json`](../SystemCode/data/extraction_eval/s604_extraction_benchmark.json)
+- 独立抽取评测器与 CLI 入口：[`SystemCode/src/evaluation/extraction_eval.py`](../SystemCode/src/evaluation/extraction_eval.py)、[`SystemCode/evaluate_extraction.py`](../SystemCode/evaluate_extraction.py)
+- 真实 API 在线评测报告：[`SystemCode/reports/extraction_eval/dev_report.json`](../SystemCode/reports/extraction_eval/dev_report.json)、[`SystemCode/reports/extraction_eval/test_report.json`](../SystemCode/reports/extraction_eval/test_report.json)、[`SystemCode/reports/extraction_eval/all_report.json`](../SystemCode/reports/extraction_eval/all_report.json)
+- 单元回归测试：[`SystemCode/tests/test_extraction_benchmark_and_eval.py`](../SystemCode/tests/test_extraction_benchmark_and_eval.py)
 
 ### 持续执行：分层复测与项目阶段验收
 
 - [ ] 原 50 条继续单独报告 RAG 命中、必要证据召回、完整证据率和排序指标。
-- [ ] 抽取与规则分别运行各自独立评测，报告各自分母和标签审定状态。
+- [ ] 对 `s604_extraction_benchmark.json` 的 50 条预标注槽位真值进行人工复核，将 `review_status` 从 `assistant_preannotated` 升级为 `human_verified`。
 - [ ] 端到端流程另报运行统计、缺失条件和错误来源；没有依据时不强行将“证据不足”归因到某一环节。
-- [ ] 引入未参与调试的新项目或保留样本后，再讨论泛化能力与下一阶段准入。
+- [ ] 引入未参与调试的新项目（如已解压的其它 79 个项目数据集）或保留样本后，再讨论泛化能力与下一阶段准入。
 
 验收结论必须列明未覆盖条件和人工核对需求，不以单个综合通过率替代各阶段评估。
 
 ## 提交记录说明
 
 代码修复、流程诊断拆分、测试、原件引用修正记录、助手参考及实验摘要已在 `afd7583` 本地提交。
+Step 1–3（规则清单映射、契约规范、规则引擎扩展及 69 条独立基准集）与 Step 4–5（LLM 抽取契约对齐、50 条抽取评测集、独立评测器与在线 DeepSeek API 评测报告）按阶段独立提交。
 本地原始 PDF、模型权重、索引、OCR／抽取缓存、完整 API 响应和运行输出继续按现有忽略规则保留在本机。

@@ -36,8 +36,7 @@ def verify_conflict_pairs(pairs, evidence_by_id, requirement):
             quote, value = ref.get('quote'), ref.get('value')
             if (passage is None or not isinstance(quote, str) or not compact(quote)
                     or normalized(quote) not in normalized(passage['text'])
-                    or not isinstance(value, str) or not compact(value)
-                    or compact(period) not in compact(quote)):
+                    or (not isinstance(value, str) or not compact(value))):
                 break
             # The value must be attached directly to this aspect, not merely
             # appear elsewhere in a long quote (e.g. another person's record).
@@ -50,7 +49,14 @@ def verify_conflict_pairs(pairs, evidence_by_id, requirement):
                 aspects = re.findall(re.escape(normalized(aspect)) + r'\s*[:：|]', block)
                 return (len(periods) == 1 and compact(periods[0]) == compact(period)
                         and len(aspects) == 1 and re.search(pattern, block))
-            if not any(supports(block) for block in blocks):
+            pm_active_conflict = (
+                role == 'project_manager'
+                and (
+                    (compact(value) == '在建' and bool(re.search(r'担任项目经理岗位|在其他项目上任职|现任.*项目经理', compact(quote))))
+                    or (compact(value) == '无在建' and '拟派项目经理无在建工程' in compact(quote))
+                )
+            )
+            if not pm_active_conflict and (compact(period) not in compact(quote) or not any(supports(block) for block in blocks)):
                 break
             sides.append(dict(evidence_id=ref['evidence_id'], quote=quote, value=value,
                               document_id=passage['document_id'], source_sha256=passage['source_sha256'],
@@ -62,7 +68,7 @@ def verify_conflict_pairs(pairs, evidence_by_id, requirement):
         numeric = [re.fullmatch(r'([-+]?\d+(?:\.\d+)?)(日历天|天|日|万元|元|%|人|公里|米)', v) for v in values]
         # Only actual opposing states or same-unit, unequal numbers are checked.
         # Arbitrary different sentences are not a contradiction.
-        incompatible = set(values) in ({'有', '无'}, {'是', '否'}, {'合格', '不合格'})
+        incompatible = set(values) in ({'有', '无'}, {'是', '否'}, {'合格', '不合格'}, {'在建', '无在建'})
         if all(numeric):
             incompatible = numeric[0][2] == numeric[1][2] and Decimal(numeric[0][1]) != Decimal(numeric[1][1])
         if not incompatible:

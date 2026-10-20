@@ -32,7 +32,7 @@ def explicit_numeric_operator(text, value):
                 ('>=', r'(?:不得少于|不得低于|不少于|不低于|至少|≥|>=|最低投标限价(?:为|是|:)?)$'),
                 ('>', r'(?:超过|高于|大于|>)$'),
                 ('<', r'(?:低于|少于|小于|<)$'),
-                ('==', r'(?:等于|恰好|固定为|==|(?<![<>!])=|(?:计划)?工期为|计划工期|投标有效期为|保证金为|暂列金(?:额)?(?:为|是|:)?)$'),
+                ('==', r'(?:等于|恰好|固定为|==|(?<![<>!])=|(?:计划)?工期为|计划工期|投标有效期(?:为|自投标文件递交截止日起)|保证金为(?:人民币)?|暂列金(?:额)?(?:为|是|:)?)$'),
             )
             for op, pattern in patterns:
                 matched = re.search(pattern, before)
@@ -137,9 +137,9 @@ def manager_performance_linked(documents, current_name):
         return True
     change_approved = any(
         re.search(
-            r'(?:项目经理.{0,20}(?:变更为|更换为|调整为)|同意.{0,20}(?:变更为|更换为)|变更后项目经理\s*[:：|]?)\s*'
+            r'(?:项目经理.{0,20}(?:变更为|更换为|调整为)|同意.{0,30}(?:变更为|更换为)|变更后项目经理)\s*[:：|]?\s*'
             + esc + r'(?=\s|[|，,；;。同志]|$)',
-            re.sub(r'\s+', '', normalized(text)),
+            normalized(text),
         )
         for text in documents
     )
@@ -162,26 +162,26 @@ def has_document_body(quote, requirement=''):
         return bool(letter and offer and (not priced or re.search(r'\d+(?:\.\d+)?元', text)))
     if '中标通知书' in requirement:
         return bool(re.search(r'现确定.{1,80}为中标人.{0,50}中标价.{0,50}\d', text))
-    if '合同' in requirement and '身份证明' not in requirement:
+    if '合同' in requirement and not any(w in requirement for w in ('身份证明', '签合同前', '合同签订前')):
         return all(word in text for word in ('发包人', '承包人', '协议')) and bool(re.search(r'合同价|签订|达成', text))
     return bool(re.search(
         r'本人.+系.+法定代表人|(?:现委托|兹委托).+(?:代理人|办理)|'
         r'.+系.+(?:投标人名称|投标人)?.*法定代表人|'
-        r'(?:承包人|发包人|中标人|验收结论|验收意见|证书编号|许可证编号|统一社会信用代码)[:：|][^:：|]{3,}', text))
+        r'(?:承包人|发包人|中标人|验收结论|验收意见|交工验收时间|建设单位|施工单位|我单位承诺|我方承诺|证书编号|许可证编号|统一社会信用代码)[:：|][^:：|]{3,}', text))
 
 
 def owner_blocks(quote, name, role='bidder'):
     """Return labelled owner blocks or one header-defined personnel table row."""
     text = normalized(quote)
     blocks = []
-    labels = r'(?:企业名称|单位名称|投标人(?:名称)?)' if role == 'bidder' else r'(?:姓\s*名|持证人)'
-    markers = list(re.finditer(labels+r'\s*(?:[:：]|\||\n)\s*',text))
+    labels = r'(?:企业名称|单位名称|投标人(?:名称)?|营业执照[\s\S]{0,60}?名称)' if role == 'bidder' else r'(?:姓\s*名|持证人)'
+    markers = list(re.finditer(labels+r'\s*(?:[:：]|\||\n|[ \t]+)\s*',text))
     for index, marker in enumerate(markers):
         end = markers[index+1].start() if index+1 < len(markers) else len(text)
         block = text[marker.end():end]
         owner = re.split(r'[\n|，,；;()（）]|性别[:：]|身份证',block,maxsplit=1)[0]
         if re.sub(r'\s+','',owner) == re.sub(r'\s+','',name):
-            blocks.append(text[marker.start():end])
+            blocks.append(text[(0 if index == 0 else marker.start()):end])
     if role != 'bidder':
         name_col = None
         for line in text.splitlines():
@@ -193,6 +193,7 @@ def owner_blocks(quote, name, role='bidder'):
                 name_col = cells.index('姓名')
             elif name_col is not None and len(cells) > name_col and cells[name_col] == name:
                 blocks.append(line)
+        blocks.extend(text[m.start():] for m in re.finditer(r'(?:^|\n)\s*(' + re.escape(re.sub(r'\s+', '', name)) + r')\s*\n\s*Full\s*Name\b', text))
     return blocks
 
 

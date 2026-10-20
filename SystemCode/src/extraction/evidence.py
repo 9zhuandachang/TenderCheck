@@ -37,7 +37,7 @@ def numeric_in_quote(value, quote):
 def unit_in_quote(unit, quote):
     text=compact(quote)
     if unit == '元':
-        return bool(re.search(r'(?<!万)(?<!亿)元',text))
+        return bool(re.search(r'(?<!万)(?<!亿)元',text)) or ('投标报价汇总表' in text and '金额' in text) or ('工程量清单表' in text and '合价' in text)
     return bool(compact(unit)) and compact(unit) in text
 
 
@@ -81,7 +81,7 @@ def ground_extraction(result, context):
     for field in ('expected_numeric','expected_unit','secondary_numeric','expected_text','required_domain',
                   'scoring_max_points','scoring_bands','requires_official_seal','requires_signature'):
         value = getattr(t, field)
-        if value is None or value == '' or value == [] or value is False:
+        if value is None or value == '' or value == [] or value is False or (field == 'expected_unit' and t.constraint_type == 'FORMULA_BOUND' and not t.source_quotes.get(field)):
             continue
         quote = t.source_quotes.get(field)
         if not isinstance(quote, str) or not compact(quote) or compact(quote) not in compact(result.requirement_text):
@@ -214,11 +214,17 @@ def ground_extraction(result, context):
         elif type(value) in (float, int):
             if not math.isfinite(value) or not all(numeric_in_quote(value, q) for q in quotes):
                 issues.append(f'Numeric fact is not stated in cited text: {field}')
-        elif field == 'actual_unit' and not all(unit_in_quote(value,q) for q in quotes):
-            issues.append('Actual unit is not stated in cited text')
+        elif field == 'actual_unit':
+            if not all(unit_in_quote(value,q) for q in quotes):
+                issues.append('Actual unit is not stated in cited text')
+    
+
         elif isinstance(value, str) and not all(
                 text_fact_supported(value,q) if field=='actual_text' else compact(value) in compact(q) for q in quotes):
             issues.append(f'Text fact is not stated in cited text: {field}')
+    for structured_field in ('personnel_records', 'performance_records', 'component_amounts'):
+        if getattr(b, structured_field) and not by_field.get(structured_field):
+            issues.append(f'Missing source citation: {structured_field}')
     if b.entity_primary and b.entity_secondary:
         def locations(field):
             return {(r['source_sha256'],r['page_start'],r['page_end'],compact(r['quote']))

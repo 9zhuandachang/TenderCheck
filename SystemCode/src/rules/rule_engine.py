@@ -380,7 +380,7 @@ def evaluate_certificate_timeliness(
             # Certificate date is earlier than review_reference_date:
             if certificate_valid is None and t.allow_extension_notice and not extension_valid_to_str and family == "enterprise_qual":
                 # If certificate face date expired before review_reference_date and extension is explicitly marked unconfirmed vs confirmed absent
-                pass
+                return (None, f"证书原载有效期({effective_dt.isoformat()})早于评审基准日({ref_dt.isoformat()})，未见官方延续证明，待核验延期状态。")
             return (
                 False,
                 f"证书有效期({effective_dt.isoformat()})早于评审基准日({ref_dt.isoformat()})且无有效延续覆盖。",
@@ -391,6 +391,8 @@ def evaluate_certificate_timeliness(
             return (None, f"缺少证书有效期截止日期，无法对照评审基准日({ref_str})核验。")
         if certificate_valid is False:
             return (False, "certificate_valid=False")
+        if family == "title":
+            return (True, f"title_no_expiry@{ref_str}")
         if certificate_valid is True:
             return (True, f"certificate_valid=True@{ref_str}")
         return (None, f"缺少证书有效期截止日期或延续证明，无法确认在评审基准日({ref_str})是否有效。")
