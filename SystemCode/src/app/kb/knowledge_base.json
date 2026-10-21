@@ -1,0 +1,74 @@
+[
+  {
+    "id": "KB-001",
+    "title": "Accelerated drainage programme",
+    "type": "Method statement",
+    "categories": ["Schedule"],
+    "keywords": ["completion", "programme", "commencement", "date", "calendar days", "work fronts"],
+    "content": "The Works will be delivered on two parallel work fronts with night-time pipe laying on non-residential sections. Long-lead items (precast manholes and pipes) are ordered within 14 days of commencement, and float is held on the critical path for weather and utility diversions.",
+    "applicability": "Linear drainage and sewer contracts where access allows two crews; confirm resources before committing to a shorter programme."
+  },
+  {
+    "id": "KB-002",
+    "title": "Concrete mix design compliance",
+    "type": "Standard clause",
+    "categories": ["Technical"],
+    "keywords": ["structural", "concrete", "compressive", "strength", "mix design", "achieve"],
+    "content": "All structural concrete will be supplied from an accredited batching plant using a designed mix that achieves the specified characteristic compressive strength. Trial mixes and cube test results will be submitted for approval before the first pour.",
+    "applicability": "Any contract specifying a minimum concrete grade; state the grade exactly as specified."
+  },
+  {
+    "id": "KB-003",
+    "title": "Eastbank Sewer Renewal - Site Safety Plan",
+    "type": "Past winning bid",
+    "categories": ["Document"],
+    "keywords": ["site", "safety", "plan", "hazard", "excavation", "confined space"],
+    "content": "The Site Safety Plan identifies hazards for deep excavation, confined-space entry and live traffic, assigns a full-time safety officer, and sets out daily toolbox briefings, permit-to-work controls and emergency response procedures.",
+    "applicability": "Reuse the structure; replace project-specific hazards, personnel and emergency contacts."
+  },
+  {
+    "id": "KB-004",
+    "title": "Northgate Road Works - Traffic Management Plan",
+    "type": "Past winning bid",
+    "categories": ["Document"],
+    "keywords": ["traffic", "management", "plan", "public", "roads", "diversion"],
+    "content": "Works on public roads will follow a staged traffic management plan with lane closures limited to off-peak hours, signed diversions agreed with the road authority, and pedestrian routes maintained at all times.",
+    "applicability": "Requires agreement with the local road authority; update the staging drawings for the site."
+  },
+  {
+    "id": "KB-005",
+    "title": "Professional indemnity insurance confirmation",
+    "type": "Standard clause",
+    "categories": ["Commercial"],
+    "keywords": ["professional", "indemnity", "insurance", "cover", "maintain"],
+    "content": "The Tenderer maintains professional indemnity insurance at the level required by the tender for the duration of the Contract and the liability period, and will provide the insurer's certificate before contract award.",
+    "applicability": "Check the current policy limit with the insurer; a top-up policy may be needed."
+  },
+  {
+    "id": "KB-006",
+    "title": "Drawing revision control",
+    "type": "Standard clause",
+    "categories": ["Consistency"],
+    "keywords": ["drawing", "drawings", "revision", "register", "current", "reference"],
+    "content": "All references in the submission have been checked against the latest drawing register, including revisions issued by addenda. Superseded drawings are withdrawn and marked accordingly.",
+    "applicability": "Re-run the drawing check after every addendum."
+  },
+  {
+    "id": "KB-007",
+    "title": "Quality management system statement",
+    "type": "Method statement",
+    "categories": ["Qualification"],
+    "keywords": ["iso", "9001", "quality", "management", "certificate", "experience"],
+    "content": "Our ISO 9001 certified quality management system covers inspection and test plans, non-conformance reporting and document control for all site activities.",
+    "applicability": "Attach the current certificate and confirm its scope covers civil engineering construction."
+  },
+  {
+    "id": "KB-008",
+    "title": "Performance bond from approved issuer",
+    "type": "Standard clause",
+    "categories": ["Commercial"],
+    "keywords": ["performance", "bond", "contract", "sum", "issuer", "bank"],
+    "content": "The performance bond will be issued by a bank on the Employer's approved list in the form provided in the tender documents.",
+    "applicability": "Confirm the issuing bank against the Employer's list before submission."
+  }
+]

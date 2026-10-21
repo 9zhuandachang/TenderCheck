@@ -1,0 +1,7 @@
+# Review workspace (Streamlit front end)
+streamlit>=1.45
+pymupdf>=1.24
+pandas>=1.4.0
+openpyxl>=3.1
+# pyarrow 20+ requires NumPy 2; the ML stack in requirements.txt uses NumPy 1.x
+pyarrow>=16,<20
