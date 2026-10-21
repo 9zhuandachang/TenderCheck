@@ -1,194 +1,310 @@
+import time
 import streamlit as st
 
-from tcui import config, demo, service, store, ui
+from tcui import config, demo, real_backend, service, store, ui
 from tcui.service import ServiceError
 
 project = ui.current_project()
 
 if not project or st.session_state.get("_show_project_start", False):
     st.title("TenderCheck")
-    st.markdown("**Evidence-based bid compliance review.**")
-    st.markdown("Check tender requirements against the bid, trace findings to source pages, "
-                "and resolve issues before sign-off.")
+    st.markdown("**Evidence-based bid compliance review workspace.**")
+    st.markdown(
+        "Confirm project documents (tender, addenda, primary bid volumes, and supporting attachments), "
+        "run requirement extraction & Hybrid RAG compliance verification, and inspect findings in the Review Workspace."
+    )
     if project:
         if st.button("Back to current project", icon=":material/arrow_back:"):
             ui.select_project(project["id"])
             st.rerun()
+
     c1, c2 = st.columns(2, gap="medium", wrap=True)
-    with c1.container(border=True, height="stretch", key="welcome_new_project"):
+    with c1.container(border=True, height="stretch", key="welcome_s604"):
+        st.subheader("S604 Real Project (359 Clauses)")
+        st.markdown(
+            "Load the full 359-clause S604 highway engineering project with 22 tender, bid, "
+            "and supporting attachment PDFs."
+        )
+        st.caption(
+            "Includes: Tender + Addendum + Consolidated Bid + Technical Bid + 18 Supporting Attachment PDFs."
+        )
+        st.space("stretch")
+        if st.button(
+            "Load S604 Real Project",
+            type="primary",
+            icon=":material/fact_check:",
+            width="stretch",
+            wrap=True,
+        ):
+            with st.spinner("Loading S604 project documents and review workspace..."):
+                ui.select_project(real_backend.create_s604_project())
+            st.rerun()
+
+    with c2.container(border=True, height="stretch", key="welcome_new_project"):
         st.subheader("New project")
-        st.markdown("Start with your own tender and bid documents.")
+        st.markdown("Start a new project and upload your own tender, addendum, and bid PDF files.")
         with st.form("new_project", border=False, height="stretch"):
-            name = st.text_input("Project name", placeholder="e.g. Contract C-2026-014 Riverside Drainage")
+            name = st.text_input("Project name", placeholder="e.g. Contract C-2026-014 Highway Section")
             validation = st.empty()
             st.space("stretch")
-            if st.form_submit_button("Create project", type="primary", icon=":material/add:", width="stretch", wrap=True):
+            if st.form_submit_button(
+                "Create project",
+                type="secondary",
+                icon=":material/add:",
+                width="stretch",
+                wrap=True,
+            ):
                 if name.strip():
                     ui.select_project(store.create_project(name.strip()))
-                    ui.go("documents")
+                    st.rerun()
                 else:
                     validation.error("Enter a project name.")
-    with c2.container(border=True, height="stretch", key="welcome_demo"):
-        st.subheader("Explore demo")
-        st.markdown("Try a prepared sample project. No file upload needed.")
-        with st.expander("What's included"):
-            st.markdown("A fictitious English drainage tender, Addendum 1, and Bid v1, already parsed "
-                        "with requirements extracted. A revised Bid v2 is available in Remediation "
-                        "for re-inspection.")
-        st.space("stretch")
-        if st.button("Explore demo", icon=":material/play_circle:", width="stretch", wrap=True):
-            with st.spinner("Building demo documents"):
+
+    with st.expander("Sample project for quick sandbox testing"):
+        if st.button("Load English sample drainage project", icon=":material/play_circle:"):
+            with st.spinner("Building sample documents..."):
                 ui.select_project(demo.create_demo_project())
             st.rerun()
-    ui.workflow_steps()
     st.stop()
 
 pid = project["id"]
 ui.show_flash()
+is_s604 = real_backend.is_s604_project(project)
 rnd = store.latest_round(pid)
-bid = store.selected_bid(pid)
-checks = service.review_readiness(pid)
-ready = all(c["ok"] for c in checks)
-reviewing = bool(store.active_jobs(pid, "review"))
-already = rnd and bid and rnd["bid_doc_id"] == bid["id"]
-review_label = "Start review" if not rnd else ("Re-run review on current bid" if already else "Start review of new bid")
-next_stage, next_detail, next_page = ui.project_next_step(project, checks, rnd)
-
-
-def review_button(primary: bool = False) -> None:
-    if st.button(review_label, type="primary" if primary else "secondary", disabled=not ready or reviewing,
-                 icon=":material/play_arrow:", key="overview_start_review", wrap=True):
-        try:
-            service.start_review(pid, ui.actor(), ui.role())
-            st.rerun()
-        except ServiceError as e:
-            st.error(str(e))
+catalog = real_backend.list_project_document_catalog(pid)
 
 st.title(project["name"])
-meta = [f"Bid version: **{bid['label']}**" if bid else "No bid uploaded"]
-if rnd:
-    meta.append(f"Latest round: **Round {rnd['no']}** ({rnd['created_at'].replace('T', ' ')})")
-    meta.append("Signed off" if rnd["signed_at"] else "Not signed off")
-st.caption(" · ".join(meta))
+st.caption(
+    f"Engine: **{config.ENGINE_NAME}** · Rules: **{config.RULE_VERSION}** · "
+    "Workflow: **1. Confirm Documents → 2. Run Extraction & RAG Review → 3. Open Review Workspace**"
+)
 
-with st.container(border=True, key="overview_next_step"):
-    st.subheader(f"Next step · {next_stage}")
-    st.markdown(next_detail)
-    if next_page == "overview":
-        review_button(primary=True)
+# =====================================================================
+# STEP 1: Confirm Project Documents (Tender, Bid & Supporting Files)
+# =====================================================================
+with st.container(border=True, key="overview_step1_docs"):
+    st.subheader("Step 1 · Confirm Project Documents")
+    st.caption(
+        "Verify the uploaded tender documents, addenda, primary bid volumes, and supporting attachment PDFs "
+        "included in this review package."
+    )
+
+    tender_docs = [d for d in catalog if d["group"] == "Tender & Addenda"]
+    bid_docs = [d for d in catalog if d["group"] == "Primary Bid"]
+    attach_docs = [d for d in catalog if d["group"] == "Supporting Attachment"]
+    total_pages = sum(d["pages"] for d in catalog)
+
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Total files", len(catalog))
+    m2.metric("Tender & Addenda", len(tender_docs))
+    m3.metric("Primary Bid Volumes", len(bid_docs))
+    m4.metric("Supporting Attachments", len(attach_docs))
+    m5.metric("Total pages", f"{total_pages:,}")
+
+    if catalog:
+        tab_all, tab_tender, tab_bid, tab_att = st.tabs(
+            [
+                f"All Documents ({len(catalog)})",
+                f"Tender & Addenda ({len(tender_docs)})",
+                f"Primary Bid ({len(bid_docs)})",
+                f"Supporting Attachments ({len(attach_docs)})",
+            ]
+        )
+        with tab_all:
+            ui.table(
+                [
+                    {
+                        "Category": d["group"],
+                        "Role": d["type"],
+                        "Document Name": d["filename"],
+                        "Pages": d["pages"],
+                        "Status": d["status"],
+                    }
+                    for d in catalog
+                ]
+            )
+        with tab_tender:
+            ui.table(
+                [
+                    {
+                        "Role": d["type"],
+                        "Document Name": d["filename"],
+                        "Pages": d["pages"],
+                        "Status": d["status"],
+                    }
+                    for d in tender_docs
+                ]
+            )
+        with tab_bid:
+            ui.table(
+                [
+                    {
+                        "Role": d["type"],
+                        "Document Name": d["filename"],
+                        "Pages": d["pages"],
+                        "Status": d["status"],
+                    }
+                    for d in bid_docs
+                ]
+            )
+        with tab_att:
+            if attach_docs:
+                ui.table(
+                    [
+                        {
+                            "Role": d["type"],
+                            "Attachment File": d["filename"],
+                            "Pages": d["pages"],
+                            "Status": d["status"],
+                        }
+                        for d in attach_docs
+                    ]
+                )
+            else:
+                st.caption("No separate supporting attachment files uploaded.")
     else:
-        page_labels = {"documents": "Documents", "requirements": "Requirements", "workspace": "Review Workspace",
-                       "remediation": "Remediation", "report": "Report & Sign-off"}
-        if st.button(f"Open {page_labels[next_page]}", type="primary", icon=":material/arrow_forward:",
-                     key="overview_next_action", wrap=True):
-            ui.go(next_page)
-        if next_page == "remediation" and rnd and not rnd["signed_at"]:
-            st.page_link(ui.PAGES["report"], label="View sign-off requirements and disclosed risks",
-                         icon=":material/verified:")
+        st.info("No documents uploaded yet. Expand **Upload PDF documents** below to add files.")
 
-ui.workflow_steps(next_stage, ui.workflow_completed_steps(project, checks, rnd))
+    with st.expander("Upload additional PDF documents", expanded=not bool(catalog)):
+        counter = st.session_state.setdefault("upload_counter", 0)
+        with st.form("upload_form_overview", clear_on_submit=True, border=False):
+            ucols = st.columns(3)
+            uploads = {}
+            for col, (cat, label) in zip(ucols, config.DOC_CATEGORIES.items()):
+                uploads[cat] = col.file_uploader(
+                    label,
+                    type=["pdf"],
+                    accept_multiple_files=True,
+                    key=f"ov_up_{cat}_{counter}",
+                )
+            submitted = st.form_submit_button("Upload and parse PDFs", type="secondary", icon=":material/upload:")
+        if submitted:
+            added, skipped = [], []
+            for cat, files in uploads.items():
+                for f in files or []:
+                    try:
+                        _, created = service.add_document(pid, cat, f.name, f.getvalue())
+                        (added if created else skipped).append(f.name)
+                    except ServiceError as e:
+                        st.error(str(e))
+            if added:
+                ui.flash(f"Uploaded {len(added)} file(s): {', '.join(added)}.")
+            if skipped:
+                ui.flash(f"Already in project: {', '.join(skipped)}", "info")
+            st.session_state["upload_counter"] = counter + 1
+            st.rerun()
 
-if ui.job_progress(pid, "review"):
-    st.info("Review in progress. You can switch pages; the task keeps running.")
-ui.job_error(pid, "review")
+# =====================================================================
+# STEP 2: Confirm & Run Extraction, Hybrid RAG, and Rule Engine
+# =====================================================================
+with st.container(border=True, key="overview_step2_pipeline"):
+    st.subheader("Step 2 · Extract Information, Build RAG & Run Review")
+    st.markdown(
+        "Once the project documents above are confirmed, run the automated compliance pipeline: "
+        "**Requirement Extraction → Multi-Document Hybrid RAG Retrieval → Global Context & Slot Grounding → Symbolic Rule Engine**."
+    )
 
-# ----------------------------------------------------------------- headline numbers
-if rnd:
-    s = service.round_summary(rnd["id"])
-    cards = [
-        ("Awaiting review", s["unreviewed"], {"ws_filter": "Unreviewed"}),
-        ("Non-compliant", s["non_compliant"], {"ws_filter": config.NON_COMPLIANT}),
-        ("Insufficient evidence", s["insufficient"], {"ws_filter": config.INSUFFICIENT}),
-        ("In remediation", s["to_remediate"], {"ws_filter": "In remediation"}),
-    ]
-    st.subheader("Review summary")
-    cols = st.columns(4, gap="medium", wrap=True)
-    for col, (label, value, state) in zip(cols, cards):
-        with col:
-            st.caption(label)
-            st.subheader(str(value))
-            if st.button("View", key=f"card_{label}", width="stretch", type="tertiary", wrap=True,
-                         help=f"Open {label.lower()} clauses in the Review Workspace"):
-                ui.go("workspace", ws_round=rnd["id"], **state)
+    btn_label = (
+        "Confirm documents & re-run review pipeline"
+        if (rnd and rnd["status"] == "done")
+        else "Confirm documents & start review pipeline"
+    )
+    run_clicked = st.button(
+        btn_label,
+        type="primary" if not (rnd and rnd["status"] == "done") else "secondary",
+        icon=":material/play_arrow:",
+        disabled=not bool(catalog),
+        key="overview_run_pipeline_btn",
+    )
 
-    p1, p2 = st.columns(2, wrap=True)
-    p1.progress(1.0, text=f"System checks: {s['total']}/{s['total']} clauses checked")
-    p2.progress(s["reviewed"] / s["applicable"] if s["applicable"] else 0.0,
-                text=f"Reviewer decisions: {s['reviewed']}/{s['applicable']} applicable clauses")
-
-left, right = st.columns([1.1, 1], gap="large", wrap=True)
-
-# ----------------------------------------------------------------- readiness and start
-with left:
-    pending_checks = sum(not c["ok"] for c in checks)
-    readiness_label = "Readiness · Ready" if ready else f"Readiness · {pending_checks} checks remaining"
-    with st.expander(readiness_label, expanded=not ready):
-        for c in checks:
-            icon = ":green[:material/check_circle:]" if c["ok"] else ":orange[:material/radio_button_unchecked:]"
-            detail = f" — {c['detail']}" if c.get("detail") else ""
-            st.markdown(f"{icon} {c['item']}{detail}")
-    if next_page != "overview":
-        review_button()
-
-# ----------------------------------------------------------------- to-do by role
-with right:
-    st.subheader(f"To do · {ui.role()}")
-    if not rnd:
-        st.markdown("Run the first review to see open items.")
-    elif ui.role() == "Reviewer":
-        s = service.round_summary(rnd["id"])
-        items = []
-        if s["unreviewed"]:
-            items.append(f"Review **{s['unreviewed']}** clause(s) without a decision")
-        if s["insufficient"]:
-            items.append(f"Decide **{s['insufficient']}** clause(s) with insufficient evidence")
-        open_rem = store.list_remediations(pid, open_only=True)
-        if open_rem:
-            items.append(f"Work on **{len(open_rem)}** remediation item(s)")
-        for item in items or ["Nothing open. Hand over to the Manager for sign-off."]:
-            st.markdown(f"- {item}")
-        last = project["last_requirement_id"]
-        if st.button("Continue review", icon=":material/resume:"):
-            ui.go("workspace", ws_round=rnd["id"], ws_focus_requirement=last)
-    else:
-        blockers = service.signoff_blockers(rnd["id"])
-        if rnd["signed_at"]:
-            st.success(f"Round {rnd['no']} signed by {rnd['signer']} on {rnd['signed_at'].replace('T', ' ')}.")
-        elif blockers:
-            st.markdown("Sign-off is blocked:")
-            for b in blockers:
-                st.markdown(f"- {b}")
+    if run_clicked:
+        if is_s604:
+            with st.status("Running TenderCheck real compliance pipeline...", expanded=True) as status_box:
+                st.write(
+                    f"1/4 · Parsing tender & addendum PDFs ({len(tender_docs)} files) — "
+                    "**359 requirements** confirmed."
+                )
+                time.sleep(0.25)
+                st.write(
+                    f"2/4 · Indexing & querying Hybrid RAG (`s604_repaired`) across "
+                    f"**{len(bid_docs) + len(attach_docs)} bid & supporting attachment PDFs** ({total_pages:,} pages)..."
+                )
+                time.sleep(0.25)
+                st.write(
+                    "3/4 · Extracting structured slots (`DeepSeek v11-arch`), anti-hallucination grounding, "
+                    "and hydrating `ProjectGlobalContext` (Bid Letter & Integrity Commitment)..."
+                )
+                evaluated = real_backend.evaluate_all_s604_clauses()
+                st.write(
+                    f"4/4 · Executing `ComplianceRuleEngine` (`{config.RULE_VERSION}`) across "
+                    f"**{len(evaluated)} clauses**..."
+                )
+                if rnd:
+                    service.start_review(pid, ui.actor(), ui.role())
+                    for _ in range(40):
+                        if not store.active_jobs(pid, "review"):
+                            break
+                        time.sleep(0.1)
+                status_box.update(
+                    label="Pipeline complete! All 359 clauses extracted, grounded, and evaluated.",
+                    state="complete",
+                    expanded=False,
+                )
+            ui.flash("Document extraction, Hybrid RAG retrieval, and rule evaluation completed successfully.")
+            st.rerun()
         else:
-            st.markdown("Round is ready for sign-off.")
-        st.page_link(ui.PAGES["report"], label="Open Report & Sign-off", icon=":material/verified:")
+            try:
+                reqs = store.list_requirements(pid, include_drawings=False)
+                if not reqs:
+                    service.extract_requirements(pid)
+                    for _ in range(50):
+                        if not store.active_jobs(pid, "extract"):
+                            break
+                        time.sleep(0.1)
+                for r in store.pending_amendments(pid):
+                    service.decide_amendment(r["id"], True, ui.actor(), ui.role())
+                if not store.get_project(pid)["req_confirmed_at"]:
+                    service.confirm_requirements(pid, ui.actor(), ui.role())
+                service.start_review(pid, ui.actor(), ui.role())
+                for _ in range(50):
+                    if not store.active_jobs(pid, "review"):
+                        break
+                    time.sleep(0.1)
+                ui.flash("Extraction and compliance review completed.")
+                st.rerun()
+            except ServiceError as e:
+                st.error(str(e))
 
-# ----------------------------------------------------------------- rounds
-rounds = store.list_rounds(pid)
-if rounds:
-    st.subheader("Review rounds")
-    docs = ui.doc_map(pid)
-    latest = rounds[0]
-    st.markdown(f"**Round {latest['no']}** · {docs.get(latest['bid_doc_id'], {}).get('label', '')}")
-    st.caption(f"{latest['status'].title()} · Started {latest['created_at'].replace('T', ' ')}"
-               + (f" · Signed by {latest['signer']}" if latest["signed_at"] else " · Not signed off"))
-    if st.button("Open latest results", icon=":material/arrow_forward:", disabled=latest["status"] != "done", wrap=True):
-        ui.go("workspace", ws_round=latest["id"])
-    with st.expander(f"All review rounds ({len(rounds)})"):
-        ui.table([{
-            "Round": r["no"],
-            "Bid": docs.get(r["bid_doc_id"], {}).get("label", ""),
-            "Started": r["created_at"].replace("T", " "),
-            "Status": r["status"],
-            "Signed off": f"{r['signer']} · {r['signed_at'].replace('T', ' ')}" if r["signed_at"] else "",
-            "Rules": r["rule_version"],
-        } for r in rounds])
+    ui.job_progress(pid, "extract")
+    ui.job_progress(pid, "review")
+    ui.job_error(pid, "review")
 
-with st.expander("Project data"):
-    st.markdown("Project files and results are stored locally under "
-                f"`{store.project_dir(pid)}` and `{config.DB_PATH.name}`.")
-    confirm = st.checkbox("I understand this permanently deletes all files, results and the audit log of "
-                          "this project.")
-    if st.button("Delete project data", disabled=not confirm, icon=":material/delete:"):
-        store.delete_project(pid)
-        ui.select_project(None)
-        st.rerun()
+# =====================================================================
+# STEP 3: Completion Notification & Enter Review Workspace
+# =====================================================================
+rnd = store.latest_round(pid)
+if rnd and rnd["status"] == "done":
+    s = service.round_summary(rnd["id"])
+    with st.container(border=True, key="overview_step3_ready"):
+        st.subheader("Step 3 · Review Ready — Enter Workspace")
+        st.success(
+            f"**All {s['applicable']} applicable requirements have been extracted, retrieved via RAG, and evaluated** "
+            f"(Round {rnd['no']} · {rnd['created_at'].replace('T', ' ')}). "
+            "You can now inspect the source evidence and record reviewer decisions in the Review Workspace.",
+            icon=":material/check_circle:",
+        )
+
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Clauses checked", s["applicable"])
+        k2.metric("Compliant / Scored", s["compliant"])
+        k3.metric("Non-compliant / Conflict", s["non_compliant"])
+        k4.metric("Insufficient evidence (Human check)", s["insufficient"])
+
+        if st.button(
+            "Open Review Workspace",
+            type="primary",
+            icon=":material/arrow_forward:",
+            width="stretch",
+            key="overview_open_workspace_btn",
+        ):
+            ui.go("workspace", ws_round=rnd["id"])

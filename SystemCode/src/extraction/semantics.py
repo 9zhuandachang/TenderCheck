@@ -28,11 +28,11 @@ def explicit_numeric_operator(text, value):
             after = re.sub(r'\s+', '', clause[match.end():])
             operator = None
             patterns = (
-                ('<=', r'(?:不得超过|不得高于|不超过|不高于|至多|最多|≤|<=|最高投标限价(?:为|是|:)?|招标控制价(?:为|是|:)?)$'),
+                ('<=', r'(?:(?:不得超过|不得高于|不超过|不高于)(?:投标报价的?|修正前报价的?|招标控制价的?)?|至多|最多|≤|<=|最高投标限价(?:为|是|:)?|招标控制价(?:为|是|:)?)$'),
                 ('>=', r'(?:不得少于|不得低于|不少于|不低于|至少|≥|>=|最低投标限价(?:为|是|:)?)$'),
                 ('>', r'(?:超过|高于|大于|>)$'),
                 ('<', r'(?:低于|少于|小于|<)$'),
-                ('==', r'(?:等于|恰好|固定为|==|(?<![<>!])=|(?:计划)?工期为|计划工期|投标有效期(?:为|自投标文件递交截止日起)|保证金为(?:人民币)?|暂列金(?:额)?(?:为|是|:)?)$'),
+                ('==', r'(?:等于|恰好|固定为|==|(?<![<>!])=|(?:计划)?工期为|计划工期|投标有效期(?:为|自投标文件递交截止日起)|保证金(?:金额)?为(?:人民币|中标价的?|中标合同金额的?|签约合同价的?)?|担保(?:金额)?为(?:人民币|中标价的?|中标合同金额的?|签约合同价的?)?|暂列金(?:额)?(?:为|是|:)?)$'),
             )
             for op, pattern in patterns:
                 matched = re.search(pattern, before)
@@ -68,7 +68,7 @@ def required_qualification_role(requirement):
         return 'project_manager'
     if '项目总工' in requirement or '总工程师' in requirement:
         return 'chief_engineer'
-    if '投标人' in requirement:
+    if re.search(r'投标人|企业|单位|法人|营业执照|安全生产许可证|总承包|专业承包|资质证书', requirement):
         return 'bidder'
     return None
 
@@ -93,7 +93,15 @@ def role_names(text, role):
     pattern = labels[role] + r'\s*(?:[:：]|\|)\s*([^\n|，,；;()（）]+)'
     text = normalized(text)
     names = {re.sub(r'\s+', '', m[1]).rstrip('。') for m in re.finditer(pattern, text)}
+    if role == 'bidder' and not names:
+        seal_pattern = r'企业\s*名\s*称\s*章\s*(?:[:：]|\||\n)\s*([^\n|，,；;()（）]+)'
+        names = {re.sub(r'\s+', '', m[1]).rstrip('。') for m in re.finditer(seal_pattern, text)}
+        if not names and re.search(r'商务文件|投标文件', text) and not re.search(r'合作单位|分包', text):
+            cert_pattern = r'(?:企业|单位)名称\s*(?:[:：]|\|)\s*([^\n|，,；;()（）]+)'
+            names = {re.sub(r'\s+', '', m[1]).rstrip('。') for m in re.finditer(cert_pattern, text)}
     if role != 'bidder':
+        if re.search(r'更换项目经理|中标通知书|合同协议书|交工验收|竣工验收', text) and not re.search(r'项目管理机构|拟委任|拟派|拟任', text):
+            return set()
         names = set()
         # Native PDF tables often serialize cells on separate lines.
         if (re.search(r'项目管理机构|拟委任', text)
@@ -153,21 +161,35 @@ def has_document_body(quote, requirement=''):
     Unrecognised document types require review rather than title-based acceptance.
     """
     text = re.sub(r'\s+', '', normalized(quote))
-    if re.search(r'_{2,}|□|某某|XXX', text, re.I):
+    if re.search(r'_{2,}|某某|XXX', text, re.I) or ('□' in text and not re.search(r'[\uf052☑√✓]', text)):
         return False
-    if '投标函' in requirement:
+    if '投标函' in requirement and not any(w in requirement for w in ('保证金', '附录', '清单', '一致', '单位章', '公章', '签字', '盖章')):
         offer = re.search(r'(?:愿意以|愿以).*(?:投标总价|投标总报价|投标报价)', text)
         letter = '投标函' in text and '我方已仔细研究' in text
         priced = '含报价' in requirement and '不含报价' not in requirement
         return bool(letter and offer and (not priced or re.search(r'\d+(?:\.\d+)?元', text)))
+    has_contract_req = '合同' in requirement and not any(w in requirement for w in ('身份证明', '签合同前', '合同签订前', '合同条款', '合同段', '合同工程', '合同价', '分包合同'))
+    notice_ok = bool(re.search(r'(?:现确定|确定).{1,80}为中标(?:人|单位).{0,80}(?:中标价|中标款)', text))
+    contract_ok = all(word in text for word in ('发包人', '承包人', '协议')) and bool(re.search(r'合同价|签订|达成', text))
+    if '中标通知书' in requirement and has_contract_req:
+        return notice_ok or contract_ok
     if '中标通知书' in requirement:
-        return bool(re.search(r'现确定.{1,80}为中标人.{0,50}中标价.{0,50}\d', text))
-    if '合同' in requirement and not any(w in requirement for w in ('身份证明', '签合同前', '合同签订前')):
-        return all(word in text for word in ('发包人', '承包人', '协议')) and bool(re.search(r'合同价|签订|达成', text))
-    return bool(re.search(
+        return notice_ok
+    if has_contract_req:
+        return contract_ok
+    core_match = bool(re.search(
         r'本人.+系.+法定代表人|(?:现委托|兹委托).+(?:代理人|办理)|'
         r'.+系.+(?:投标人名称|投标人)?.*法定代表人|'
         r'(?:承包人|发包人|中标人|验收结论|验收意见|交工验收时间|建设单位|施工单位|我单位承诺|我方承诺|证书编号|许可证编号|统一社会信用代码)[:：|][^:：|]{3,}', text))
+    if core_match:
+        return True
+    if any(w in requirement for w in ('法定代表人身份证明', '授权委托书')):
+        return False
+    return (
+        len(text) >= 18
+        and not re.match(r'^(?:附件目录|目录|附件[:：])', text)
+        and (bool(re.search(r'[:：|，,。；;]', text)) or '\n' in str(quote))
+    )
 
 
 def owner_blocks(quote, name, role='bidder'):
@@ -193,6 +215,7 @@ def owner_blocks(quote, name, role='bidder'):
                 name_col = cells.index('姓名')
             elif name_col is not None and len(cells) > name_col and cells[name_col] == name:
                 blocks.append(line)
+                blocks.append(re.sub(r'\|+', '', line))
         blocks.extend(text[m.start():] for m in re.finditer(r'(?:^|\n)\s*(' + re.escape(re.sub(r'\s+', '', name)) + r')\s*\n\s*Full\s*Name\b', text))
     return blocks
 
@@ -208,7 +231,7 @@ def objective_target(text):
     # Negated, conditional or quoted requirements cannot certify a bid target.
     if re.search(r'未|并非|不符合|未达到|不承诺|无法|若|如果|招标要求|招标文件要求', text):
         return None
-    quality = re.findall(r'交工验收(?:的)?质量评定(?:须|应)?(?:为|:)(不合格|合格|优良)(?=$|[，,；;。|])', text)
+    quality = re.findall(r'(?:交工验收(?:的)?质量评定|质量目标)(?:须|应)?(?:为|:|：)(不合格|合格|优良)(?=$|[，,；;。|])', text)
     if quality and len(set(quality)) == 1:
         return ('handover_quality', quality[0])
     safety = re.findall(r'安全目标(?:须|应)?(?:为|:)(无生产安全责任事故)(?=$|[，,；;。|])', text)

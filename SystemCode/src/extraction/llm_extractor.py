@@ -10,10 +10,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from .schema import BidEvidenceSlots, TenderConstraintSlots, StructuredExtractionResult, VALID_CONSTRAINT_TYPES
 from .evidence import ground_extraction, numeric_in_quote, unit_in_quote
+from .conflicts import verify_conflict_pairs
 from .semantics import (
     explicit_numeric_operator,
     has_document_body,
     manager_performance_linked,
+    objective_target,
     qualification_owned_by,
     required_qualification_role,
     role_names,
@@ -188,10 +190,24 @@ class DeepSeekSlotExtractor:
 
     def _normalize_llm_extraction(self, result: StructuredExtractionResult, passages: list[dict]) -> StructuredExtractionResult:
         """Schema-driven active-slot projection and passage-grounded reference normalization."""
+        result.extraction_issues = []
         t, b = result.tender_slots, result.bid_slots
         req = result.requirement_text
         ctype = t.constraint_type
         by_id = {p['evidence_id']: p for p in passages if isinstance(p, dict) and 'evidence_id' in p}
+
+        # 0. Pre-validate conflict_detected so spurious conflict flags without valid two-sided pairs do not poison valid extractions
+        raw_refs = list(b.evidence_references or [])
+        if b.conflict_detected:
+            for cp in (b.conflict_pairs or []):
+                if isinstance(cp, dict) and cp.get('role_evidence_id') in by_id:
+                    anchor_text = by_id[cp['role_evidence_id']]['text']
+                    if cp.get('role') and cp.get('subject') and compact(cp['subject']) in role_names(anchor_text, cp['role']):
+                        cp['role_quote'] = anchor_text
+            valid_cp, _ = verify_conflict_pairs(b.conflict_pairs, by_id, req)
+            if not valid_cp and not (b.actual_text and b.commitment_fulfilled is None and b.prohibition_violated is None and re.search(r"矛盾|冲突", str(b.evidence_summary or ""))):
+                b.conflict_detected = False
+                b.conflict_pairs = []
 
         # 1. Define schema-active slots per constraint_type to eliminate cross-type slot pollution
         active_t = {'constraint_type', 'target_field', 'operator', 'source_quotes'}
@@ -200,6 +216,10 @@ class DeepSeekSlotExtractor:
         if ctype == 'NUMERIC_BOUND':
             active_t |= {'expected_numeric', 'expected_unit', 'secondary_numeric'}
             if t.expected_numeric is not None:
+                if not numeric_in_quote(t.expected_numeric, req) and t.expected_unit == '元' and '万元' in req and isinstance(t.expected_numeric, (int, float)) and numeric_in_quote(t.expected_numeric / 10000.0, req):
+                    scaled = float(t.expected_numeric) / 10000.0
+                    t.expected_numeric = int(scaled) if scaled.is_integer() else scaled
+                    t.expected_unit = '万元'
                 if not numeric_in_quote(t.expected_numeric, req):
                     t.expected_numeric = None
                     t.expected_unit = ''
@@ -221,11 +241,24 @@ class DeepSeekSlotExtractor:
                 active_b.add('actual_domain')
             if b.is_long_term is False:
                 b.is_long_term = None
+            elif b.is_long_term is None:
+                for p in passages:
+                    if re.search(r'(?:营业|经营)期限\s*[:：/|]*\s*长期', p['text']):
+                        b.is_long_term = True
+                        break
         elif ctype == 'ENTITY_CONSISTENCY':
             active_t |= {'expected_text'}
             active_b |= {'actual_numeric', 'actual_unit', 'upper_amount_text', 'entity_primary', 'entity_secondary'}
         elif ctype == 'DOCUMENT_PRESENCE_AND_SEAL':
             active_t |= {'expected_text', 'requires_official_seal', 'requires_signature', 'required_seal_parties'}
+            if t.required_seal_parties and not b.observed_seal_parties:
+                multi_parties = [p for p in t.required_seal_parties if str(p).strip() not in {'投标人', '投标单位', '投标人单位', '法定代表人', '委托代理人'}]
+                if len(multi_parties) != len(t.required_seal_parties):
+                    if any(str(p).strip() in {'投标人', '投标单位', '投标人单位'} for p in t.required_seal_parties):
+                        t.requires_official_seal = True
+                    if any(str(p).strip() in {'法定代表人', '委托代理人'} for p in t.required_seal_parties):
+                        t.requires_signature = True
+                    t.required_seal_parties = multi_parties
             active_b |= {'document_present', 'commitment_fulfilled'}
             if t.required_seal_parties or t.requires_official_seal:
                 active_b.add('observed_seal_parties')
@@ -234,6 +267,12 @@ class DeepSeekSlotExtractor:
             active_t |= {'expected_text', 'requires_external_verification'}
             if not t.expected_text:
                 t.expected_text = req
+            if t.operator == 'QUALITATIVE_MATCH' and objective_target(req) is None:
+                t.operator = 'NOT_VIOLATED'
+            elif objective_target(req) is not None and not b.conflict_detected:
+                t.operator = 'QUALITATIVE_MATCH'
+                if b.qualitative_match is None and b.commitment_fulfilled is True:
+                    b.qualitative_match = True
             if b.conflict_detected and b.conflict_pairs:
                 active_b |= {'actual_text', 'conflict_pairs'}
             elif t.operator == 'QUALITATIVE_MATCH':
@@ -242,6 +281,11 @@ class DeepSeekSlotExtractor:
                 active_b |= {'commitment_fulfilled', 'evidence_source_type'}
             else:
                 active_b |= {'prohibition_violated', 'commitment_fulfilled'}
+                if not b.conflict_detected:
+                    if b.commitment_fulfilled is True and b.prohibition_violated is None:
+                        b.prohibition_violated = False
+                    elif b.prohibition_violated is False and b.commitment_fulfilled is None:
+                        b.commitment_fulfilled = True
         elif ctype == 'QUALITATIVE_OR_SCORING':
             active_t |= {'expected_unit', 'scoring_mode', 'requires_human_review', 'scoring_max_points', 'scoring_bands'}
             if t.requires_human_review:
@@ -267,8 +311,32 @@ class DeepSeekSlotExtractor:
             active_b |= {'entity_primary', 'entity_secondary'}
 
         # Collect valid citations from inactive fields before pruning so they can back active fields if needed
-        raw_refs = list(b.evidence_references or [])
+        for r in raw_refs:
+            if isinstance(r, dict) and r.get('evidence_id') in by_id and isinstance(r.get('quote'), str):
+                ptxt = by_id[r['evidence_id']]['text']
+                if compact(r['quote']) not in compact(ptxt) and r.get('field') not in ('actual_numeric', 'actual_unit', 'secondary_actual_numeric'):
+                    segs = [s.strip() for s in re.split(r'[…\.\.\.。\n；;，,]', r['quote']) if len(compact(s)) >= 8 and compact(s) in compact(ptxt)]
+                    if segs:
+                        r['quote'] = max(segs, key=lambda s: len(compact(s)))
         valid_raw_refs = [r for r in raw_refs if isinstance(r, dict) and r.get('evidence_id') in by_id and isinstance(r.get('quote'), str) and compact(r['quote']) in compact(by_id[r['evidence_id']]['text'])]
+
+        # Infer document_present or commitment_fulfilled when LLM extracted valid text/references but left boolean unset
+        neg_summary = bool(re.search(r'未提供|未提交|缺少|缺失|未见|无法确认|未明确|不一致|不满足', str(b.evidence_summary or '')))
+        if ctype == 'DOCUMENT_PRESENCE_AND_SEAL' and b.evidence_found and b.document_present is None and valid_raw_refs and not neg_summary:
+            body_refs = [r for r in valid_raw_refs if has_document_body(by_id[r['evidence_id']]['text'], req)]
+            if body_refs:
+                b.document_present = True
+                for br in body_refs:
+                    raw_refs.append({'field': 'document_present', 'evidence_id': br['evidence_id'], 'quote': by_id[br['evidence_id']]['text']})
+        elif ctype == 'PROHIBITION_AND_COMMITMENT' and t.operator != 'QUALITATIVE_MATCH' and not t.requires_external_verification and not b.conflict_detected:
+            if b.evidence_found and b.commitment_fulfilled is None and b.prohibition_violated is None and valid_raw_refs and not neg_summary:
+                cited_p_texts = [by_id[r['evidence_id']]['text'] for r in valid_raw_refs]
+                if not any(t_str.count('□') >= 2 and not re.search(r'[\uf052☑√✓]', t_str) for t_str in cited_p_texts):
+                    b.commitment_fulfilled = True
+                    b.prohibition_violated = False
+                    for vr in valid_raw_refs:
+                        raw_refs.append({'field': 'commitment_fulfilled', 'evidence_id': vr['evidence_id'], 'quote': vr['quote']})
+                        raw_refs.append({'field': 'prohibition_violated', 'evidence_id': vr['evidence_id'], 'quote': vr['quote']})
         fallback_refs = [r for r in valid_raw_refs if r.get('field') not in active_b]
         for sb in (b.subject_bindings or []):
             if isinstance(sb, dict):
@@ -306,10 +374,16 @@ class DeepSeekSlotExtractor:
                 clean_sq[f] = req
             elif f in ('expected_text', 'required_domain') and isinstance(val, str) and compact(val) in compact(req):
                 clean_sq[f] = val
-            elif f == 'requires_official_seal' and '盖章' in req:
-                clean_sq[f] = req
-            elif f == 'requires_signature' and ('签字' in req or '签名' in req):
-                clean_sq[f] = req
+            elif f == 'requires_official_seal':
+                if any(w in req for w in ('盖章', '单位章', '公章', '印章')):
+                    clean_sq[f] = req
+                else:
+                    t.requires_official_seal = False
+            elif f == 'requires_signature':
+                if any(w in req for w in ('签字', '签名', '签署')):
+                    clean_sq[f] = req
+                else:
+                    t.requires_signature = False
             elif f == 'scoring_bands' and val:
                 clean_sq[f] = req
         t.source_quotes = clean_sq
@@ -373,6 +447,21 @@ class DeepSeekSlotExtractor:
                             t.expected_unit = '元'
                         kept_refs.append({'field': 'actual_unit', 'evidence_id': p['evidence_id'], 'quote': p['text']})
                         break
+            elif b.actual_numeric is None:
+                u_refs = [r for r in kept_refs if isinstance(r, dict) and r.get('field') == 'actual_unit']
+                if not u_refs or not all(isinstance(r.get('quote'), str) and unit_in_quote(b.actual_unit, r['quote']) for r in u_refs):
+                    unit_p = next((p for p in passages if unit_in_quote(b.actual_unit, p['text'])), None)
+                    if unit_p:
+                        kept_refs = [r for r in kept_refs if not (isinstance(r, dict) and r.get('field') == 'actual_unit')]
+                        kept_refs.append({'field': 'actual_unit', 'evidence_id': unit_p['evidence_id'], 'quote': unit_p['text']})
+                    else:
+                        b.actual_unit = ''
+                        kept_refs = [r for r in kept_refs if not (isinstance(r, dict) and r.get('field') == 'actual_unit')]
+
+        if ctype == 'QUALITATIVE_OR_SCORING' and b.credit_ratings and b.actual_text:
+            at_refs = [r for r in kept_refs if isinstance(r, dict) and r.get('field') == 'actual_text' and isinstance(r.get('quote'), str)]
+            if at_refs and not all(text_fact_supported(b.actual_text, r['quote']) for r in at_refs):
+                b.actual_text = at_refs[0]['quote']
 
         if b.actual_numeric is not None and b.actual_unit:
             num_eids = [r['evidence_id'] for r in kept_refs if isinstance(r, dict) and r.get('field') == 'actual_numeric' and r.get('evidence_id') in by_id]
@@ -393,20 +482,46 @@ class DeepSeekSlotExtractor:
                             kept_refs.append({'field': 'actual_unit', 'evidence_id': eid, 'quote': by_id[eid]['text']})
 
         if ctype == 'QUALIFICATION_LEVEL' and b.evidence_found:
+            if b.valid_to and not b.extension_valid_to:
+                for p in passages:
+                    m_ext = re.search(r'统一(?:延续|延期)至\s*(\d{4})[-年./](\d{1,2})[-月./](\d{1,2})日?', p['text'])
+                    if m_ext:
+                        b.extension_valid_to = f"{int(m_ext[1]):04d}-{int(m_ext[2]):02d}-{int(m_ext[3]):02d}"
+                        break
             role = required_qualification_role(req)
             if role:
-                for qf in ('actual_text', 'actual_domain'):
-                    q_refs = [r for r in kept_refs if isinstance(r, dict) and r.get('field') == qf and r.get('evidence_id') in by_id]
-                    if len(q_refs) > 1:
-                        non_anchor = [r for r in q_refs if not role_names(by_id[r['evidence_id']]['text'], role)]
-                        if non_anchor:
-                            kept_refs = [r for r in kept_refs if not (isinstance(r, dict) and r.get('field') == qf) or r in non_anchor]
+                if not b.subject_role:
+                    b.subject_role = role
                 anchor_passages = [p for p in passages if role_names(p['text'], role)]
                 identities = set().union(*(role_names(p['text'], role) for p in anchor_passages))
                 if len(identities) == 1 and anchor_passages:
                     subj_name = next(iter(identities))
                     anchor_p = anchor_passages[0]
-                    if not b.certificate_holder:
+                    for qf in ('actual_text', 'actual_domain'):
+                        q_refs = [r for r in kept_refs if isinstance(r, dict) and r.get('field') == qf and r.get('evidence_id') in by_id and isinstance(r.get('quote'), str)]
+                        owned_refs = [r for r in q_refs if qualification_owned_by(by_id[r['evidence_id']]['text'], subj_name, r['quote'], role)]
+                        if len(owned_refs) > 1:
+                            non_anchor = [r for r in owned_refs if not role_names(by_id[r['evidence_id']]['text'], role)]
+                            if non_anchor:
+                                owned_refs = non_anchor
+                        if not owned_refs and q_refs and getattr(b, qf):
+                            val_str = str(getattr(b, qf))
+                            for p in passages:
+                                if qualification_owned_by(p['text'], subj_name, val_str, role) and compact(val_str) in compact(p['text']):
+                                    owned_refs = [{'field': qf, 'evidence_id': p['evidence_id'], 'quote': val_str}]
+                                    break
+                        if owned_refs:
+                            kept_refs = [r for r in kept_refs if not (isinstance(r, dict) and r.get('field') == qf)] + owned_refs
+                            if qf == 'actual_text' and not all(text_fact_supported(b.actual_text, r['quote']) for r in owned_refs):
+                                cand_q = owned_refs[0]['quote'].strip().rstrip(';；。')
+                                if '\n' in cand_q:
+                                    cand_q = cand_q.splitlines()[-1].strip().rstrip(';；。')
+                                if cand_q:
+                                    b.actual_text = cand_q
+                    if not b.certificate_holder or any(
+                        qualification_owned_by(by_id[r['evidence_id']]['text'], subj_name, r['quote'], role)
+                        for r in kept_refs if isinstance(r, dict) and r.get('evidence_id') in by_id and isinstance(r.get('quote'), str)
+                    ):
                         b.certificate_holder = subj_name
                     if compact(b.certificate_holder) == subj_name:
                         rebuilt_bindings = []
@@ -432,6 +547,11 @@ class DeepSeekSlotExtractor:
             for rec in b.personnel_records:
                 if isinstance(rec, dict) and isinstance(rec.get('qualification_text'), str):
                     qtxt = rec['qualification_text']
+                    if not rec.get('valid_to') and rec.get('certificate_valid') is None:
+                        for p in passages:
+                            if rec.get('name') and compact(rec['name']) in compact(p['text']) and '批准日期' in p['text'] and '有效期' not in p['text']:
+                                rec['certificate_valid'] = True
+                                break
                     if ('C证' in qtxt or '安全生产考核' in qtxt) and not any(w in qtxt for w in ('省级', '交通运输厅', '交通厅', '交通运输主管部门')):
                         for p in passages:
                             m = re.search(r'考核部门\s*[:：]\s*([^\n\s]+(?:交通运输厅|交通厅|交通运输主管部门))', p['text'])
@@ -447,6 +567,9 @@ class DeepSeekSlotExtractor:
                         cp['role_quote'] = anchor_text
 
         b.evidence_references = kept_refs
+        active_after = [f for f in allowed_ref_fields if getattr(b, f) not in (None, '', [], {})]
+        if b.evidence_found and not kept_refs and not active_after and not b.conflict_detected:
+            b.evidence_found = False
         return result
 
     def extract(self, clause_id, requirement_text, category, evidence_context, use_cache=True, review_reference_date=''):

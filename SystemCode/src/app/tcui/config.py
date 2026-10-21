@@ -11,12 +11,12 @@ DB_PATH = DATA_DIR / "tendercheck.db"
 PROJECTS_DIR = DATA_DIR / "projects"
 KB_PATH = APP_DIR / "kb" / "knowledge_base.json"
 
-# Proposal MVP scope: searchable English PDFs, up to 100 pages per package.
-MAX_PACKAGE_PAGES = 100
+# Support full-scale Chinese engineering tender & bid packages (up to 3,000 pages).
+MAX_PACKAGE_PAGES = 3000
 MIN_TEXT_CHARS = 20
 
-ENGINE_NAME = "Heuristic placeholder engine v0.1"
-RULE_VERSION = "rules-v0.1"
+ENGINE_NAME = "Hybrid RAG + DeepSeek v11-arch + GlobalContext + ComplianceRuleEngine"
+RULE_VERSION = "ComplianceRuleEngine-v3 (R01-R09)"
 # Name of the external LLM service that receives document text, or None when nothing leaves this machine.
 LLM_PROVIDER = os.environ.get("TENDERCHECK_LLM_PROVIDER") or None
 

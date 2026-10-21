@@ -2,6 +2,7 @@
 
 import base64
 import html
+import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -13,7 +14,6 @@ from .config import CLOSED, COMPLIANT, CONFIRMED, INSUFFICIENT, NON_COMPLIANT, T
 
 PAGES = {
     "overview": "views/overview.py",
-    "documents": "views/documents.py",
     "requirements": "views/requirements.py",
     "workspace": "views/workspace.py",
     "remediation": "views/remediation.py",
@@ -23,12 +23,11 @@ PAGES = {
 NAVIGATION = {
     "Workspace": [("overview", "Overview", ":material/dashboard:")],
     "Review": [
-        ("documents", "Documents", ":material/folder_open:"),
         ("requirements", "Requirements", ":material/checklist:"),
         ("workspace", "Review Workspace", ":material/compare:"),
         ("remediation", "Remediation", ":material/build:"),
     ],
-    "Delivery": [("report", "Report & Sign-off", ":material/verified:")],
+    "Delivery": [("report", "Report & Export", ":material/verified:")],
 }
 
 VERDICT_STYLE = {
@@ -46,6 +45,7 @@ STATUS_COLOR = {
 
 CSS = """
 <style>
+.stAppDeployButton, [data-testid="stAppDeployButton"] {display: none !important;}
 .block-container {padding-top: 3rem; padding-bottom: 2rem;}
 .st-key-ws_nav button {justify-content: flex-start; text-align: left;}
 .st-key-ws_nav button p {text-align: left;}
@@ -54,7 +54,8 @@ table.tc-cmp th {text-align: left; color: #5b6472; font-weight: 600; border-bott
 table.tc-cmp td {border-bottom: 1px solid #eceff3; padding: 8px 10px; font-variant-numeric: tabular-nums;}
 div[data-testid="stMetric"] {background: #ffffff; border: 1px solid #e3e6eb; border-radius: 8px; padding: 10px 14px;}
 .tc-muted {color: #5b6472; font-size: 0.85rem;}
-.tc-req {background: #ffffff; border-left: 4px solid #1f3a68; padding: 8px 12px; border-radius: 4px; margin: 4px 0 8px 0;}
+.tc-req {background: #fff8db; border: 1px solid #f5d061; border-left: 5px solid #d97706; padding: 10px 14px; border-radius: 6px; margin: 6px 0 10px 0; font-weight: 500; color: #1f2937;}
+.tc-req mark {background: #fde047; padding: 1px 4px; border-radius: 3px; font-weight: 600;}
 .tc-pdf {height: 640px; overflow: auto; border: 1px solid #d9dde3; border-radius: 6px; background: #ffffff;}
 .tc-pdf img {display: block; margin: 0 auto;}
 </style>
@@ -130,18 +131,6 @@ def sidebar(current_page: str = "") -> None:
             st.caption(section)
             for page, label, icon in pages:
                 st.page_link(PAGES[page], label=label, icon=icon, width="stretch")
-        st.caption("Reviewer details")
-        if "role" not in st.session_state:
-            st.session_state["role"] = "Reviewer"
-        st.segmented_control("Role", config.ROLES, key="role", required=True)
-        st.text_input("Your name", key="user_name", placeholder="Recorded in the audit log")
-        st.caption("Data processing")
-        if config.LLM_PROVIDER:
-            st.warning(f"Clause text and bid excerpts are sent to **{config.LLM_PROVIDER}** for extraction.",
-                       icon=":material/cloud_upload:")
-        else:
-            st.caption(":material/lock: All processing runs on this machine. No document text is sent to an "
-                       "external LLM service.")
         with st.expander("Engine details"):
             st.caption(f"Engine: {config.ENGINE_NAME} · Rules: {config.RULE_VERSION}")
 
@@ -261,6 +250,14 @@ def verdict_md(verdict: Optional[str]) -> str:
     return f":{color}-badge[{icon} {verdict}]"
 
 
+def sub_verdict_md(chain: Optional[Dict[str, Any]]) -> str:
+    if not chain or not chain.get("sub_verdict_label"):
+        return ""
+    color = chain.get("sub_verdict_color") or "gray"
+    label = chain["sub_verdict_label"]
+    return f":{color}-badge[{label}]"
+
+
 def verdict_icon(verdict: Optional[str]) -> str:
     return VERDICT_STYLE.get(verdict, ("gray", "", "·"))[2]
 
@@ -300,17 +297,95 @@ def job_error(pid: int, kind: str) -> None:
 
 # ----------------------------------------------------------------- PDF page viewer
 
-@st.cache_data(max_entries=48, show_spinner=False)
+def _extract_highlight_chunks(highlight: str) -> List[str]:
+    """Split English or Chinese highlight excerpts into searchable sub-spans for PyMuPDF `search_for`."""
+    if not highlight:
+        return []
+    if re.search(r"[\u4e00-\u9fff]", highlight):
+        parts = [
+            seg.strip()
+            for seg in re.split(r"[，。；：、！？\n\r\t|（）()【】《》“”\"']+", highlight)
+            if len(seg.strip()) >= 3
+        ]
+        chunks: List[str] = []
+        for p in parts:
+            if len(p) <= 10:
+                chunks.append(p)
+            else:
+                for i in range(0, len(p), 7):
+                    sub = p[i : i + 9]
+                    if len(sub) >= 4:
+                        chunks.append(sub)
+        return chunks[:18]
+    words = highlight.split()
+    return [" ".join(words[i : i + 5]) for i in range(0, len(words), 5)]
+
+
+def _extract_fallback_keywords(highlight: str) -> List[str]:
+    """Extract 3-5 char Chinese key terms and numeric-unit spans when condensed tender clauses differ in particles."""
+    if not highlight:
+        return []
+    kws: List[str] = []
+    for num_span in re.findall(r"\d+(?:\.\d+)?[\u4e00-\u9fffA-Za-z%]+", highlight):
+        if len(num_span) >= 2:
+            kws.append(num_span)
+    cleaned = re.sub(r"[，。；：、！？\n\r\t|（）()【】《》“”\"'的了在及与或为须应需]+", " ", highlight)
+    for token in cleaned.split():
+        token = token.strip()
+        if len(token) < 3:
+            continue
+        if len(token) <= 6:
+            kws.append(token)
+        else:
+            for i in range(0, len(token) - 3, 2):
+                kws.append(token[i : i + 4])
+    seen = set()
+    out = []
+    for k in kws:
+        if k not in seen:
+            seen.add(k)
+            out.append(k)
+    return out[:20]
+
+
+@st.cache_data(max_entries=64, show_spinner=False)
 def render_page(path: str, page_no: int, scale: float, highlight: str = "") -> bytes:
     doc = fitz.open(path)
     try:
-        page = doc[page_no - 1]
+        idx = min(max(0, page_no - 1), max(0, len(doc) - 1))
+        page = doc[idx]
         if highlight:
-            words = highlight.split()
-            for i in range(0, len(words), 5):
-                chunk = " ".join(words[i:i + 5])
-                for rect in page.search_for(chunk):
+            hit_count = 0
+            for chunk in _extract_highlight_chunks(highlight):
+                rects = page.search_for(chunk)
+                for rect in rects:
                     page.add_highlight_annot(rect)
+                    hit_count += 1
+            if hit_count == 0:
+                # Fallback for condensed/paraphrased tender clauses: find the best-matching text block(s)
+                # on the page and highlight matching key terms + lines within those blocks.
+                kws = _extract_fallback_keywords(highlight)
+                blocks = page.get_text("blocks") or []
+                scored_blocks = []
+                for b in blocks:
+                    if len(b) < 5 or not isinstance(b[4], str):
+                        continue
+                    b_text = re.sub(r"\s+", "", b[4])
+                    score = sum(2 if kw in b_text else 0 for kw in kws)
+                    if score > 0:
+                        scored_blocks.append((score, fitz.Rect(b[:4]), b_text))
+                scored_blocks.sort(key=lambda x: x[0], reverse=True)
+                if scored_blocks:
+                    best_score = scored_blocks[0][0]
+                    top_rects = [r for s, r, _ in scored_blocks if s >= max(2, best_score * 0.6)][:2]
+                    for kw in kws:
+                        for rect in page.search_for(kw):
+                            if any(rect.intersects(br) for br in top_rects):
+                                page.add_highlight_annot(rect)
+                                hit_count += 1
+                    if hit_count == 0:
+                        for br in top_rects:
+                            page.add_highlight_annot(br)
         return page.get_pixmap(matrix=fitz.Matrix(scale, scale), annots=True).tobytes("png")
     finally:
         doc.close()
@@ -330,7 +405,7 @@ def pdf_pane(key: str, doc: Optional[Dict[str, Any]], page: Optional[int], highl
                     unsafe_allow_html=True)
         return
     pages = doc["pages"] or 1
-    target = (doc["id"], page or 1)
+    target = (doc.get("path") or doc["id"], page or 1)
     page_key = f"pane_{key}_page"
     if st.session_state.get(f"pane_{key}_target") != target or page_key not in st.session_state:
         st.session_state[f"pane_{key}_target"] = target
@@ -343,7 +418,7 @@ def pdf_pane(key: str, doc: Optional[Dict[str, Any]], page: Optional[int], highl
     c3.button("", icon=":material/chevron_right:", key=f"pane_{key}_next", on_click=_step_page,
               args=(page_key, 1, pages), disabled=st.session_state[page_key] >= pages)
     zoom = c4.selectbox("Zoom", list(ZOOMS), key=f"pane_{key}_zoom", label_visibility="collapsed")
-    current = st.session_state[page_key]
+    current = min(max(1, st.session_state[page_key]), pages)
     st.caption(f"{doc['label']} · page {current} of {pages}"
                + (" · evidence highlighted" if highlight and current == (page or 1) else ""))
     pct = ZOOMS[zoom]

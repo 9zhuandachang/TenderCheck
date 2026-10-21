@@ -4,11 +4,12 @@ Pages call these functions to submit jobs, read results and record reviewer acti
 imports Streamlit.
 """
 
+from collections import Counter
 import hashlib
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from . import config, engine, jobs, store
+from . import config, engine, jobs, real_backend, store
 from .config import CLOSED, COMPLIANT, CONFIRMED, INSUFFICIENT, NON_COMPLIANT, TO_REINSPECT, TO_REMEDIATE, UNREVIEWED
 
 
@@ -268,10 +269,19 @@ def rereview_requirement(round_id: int, req_id: int) -> None:
     req = store.get_requirement(req_id)
     if req["origin"] == "drawing":
         return
+    existing = store.result_for(round_id, req_id)
+    if existing and (existing.get("chain") or {}).get("is_real_backend"):
+        out = real_backend.rereview_real_backend_result(req, existing)
+        if out:
+            store.update("results", existing["id"], {
+                "verdict": out["verdict"], "rule_id": out["rule_id"], "explanation": out["explanation"],
+                "fields": out["fields"], "evidence": out["evidence"], "chain": out["chain"],
+                "corrected": 1, "human_status": UNREVIEWED, "updated_at": store.now(),
+            })
+            return
     bid = store.get_document(rnd["bid_doc_id"])
     index = engine.BidIndex(engine.load_page_texts(bid["path"]), bid["failed_pages"])
     out = engine.review_requirement(req, index)
-    existing = store.result_for(round_id, req_id)
     store.update("results", existing["id"], {
         "verdict": out["verdict"], "rule_id": out["rule_id"], "explanation": out["explanation"],
         "fields": out["fields"], "evidence": out["evidence"], "chain": out["chain"],
@@ -312,17 +322,45 @@ def _review_job(progress, project_id: int) -> Dict[str, Any]:
     bid = store.selected_bid(project_id)
     docs = store.list_documents(project_id, selected_only=True)
     prev = store.latest_round(project_id)
-    no = (store.query_one("SELECT MAX(no) AS n FROM rounds WHERE project_id=?", (project_id,))["n"] or 0) + 1
-    round_id = store.insert("rounds", {
-        "project_id": project_id, "no": no, "bid_doc_id": bid["id"], "doc_ids": [d["id"] for d in docs],
-        "engine": config.ENGINE_NAME, "rule_version": config.RULE_VERSION, "status": "running",
-        "created_at": store.now(),
-    })
+    project = store.get_project(project_id)
+    is_s604 = real_backend.is_s604_project(project)
+    if is_s604 and prev and prev["bid_doc_id"] == bid["id"]:
+        round_id = prev["id"]
+        store.execute("DELETE FROM results WHERE round_id=?", (round_id,))
+        store.update("rounds", round_id, {"status": "running", "created_at": store.now()})
+    else:
+        no = (store.query_one("SELECT MAX(no) AS n FROM rounds WHERE project_id=?", (project_id,))["n"] or 0) + 1
+        round_id = store.insert("rounds", {
+            "project_id": project_id, "no": no, "bid_doc_id": bid["id"], "doc_ids": [d["id"] for d in docs],
+            "engine": config.ENGINE_NAME, "rule_version": config.RULE_VERSION, "status": "running",
+            "created_at": store.now(),
+        })
     try:
-        texts = engine.load_page_texts(bid["path"])
-        index = engine.BidIndex(texts, bid["failed_pages"])
         reqs = store.reviewable_requirements(project_id)
         total = len(reqs) + 1
+        if is_s604:
+            evaluated = real_backend.evaluate_all_s604_clauses(progress=progress)
+            for i, req in enumerate(reqs, start=1):
+                cid = req["clause_no"]
+                if cid in evaluated:
+                    out = evaluated[cid]
+                else:
+                    out = {
+                        "verdict": INSUFFICIENT,
+                        "rule_id": "UNSUPPORTED",
+                        "explanation": "未在预设索引中匹配到该新增条款。",
+                        "fields": [{"field": "Requirement", "required": req["text"], "actual": "待复核", "result": INSUFFICIENT}],
+                        "evidence": [],
+                        "chain": {"is_real_backend": True, "sub_verdict": "ATTACHMENT_OR_FORMULA"},
+                    }
+                status = CONFIRMED if out["verdict"] == COMPLIANT else UNREVIEWED
+                _insert_result(round_id, req["id"], out, human_status=status)
+            store.update("rounds", round_id, {"status": "done"})
+            progress("Review complete", total, total)
+            return {"round_id": round_id, "previous_round_id": prev["id"] if prev and prev["id"] != round_id else None}
+
+        texts = engine.load_page_texts(bid["path"])
+        index = engine.BidIndex(texts, bid["failed_pages"])
         for i, req in enumerate(reqs, start=1):
             progress(f"Checked {i - 1}/{len(reqs)} clauses", i - 1, total)
             out = engine.review_requirement(req, index)
@@ -338,12 +376,12 @@ def _review_job(progress, project_id: int) -> Dict[str, Any]:
     return {"round_id": round_id, "previous_round_id": prev["id"] if prev else None}
 
 
-def _insert_result(round_id: int, req_id: int, out: Dict[str, Any]) -> int:
+def _insert_result(round_id: int, req_id: int, out: Dict[str, Any], human_status: str = UNREVIEWED) -> int:
     return store.insert("results", {
         "round_id": round_id, "requirement_id": req_id,
         "verdict": out["verdict"], "original_verdict": out["verdict"], "rule_id": out["rule_id"],
         "explanation": out["explanation"], "fields": out["fields"], "evidence": out["evidence"],
-        "chain": out["chain"], "human_status": UNREVIEWED, "updated_at": store.now(),
+        "chain": out["chain"], "human_status": human_status, "updated_at": store.now(),
     })
 
 
@@ -494,6 +532,40 @@ def correct_result(result_id: int, constraint: Dict[str, Any], actual_value: Opt
     req = store.get_requirement(res["requirement_id"])
     if constraint.get("type") != "numeric":
         raise ServiceError("Only numeric requirements can be corrected field by field; add evidence instead.")
+
+    before = {"constraint": req["constraint"], "fields": res["fields"], "verdict": res["verdict"]}
+    if (res.get("chain") or {}).get("is_real_backend"):
+        out = real_backend.rereview_real_backend_result(
+            req, res, corrected_constraint=constraint, actual_value=actual_value, actual_unit=actual_unit
+        )
+        if out:
+            if constraint != req["constraint"]:
+                store.update("requirements", req["id"], {"constraint": constraint})
+            _touch(
+                res,
+                {
+                    "verdict": out["verdict"],
+                    "fields": out["fields"],
+                    "chain": out["chain"],
+                    "corrected": 1,
+                    "explanation": out["explanation"],
+                    "rule_id": out["rule_id"],
+                },
+                seconds,
+            )
+            store.log_action(
+                project_id,
+                "correct_result",
+                actor,
+                role,
+                reason,
+                {"before": before, "after": {"constraint": constraint, "fields": out["fields"], "verdict": out["verdict"]}},
+                res["round_id"],
+                res["requirement_id"],
+                result_id,
+            )
+            return
+
     rule = engine.evaluate_rule(constraint, {"value": actual_value, "unit": actual_unit or constraint["unit"]})
     fields = [{
         "field": constraint["field"],
@@ -505,7 +577,6 @@ def correct_result(result_id: int, constraint: Dict[str, Any], actual_value: Opt
     chain = dict(res["chain"] or {})
     chain["rule"] = {"rule_id": rule["rule_id"], "rule_version": config.RULE_VERSION,
                      "trace": rule["trace"] + "  [re-run after reviewer correction]"}
-    before = {"constraint": req["constraint"], "fields": res["fields"], "verdict": res["verdict"]}
     if constraint != req["constraint"]:
         store.update("requirements", req["id"], {"constraint": constraint})
     _touch(res, {"verdict": rule["verdict"], "fields": fields, "chain": chain, "corrected": 1,
@@ -592,6 +663,12 @@ def start_reinspection(project_id: int, actor: str, role: str) -> int:
 def round_summary(round_id: int) -> Dict[str, Any]:
     results = store.list_results(round_id)
     applicable = [r for r in results if r["applicable"]]
+    non_passing_list = [r for r in applicable if r["verdict"] != COMPLIANT]
+    sub_counts = Counter(
+        (r.get("chain") or {}).get("sub_verdict")
+        for r in applicable
+        if (r.get("chain") or {}).get("sub_verdict")
+    )
     return {
         "total": len(results),
         "applicable": len(applicable),
@@ -601,8 +678,13 @@ def round_summary(round_id: int) -> Dict[str, Any]:
         "compliant": sum(r["verdict"] == COMPLIANT for r in applicable),
         "non_compliant": sum(r["verdict"] == NON_COMPLIANT for r in applicable),
         "insufficient": sum(r["verdict"] == INSUFFICIENT for r in applicable),
+        "non_passing": len(non_passing_list),
+        "non_passing_reviewed": sum(r["human_status"] != UNREVIEWED for r in non_passing_list),
+        "non_passing_unreviewed": sum(r["human_status"] == UNREVIEWED for r in non_passing_list),
         "to_remediate": sum(r["human_status"] in (TO_REMEDIATE, TO_REINSPECT) for r in applicable),
         "review_seconds": sum(r["review_seconds"] or 0 for r in results),
+        "sub_counts": dict(sub_counts),
+        "is_real_backend": any((r.get("chain") or {}).get("is_real_backend") for r in applicable),
     }
 
 

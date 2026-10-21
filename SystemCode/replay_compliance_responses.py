@@ -12,7 +12,8 @@ from scripts._rag_experiment_utils import sha256, read_json, write_json
 from src.evaluation.compliance_reference import compare_assistant_reference
 from src.extraction.schema import StructuredExtractionResult, TenderConstraintSlots, BidEvidenceSlots, VALID_CONSTRAINT_TYPES
 from src.extraction.evidence import ground_extraction
-from src.extraction.llm_extractor import CONTRACT_VERSION
+from src.extraction.global_context import build_project_global_context, hydrate_with_global_context
+from src.extraction.llm_extractor import CONTRACT_VERSION, DeepSeekSlotExtractor
 from src.rules import ComplianceRuleEngine
 
 
@@ -57,6 +58,9 @@ def replay(args):
     summarize_pipeline(cases, old_predictions)
     old = {row['clause_id']: row for row in old_predictions}
     payloads, raw_hashes = load_raw_responses(args.raw_dir, cases)
+    ref_date = getattr(args, 'review_reference_date', '') or ''
+    normalizer = DeepSeekSlotExtractor(cache_only=True, review_reference_date=ref_date)
+    global_ctx = build_project_global_context(cases)
     extractions, predictions = [], []
     for case in cases:
         payload, model = payloads[case['clause_id']]
@@ -65,7 +69,10 @@ def replay(args):
             raise ValueError('Unknown constraint type')
         result = StructuredExtractionResult(case['clause_id'], case['requirement'], case['category'],
             tender, BidEvidenceSlots.from_dict(payload['bid_slots']), extractor_backend=model)
+        result = normalizer._inject_reference_date(result, ref_date)
+        result = normalizer._normalize_llm_extraction(result, json.loads(case['evidence_context']))
         result = ground_extraction(result, case['evidence_context'])
+        result, _ = hydrate_with_global_context(result, case['evidence_context'], global_ctx, normalizer=normalizer)
         extractions.append(result.to_dict())
         predictions.append(ComplianceRuleEngine().evaluate(result).to_dict())
     changes = [dict(clause_id=r['clause_id'], before=old[r['clause_id']]['verdict'], after=r['verdict'],
@@ -110,6 +117,7 @@ def main():
     parser.add_argument('--raw_dir', type=Path, required=True)
     parser.add_argument('--output_dir', type=Path, required=True)
     parser.add_argument('--reference_labels', type=Path)
+    parser.add_argument('--review_reference_date', default='', help='Optional ISO project review reference date (YYYY-MM-DD)')
     return replay(parser.parse_args())
 
 

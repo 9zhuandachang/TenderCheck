@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.extraction import DeepSeekSlotExtractor, HeuristicSlotExtractor
 from src.extraction.evidence import evidence_context
+from src.extraction.global_context import build_project_global_context, hydrate_with_global_context
 from src.extraction.llm_extractor import CONTRACT_VERSION
 from src.rules import ComplianceRuleEngine
 from src.evaluation.compliance_reference import compare_assistant_reference
@@ -98,14 +99,18 @@ def run(args):
     extractor=(HeuristicSlotExtractor() if args.backend=='heuristic' else
                DeepSeekSlotExtractor(model=args.model,base_url=args.base_url,cache_path=args.cache,
                                      cache_only=args.cache_only,response_hook=record_response,
-                                     max_retries=args.max_retries,timeout=args.timeout))
+                                     max_retries=args.max_retries,timeout=args.timeout,
+                                     review_reference_date=getattr(args,'review_reference_date','') or ''))
     engine=ComplianceRuleEngine();results=[];extractions=[]
+    global_ctx=build_project_global_context(cases) if args.backend=='deepseek' else None
     for case in cases:
         active['clause_id']=case['clause_id']
         started=time.perf_counter()
         try:
             extracted=extractor.extract(clause_id=case['clause_id'],requirement_text=case['requirement'],
                 category=case['category'],evidence_context=case['evidence_context'])
+            if global_ctx is not None:
+                extracted,_=hydrate_with_global_context(extracted,case['evidence_context'],global_ctx,normalizer=extractor)
             extractions.append(extracted.to_dict())
             results.append(engine.evaluate(extracted).to_dict())
         except Exception as exc:
@@ -167,6 +172,7 @@ def main():
     p.add_argument('--cache_only',action='store_true')
     p.add_argument('--max_retries',type=int,default=1)
     p.add_argument('--timeout',type=float,default=90)
+    p.add_argument('--review_reference_date',default='',help='Optional ISO project review reference date (YYYY-MM-DD)')
     p.add_argument('--output_dir',type=Path,required=True)
     args=parser.parse_args()
     return prepare(args) if args.command=='prepare' else run(args)

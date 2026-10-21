@@ -71,6 +71,13 @@ HIGHWAY_RELATED_TITLE_DOMAINS = {
     "地下结构",
     "隧道（地下结构）",
     "隧道(地下结构)",
+    "道路工程",
+    "道路",
+    "工程测量",
+    "道路测量",
+    "测绘工程",
+    "测量",
+    "公路桥梁",
     "交通工程",
     "公路工程相关专业",
 }
@@ -272,10 +279,10 @@ def parse_qualification_rank(text: str) -> Tuple[str, int]:
             return ("constructor", 1)
 
     # 10. Technical title: 正高级(4) > 高级工程师(3) > 中级工程师/工程师(2) > 助理/初级(1)
-    if "职称" in t or "工程师" in t or "技术员" in t:
+    if "职称" in t or "工程师" in t or "技术员" in t or t in {"正高级", "高级", "副高级", "中级", "初级"}:
         if "正高" in t or "研究员" in t or "教授级" in t:
             return ("title", 4)
-        if "高级工程师" in t or "副高" in t or "高级职称" in t:
+        if "高级工程师" in t or "副高" in t or "高级职称" in t or t in {"高级", "副高级"}:
             return ("title", 3)
         if "助理" in t or "初级" in t or "技术员" in t:
             return ("title", 1)
@@ -303,11 +310,15 @@ def is_domain_compatible(
         return None
     if allowed:
         return act_dom in allowed
-    if family == "title" and (
+    if family in {"title", "test_engineer_cert", "generic_cert"} and (
         "相关专业" in (req_dom + str(requirement_text or ""))
-        or req_dom == "公路工程相关专业"
+        or req_dom in {"公路工程相关专业", "公路工程专业"}
     ):
         return act_dom in HIGHWAY_RELATED_TITLE_DOMAINS
+    if any(sep in req_dom for sep in ("、", "，", ",", "/", "或")):
+        parts = {p.strip() for p in re.split(r"[、，,/或]", req_dom) if p.strip()}
+        if act_dom in parts or (parts & HIGHWAY_RELATED_TITLE_DOMAINS and act_dom in HIGHWAY_RELATED_TITLE_DOMAINS):
+            return True
     return req_dom == act_dom
 
 
@@ -378,7 +389,7 @@ def evaluate_certificate_timeliness(
                     return (False, "证书状态明确为无效/注销。")
                 return (True, f"effective_valid_to={effective_dt.isoformat()}>={ref_dt.isoformat()}")
             # Certificate date is earlier than review_reference_date:
-            if certificate_valid is None and t.allow_extension_notice and not extension_valid_to_str and family == "enterprise_qual":
+            if certificate_valid is None and t.allow_extension_notice and not extension_valid_to_str and family in {"enterprise_qual", "highway_directory"}:
                 # If certificate face date expired before review_reference_date and extension is explicitly marked unconfirmed vs confirmed absent
                 return (None, f"证书原载有效期({effective_dt.isoformat()})早于评审基准日({ref_dt.isoformat()})，未见官方延续证明，待核验延期状态。")
             return (
@@ -398,6 +409,8 @@ def evaluate_certificate_timeliness(
         return (None, f"缺少证书有效期截止日期或延续证明，无法确认在评审基准日({ref_str})是否有效。")
 
     # When review_reference_date is not set:
+    if is_long_term is True and family in {"business_license", "title"}:
+        return (True, "long_term=True")
     if t.requires_validity_date or valid_from_str or valid_to_str or extension_valid_to_str:
         if certificate_valid is False:
             return (False, "certificate_valid=False")
@@ -548,6 +561,16 @@ class ComplianceRuleEngine:
                 return unknown("资质要求或实际资质缺失。")
             required_family, required_rank = parse_qualification_rank(t.expected_text)
             actual_family, actual_rank = parse_qualification_rank(b.actual_text)
+            is_affiliation_only = required_rank == 0 and any(
+                w in (str(t.expected_text or "") + str(extracted.requirement_text or ""))
+                for w in ("本单位人员", "自有人员", "本单位职工")
+            )
+            if is_affiliation_only and (b.employer_matches_bidder is True or any(w in str(b.actual_text or "") for w in ("已缴纳", "参保", "本单位"))):
+                required_family = actual_family or "affiliation"
+                required_rank = 1
+                if actual_rank == 0:
+                    actual_family = required_family
+                    actual_rank = 1
             if required_rank == 0 or actual_rank == 0:
                 return report("UNSUPPORTED_RULE", "当前规则未识别该资质体系，需人工核对。")
             if actual_rank < 0:
@@ -599,7 +622,9 @@ class ComplianceRuleEngine:
             if valid_ok is None:
                 return unknown(valid_trace)
 
-            rank_ok = required_family == actual_family and actual_rank >= required_rank
+            rank_ok = (required_family == actual_family and actual_rank >= required_rank) or (
+                required_family == "highway_directory" and actual_family == "enterprise_qual" and actual_rank >= 3
+            )
             return decide(
                 rank_ok and domain_ok and valid_ok,
                 f"rank={actual_family}:{actual_rank}/{required_family}:{required_rank}; domain={domain_ok}; {valid_trace}",
@@ -623,10 +648,16 @@ class ComplianceRuleEngine:
                     return unknown("跨表报价不是明确数值。")
                 return decide(upper_ok and cross_ok, f"uppercase={upper_ok}; cross_table={cross_ok}")
             normalize = lambda x: re.sub(r"\s+", "", x).replace("（", "(").replace("）", ")")
-            return decide(
-                normalize(b.entity_primary) == normalize(b.entity_secondary),
-                f"{b.entity_primary} == {b.entity_secondary}",
+            if normalize(b.entity_primary) == normalize(b.entity_secondary):
+                return decide(True, f"{b.entity_primary} == {b.entity_secondary}")
+            transfer_ok = any(
+                re.search(r"由原企业.*转移过来.*(?:现属于|适用于)本企业|原企业名称|更名为|变更为", str(r.get("quote") or ""))
+                for r in (b.evidence_references or [])
+                if isinstance(r, dict)
             )
+            if transfer_ok:
+                return decide(True, f"官方登记企业变更/业绩转移一致: {b.entity_primary} == {b.entity_secondary}")
+            return decide(False, f"{b.entity_primary} == {b.entity_secondary}")
 
         # ------------------------------------------------------------------
         # R04: Document Presence, Signature & Multi-Party Seal Verification
@@ -640,7 +671,14 @@ class ComplianceRuleEngine:
                 if not b.observed_seal_parties:
                     return unknown("缺少多方盖章单位明细确认（如建设、设计、监理、施工单位印章）。")
                 observed = {str(p).strip() for p in b.observed_seal_parties if str(p).strip()}
-                missing = [p for p in t.required_seal_parties if str(p).strip() not in observed]
+                has_company_obs = any(w in obs for obs in observed for w in ("公司", "集团", "院", "局", "中心", "投标人"))
+                owner_obs = bool(observed & {"建设单位", "项目法人", "建设管理单位", "发包人", "业主单位"})
+                missing = [
+                    p for p in t.required_seal_parties
+                    if str(p).strip() not in observed
+                    and not (str(p).strip() in {"投标人", "投标单位", "投标人单位"} and has_company_obs)
+                    and not (str(p).strip() in {"建设单位", "项目法人", "发包人"} and owner_obs)
+                ]
                 if missing:
                     return decide(False, f"材料缺少必需的盖章单位: {missing}")
             if t.requires_official_seal and b.has_official_seal is None and not t.required_seal_parties:
@@ -732,7 +770,12 @@ class ComplianceRuleEngine:
 
             req_role = canonical_role(t.required_role)
             req_fam, req_rank = parse_qualification_rank(t.expected_text)
-            if req_rank <= 0:
+            exp_clean = re.sub(r"(?:须|应)?(?:拟派|配备|委任|设|不少于|至少|\d+\s*[人名]|[。，；\s])+", "", str(t.expected_text or ""))
+            headcount_only = req_rank == 0 and (
+                not exp_clean
+                or canonical_role(exp_clean) == req_role
+            )
+            if req_rank <= 0 and not headcount_only:
                 return report("UNSUPPORTED_RULE", "未识别的岗位资格等级体系。")
 
             role_candidates = []
@@ -762,13 +805,23 @@ class ComplianceRuleEngine:
             disqualified_reasons = []
             incomplete_reasons = []
 
+            allow_equiv_cert = any(
+                w in (str(t.expected_text or "") + str(extracted.requirement_text or ""))
+                for w in ("或相应证书", "或岗位证书", "或工程师证书")
+            )
             for name, rec in role_candidates:
+                if headcount_only:
+                    qualified_names.append(name)
+                    continue
                 qual_text = str(rec.get("qualification_text") or "").strip()
                 if not qual_text:
                     incomplete_reasons.append(f"{name}:缺少资格/职称文本")
                     continue
                 act_fam, act_rank = parse_qualification_rank(qual_text)
-                if act_fam != req_fam or act_rank < req_rank:
+                rank_ok = (act_fam == req_fam and act_rank >= req_rank) or (
+                    allow_equiv_cert and act_rank > 0 and act_fam in {"title", "test_engineer_cert", "generic_cert"}
+                )
+                if not rank_ok:
                     disqualified_reasons.append(
                         f"{name}:资格不满足({act_fam}:{act_rank} < {req_fam}:{req_rank})"
                     )
@@ -1021,8 +1074,16 @@ class ComplianceRuleEngine:
                     if not scopes:
                         incomplete_projects.append(f"{pname}:缺少施工内容范围明细")
                         continue
-                    scope_set = {str(s).strip() for s in scopes}
-                    missing_scopes = [s for s in t.required_scopes if str(s).strip() not in scope_set]
+                    scope_set = {str(s).strip() for s in scopes if str(s).strip()}
+                    norm_scopes = {re.sub(r"工程$", "", s) for s in scope_set}
+                    def _scope_met(req_s: str) -> bool:
+                        rs = re.sub(r"工程$", "", str(req_s).strip())
+                        if rs in norm_scopes or str(req_s).strip() in scope_set:
+                            return True
+                        if rs == "桥涵" and ("桥梁" in norm_scopes or "桥涵" in norm_scopes):
+                            return True
+                        return False
+                    missing_scopes = [s for s in t.required_scopes if not _scope_met(s)]
                     if missing_scopes:
                         disqualified_projects.append(f"{pname}:缺少必需施工内容{missing_scopes}")
                         continue
