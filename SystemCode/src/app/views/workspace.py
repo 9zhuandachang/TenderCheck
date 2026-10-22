@@ -1,9 +1,10 @@
 import html
 from pathlib import Path
+import re
 import streamlit as st
 
 from tcui import config, engine, real_backend, service, store, ui
-from tcui.config import COMPLIANT, INSUFFICIENT, NON_COMPLIANT, TO_REINSPECT, TO_REMEDIATE, UNREVIEWED
+from tcui.config import COMPLIANT, CONFIRMED, INSUFFICIENT, NON_COMPLIANT, TO_REINSPECT, TO_REMEDIATE, UNREVIEWED
 from tcui.service import ServiceError
 
 project = ui.require_project()
@@ -38,37 +39,17 @@ signed = bool(rnd["signed_at"])
 if signed:
     st.info(f"Signed off by {rnd['signer']}; it is read-only.", icon=":material/lock:")
 
-# ----------------------------------------------------------------- filters
+# ----------------------------------------------------------------- clause filters
 results = store.list_results(round_id)
-is_real = summary.get("is_real_backend", False)
+result_by_id = {r["id"]: r for r in results}
 FILTERS = ["All", NON_COMPLIANT, INSUFFICIENT, COMPLIANT, "Unreviewed", "In remediation", "Not applicable"]
 if st.session_state.get("ws_filter") not in FILTERS:
     st.session_state["ws_filter"] = "All"
-SHORT = {INSUFFICIENT: "Insufficient", "In remediation": "Remediation", "Not applicable": "N/A"}
 
-SUB_FILTERS = ["All"] + list(real_backend.SUB_VERDICT_LABELS.keys())
-if st.session_state.get("ws_sub_filter") not in SUB_FILTERS:
-    st.session_state["ws_sub_filter"] = "All"
-
-if is_real:
-    f1, f_sub, f2, f3, f4 = st.columns([5.0, 1.9, 1.2, 1.1, 0.8], vertical_alignment="bottom")
-    flt = f1.segmented_control("Show", FILTERS, key="ws_filter", required=True, format_func=lambda f: SHORT.get(f, f))
-    sub_flt = f_sub.selectbox(
-        "Review Route / Sub-type",
-        SUB_FILTERS,
-        key="ws_sub_filter",
-        format_func=lambda k: "All sub-types" if k == "All" else real_backend.SUB_VERDICT_LABELS[k][0],
-    )
-    cats = f2.multiselect("Category", config.CATEGORIES, key="ws_cats", placeholder="All categories")
-    search = f3.text_input("Search", key="ws_search", placeholder="Clause No. (e.g. T0056)")
-    show_nav = f4.toggle("List", value=True, key="ws_show_nav")
-else:
-    f1, f2, f3, f4 = st.columns([6.6, 1.4, 1.3, 0.7], vertical_alignment="bottom")
-    flt = f1.segmented_control("Show", FILTERS, key="ws_filter", required=True, format_func=lambda f: SHORT.get(f, f))
-    sub_flt = "All"
-    cats = f2.multiselect("Category", config.CATEGORIES, key="ws_cats", placeholder="All categories")
-    search = f3.text_input("Search", key="ws_search", placeholder="Clause No. (e.g. T0056)")
-    show_nav = f4.toggle("List", value=True, key="ws_show_nav")
+f1, f2, f3 = st.columns([2.2, 2.2, 2.2], vertical_alignment="bottom")
+flt = f1.selectbox("Verdict / Status", FILTERS, key="ws_filter")
+cats = f2.multiselect("Category", config.CATEGORIES, key="ws_cats", placeholder="All categories")
+search = f3.text_input("Search", key="ws_search", placeholder="Clause No. (e.g. T0056)")
 
 
 def _match(r):
@@ -83,12 +64,6 @@ def _match(r):
         return False
     if flt == "In remediation" and r["human_status"] not in (TO_REMEDIATE, TO_REINSPECT):
         return False
-    if sub_flt != "All":
-        r_sub = (r.get("chain") or {}).get("sub_verdict")
-        if sub_flt == "ATTACHMENT_OR_FORMULA" and r_sub in ("ATTACHMENT_OR_FORMULA", "PERFORMANCE_LINKAGE"):
-            pass
-        elif r_sub != sub_flt:
-            return False
     if cats and r["category"] not in cats:
         return False
     q = search.strip().lower()
@@ -96,10 +71,6 @@ def _match(r):
 
 
 shown = [r for r in results if _match(r)]
-if not shown:
-    st.info("No clauses match the filters.")
-    st.stop()
-
 ids = [r["id"] for r in shown]
 
 
@@ -121,13 +92,13 @@ def _pick_default_non_passing(candidates):
 
 focus_req = st.session_state.pop("ws_focus_requirement", None)
 if focus_req:
-    hit = next((r["id"] for r in shown if r["requirement_id"] == focus_req), None)
+    hit = next((r["id"] for r in results if r["requirement_id"] == focus_req), None)
     if hit:
         st.session_state["ws_result"] = hit
-if st.session_state.get("ws_result") not in ids:
-    st.session_state["ws_result"] = _pick_default_non_passing(shown)
+if st.session_state.get("ws_result") not in result_by_id:
+    st.session_state["ws_result"] = _pick_default_non_passing(results)
 current_id = st.session_state["ws_result"]
-res = next(r for r in shown if r["id"] == current_id)
+res = result_by_id[current_id]
 ui.start_timer(current_id)
 if project["last_requirement_id"] != res["requirement_id"]:
     store.update("projects", pid, {"last_requirement_id": res["requirement_id"]})
@@ -138,83 +109,110 @@ def _select(result_id):
 
 
 # ----------------------------------------------------------------- navigator + documents
-cols = st.columns([1.15, 2, 2], gap="small") if show_nav else [None] + st.columns(2, gap="small")
-if show_nav:
-    with cols[0]:
-        st.markdown(f"**Clauses** <span class='tc-muted'>({len(shown)} of {len(results)})</span>",
-                    unsafe_allow_html=True)
-        with st.container(height=640, border=False, key="ws_nav"):
-            for r in shown:
-                mark = ui.verdict_icon(r["verdict"]) if r["applicable"] else "–"
-                status = r["human_status"] if r["applicable"] else "N/A"
-                r_sub = (r.get("chain") or {}).get("sub_verdict")
-                sub_tag = ""
-                if r_sub == "CONFLICTING_EVIDENCE":
-                    sub_tag = " · ⚠Conflict"
-                elif r_sub == "SEAL_SIGNATURE_CHECK":
-                    sub_tag = " · 🔍Seal/Sign"
-                elif r_sub == "EXTERNAL_WEB_CHECK":
-                    sub_tag = " · 🌐WebCheck"
-                elif r_sub == "SCORED":
-                    sub_tag = " · ★Scored"
-                selected = r["id"] == current_id
-                meta = f"{r['category']}{sub_tag} · {status}"
-                st.button(
-                    f"{mark} **{r['clause_no']}** {r['req_text'][:44]}…  \n{meta if selected else f':gray[{meta}]'}",
-                    key=f"nav_{r['id']}", width="stretch", on_click=_select, args=(r["id"],),
-                    type="primary" if selected else "secondary",
-                )
-        pos = ids.index(current_id)
-        n1, n2 = st.columns(2)
-        n1.button("Previous", icon=":material/arrow_upward:", width="stretch", disabled=pos == 0,
-                  on_click=_select, args=(ids[max(pos - 1, 0)],))
-        n2.button("Next", icon=":material/arrow_downward:", width="stretch", disabled=pos == len(ids) - 1,
-                  on_click=_select, args=(ids[min(pos + 1, len(ids) - 1)],))
-        st.components.v1.html(
-            f"""<script>
-            setTimeout(() => {{
-                const doc = window.parent.document;
-                const nav = doc.querySelector('.st-key-ws_nav');
-                if (nav) {{
-                    const activeBtn = nav.querySelector('button[kind="primary"]');
-                    if (activeBtn) {{
-                        activeBtn.scrollIntoView({{block: 'center', behavior: 'instant'}});
-                    }}
+cols = st.columns([1.15, 2, 2], gap="small")
+with cols[0]:
+    st.markdown(f"**Clauses** <span class='tc-muted'>({len(shown)} of {len(results)})</span>",
+                unsafe_allow_html=True)
+    with st.container(height=640, border=False, key="ws_nav"):
+        if not shown:
+            st.info("No clauses match the filters.")
+        for r in shown:
+            mark = ui.verdict_icon(r["verdict"]) if r["applicable"] else "–"
+            status = r["human_status"] if r["applicable"] else "N/A"
+            selected = r["id"] == current_id
+            meta = f"{r['category']} · {status}"
+            st.button(
+                f"{mark} **{r['clause_no']}** {r['req_text'][:44]}…  \n{meta if selected else f':gray[{meta}]'}",
+                key=f"nav_{r['id']}", width="stretch", on_click=_select, args=(r["id"],),
+                type="primary" if selected else "secondary",
+            )
+    pos = ids.index(current_id) if current_id in ids else -1
+    prev_target = next(
+        (r["id"] for r in reversed(shown[:pos]) if r["applicable"] and r["human_status"] != CONFIRMED),
+        None,
+    ) if pos > 0 else None
+    next_target = next(
+        (r["id"] for r in shown[pos + 1:] if r["applicable"] and r["human_status"] != CONFIRMED),
+        None,
+    ) if pos >= 0 else next(
+        (r["id"] for r in shown if r["applicable"] and r["human_status"] != CONFIRMED),
+        None,
+    )
+    n1, n2 = st.columns(2)
+    n1.button("Previous", icon=":material/arrow_upward:", width="stretch",
+              disabled=prev_target is None,
+              on_click=_select, args=(prev_target or current_id,))
+    n2.button("Next", icon=":material/arrow_downward:", width="stretch",
+              disabled=next_target is None,
+              on_click=_select, args=(next_target or current_id,))
+    st.components.v1.html(
+        f"""<script>
+        setTimeout(() => {{
+            const doc = window.parent.document;
+            const nav = doc.querySelector('.st-key-ws_nav');
+            if (nav) {{
+                const activeBtn = nav.querySelector('button[kind="primary"]');
+                if (activeBtn) {{
+                    activeBtn.scrollIntoView({{block: 'center', behavior: 'instant'}});
                 }}
-            }}, 80);
-            </script><!-- {current_id} -->""",
-            height=0,
-        )
+            }}
+        }}, 80);
+        </script><!-- {current_id} -->""",
+        height=0,
+    )
 
 with cols[1]:
     amended = res["amendment_status"] == "accepted" and res["amended_by_doc_id"]
     view = "Addendum"
-    head, ctrl = st.container(height=44, border=False).columns([1, 1.3], vertical_alignment="center")
+    head, ctrl = st.container(border=False, key="ws_tender_head").columns([1, 1.3], vertical_alignment="center")
     if amended and res["origin"] != "addendum":
         view = ctrl.segmented_control("Tender source", ["Addendum", "Original"], default="Addendum",
                                       key=f"ws_src_{res['requirement_id']}", required=True,
-                                      label_visibility="collapsed")
+                                      label_visibility="collapsed", wrap=False)
     if amended and view == "Addendum":
         t_doc, t_page = docs.get(res["amended_by_doc_id"]), res["amendment_page"]
     else:
         t_doc, t_page = docs.get(res["source_doc_id"]), res["req_page"]
-    head.markdown(f"**TENDER** <span class='tc-muted'>{t_doc['label'] if t_doc else ''}</span>",
-                  unsafe_allow_html=True)
+    head.markdown(
+        f"<div class='tc-pane-title'><b>TENDER</b> <span class='tc-muted'>{html.escape(t_doc['label'] if t_doc else '')}</span></div>",
+        unsafe_allow_html=True,
+    )
     tender_text = res["req_text"] if not (amended and view == "Original") else ""
-    ui.pdf_pane("tender", t_doc, t_page, tender_text if res["origin"] != "drawing" else "")
-    if res.get("req_text"):
-        st.caption(f"**Tender Requirement ({res['clause_no']} · p.{t_page or 1})**: :orange-background[{res['req_text']}]")
+    tender_raw = (res.get("original") or {}).get("raw_text", "") if isinstance(res.get("original"), dict) else ""
+    ui.pdf_pane(
+        "tender",
+        t_doc,
+        t_page,
+        tender_text if res["origin"] != "drawing" else "",
+        allow_page_nav=False,
+        secondary_highlight=tender_raw if res["origin"] != "drawing" else "",
+    )
 
 with cols[2]:
     bid_doc = docs.get(rnd["bid_doc_id"])
     evidence = res["evidence"] or []
     ev_key = f"ws_ev_{current_id}"
-    head, ctrl = st.container(height=44, border=False).columns([1, 1.3], vertical_alignment="center")
+    head, ctrl = st.container(border=False, key="ws_bid_head").columns([1, 1.3], vertical_alignment="center")
     if evidence:
+        page_freq = {}
+        for item in evidence:
+            page_freq[item["page"]] = page_freq.get(item["page"], 0) + 1
+
+        def _fmt_ev_tab(i: int) -> str:
+            ev_item = evidence[i]
+            pg = ev_item["page"]
+            if page_freq.get(pg, 1) <= 1:
+                return f"p.{pg}"
+            raw_lbl = str(ev_item.get("doc_label") or "").replace(".pdf", "").replace(".PDF", "")
+            short_lbl = re.sub(r"^\d+\.?|[（）()]", "", raw_lbl).strip()
+            tag = short_lbl[-4:] if len(short_lbl) > 4 else (short_lbl or f"#{i + 1}")
+            return f"p.{pg}·{tag}"
+
         idx = ctrl.segmented_control(
             "Evidence", list(range(len(evidence))), default=0, key=ev_key, required=True,
-            format_func=lambda i: f"p.{evidence[i]['page']}", label_visibility="collapsed",
+            format_func=_fmt_ev_tab, label_visibility="collapsed",
             help="Evidence pages: verified quotes first, then retrieved candidate pages",
+            width="stretch", wrap=False,
         )
         ev = evidence[idx or 0]
         # Support multi-document bid evidence when `ev` specifies `doc_path`
@@ -227,25 +225,28 @@ with cols[2]:
                 "pages": ev.get("doc_pages") or (bid_doc["pages"] if bid_doc else 1),
             }
         head.markdown(
-            f"**BID** <span class='tc-muted'>{ev_doc['label'] if ev_doc else ''}</span>",
+            f"<div class='tc-pane-title' title='{html.escape(ev.get('role', ''))}'>"
+            f"<b>BID</b> <span class='tc-muted'>{html.escape(ev_doc['label'] if ev_doc else '')}</span></div>",
             unsafe_allow_html=True,
-            help=ev.get("role", ""),
         )
-        ui.pdf_pane("bid", ev_doc, ev["page"], ev.get("snippet", ""))
-        if ev.get("snippet"):
-            st.caption(f"**{ev.get('role', 'Evidence')}**: {ev['snippet'][:220]}")
+        ui.pdf_pane(
+            "bid",
+            ev_doc,
+            ev["page"],
+            ev.get("snippet", ""),
+            secondary_highlight=ev.get("rag_text") or ev.get("snippet", ""),
+        )
     else:
-        head.markdown(f"**BID** <span class='tc-muted'>{bid_doc['label'] if bid_doc else ''} · no evidence found</span>",
-                      unsafe_allow_html=True)
+        head.markdown(
+            f"<div class='tc-pane-title'><b>BID</b> <span class='tc-muted'>{html.escape(bid_doc['label'] if bid_doc else '')} · no evidence found</span></div>",
+            unsafe_allow_html=True,
+        )
         ui.pdf_pane("bid", bid_doc, 1)
 
 # ----------------------------------------------------------------- verification panel
 with st.container(border=True):
     h1, h2 = st.columns([2.6, 2.4], vertical_alignment="center")
     tags = [ui.verdict_md(res["verdict"])]
-    sub_badge = ui.sub_verdict_md(res.get("chain"))
-    if sub_badge:
-        tags.append(sub_badge)
     tags.append(ui.status_md(res["human_status"] if res["applicable"] else "Not applicable"))
     if res["corrected"]:
         tags.append(f":gray-badge[Corrected · system said {res['original_verdict']}]")

@@ -141,6 +141,11 @@ def _extract_job(progress, project_id: int) -> Dict[str, Any]:
     addenda = store.list_documents(project_id, "addendum", selected_only=True)
     if not tenders:
         raise ServiceError("Upload a tender document first.")
+
+    cn_counts = real_backend.extract_chinese_project_requirements(project_id, progress=progress)
+    if cn_counts is not None:
+        return cn_counts
+
     store.execute("DELETE FROM requirements WHERE project_id=? AND origin IN ('extracted','addendum')", (project_id,))
     store.execute("DELETE FROM drawings WHERE project_id=? AND source='extracted'", (project_id,))
 
@@ -355,6 +360,21 @@ def _review_job(progress, project_id: int) -> Dict[str, Any]:
                     }
                 status = CONFIRMED if out["verdict"] == COMPLIANT else UNREVIEWED
                 _insert_result(round_id, req["id"], out, human_status=status)
+            store.update("rounds", round_id, {"status": "done"})
+            progress("Review complete", total, total)
+            return {"round_id": round_id, "previous_round_id": prev["id"] if prev and prev["id"] != round_id else None}
+
+        cn_evaluated = real_backend.evaluate_chinese_project_clauses(project_id, reqs, progress=progress)
+        if cn_evaluated is not None:
+            for req in reqs:
+                out = cn_evaluated.get(req["id"])
+                if not out:
+                    continue
+                if out.get("constraint"):
+                    store.update("requirements", req["id"], {"constraint": out["constraint"]})
+                status = CONFIRMED if out["verdict"] == COMPLIANT else UNREVIEWED
+                _insert_result(round_id, req["id"], out, human_status=status)
+            _carry_remediation_state(project_id, round_id)
             store.update("rounds", round_id, {"status": "done"})
             progress("Review complete", total, total)
             return {"round_id": round_id, "previous_round_id": prev["id"] if prev and prev["id"] != round_id else None}

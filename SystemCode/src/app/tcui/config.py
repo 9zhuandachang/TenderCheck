@@ -11,8 +11,8 @@ DB_PATH = DATA_DIR / "tendercheck.db"
 PROJECTS_DIR = DATA_DIR / "projects"
 KB_PATH = APP_DIR / "kb" / "knowledge_base.json"
 
-# Support full-scale Chinese engineering tender & bid packages (up to 3,000 pages).
-MAX_PACKAGE_PAGES = 3000
+# Support full-scale Chinese engineering tender & bid packages (up to 10,000 pages).
+MAX_PACKAGE_PAGES = 10000
 MIN_TEXT_CHARS = 20
 
 ENGINE_NAME = "Hybrid RAG + DeepSeek v11-arch + GlobalContext + ComplianceRuleEngine"

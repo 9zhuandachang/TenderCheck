@@ -96,6 +96,57 @@ class S604FrontendIntegrationTest(unittest.TestCase):
         app.switch_page("views/report.py").run()
         self.assertFalse(app.exception)
 
+    def test_unannotated_chinese_project_end_to_end(self):
+        import pymupdf as fitz
+
+        pid = self.store.create_project("New Unannotated Chinese Highway Project", is_demo=False)
+        proj_dir = self.store.project_dir(pid)
+
+        tender_pdf = proj_dir / "chinese_tender.pdf"
+        tdoc = fitz.open()
+        tpage = tdoc.new_page()
+        tpage.insert_text(
+            (50, 72),
+            "第一章 招标公告\n"
+            "2.8 计划工期：计划工期为360日历天。\n"
+            "3.1 投标人须具有独立法人资格，持有有效的营业执照。\n"
+            "3.2 投标人在信用中国网站不得被列为失信被执行人。\n"
+            "第九章 投标文件格式\n"
+            "一、投标函\n"
+            "投标人：______（盖单位章）\n"
+            "法定代表人或其委托代理人：______（签字）\n",
+            fontsize=11,
+            fontname="china-s",
+        )
+        tender_pdf.write_bytes(tdoc.tobytes())
+        tdoc.close()
+
+        bid_pdf = proj_dir / "chinese_bid.pdf"
+        bdoc = fitz.open()
+        bpage = bdoc.new_page()
+        bpage.insert_text(
+            (50, 72),
+            "商务文件\n"
+            "一、投标函\n"
+            "我方已仔细研究招标文件的全部内容，愿意按合同约定实施和完成承包工程。\n"
+            "工期：360日历天。\n"
+            "工程质量：交工验收的质量评定：合格。\n"
+            "我方承诺在招标文件规定的投标有效期内不撤销投标文件。\n"
+            "投标诚信承诺书\n"
+            "我单位在参加组织的工程投标活动中郑重承诺：我方申报的所有资料都是真实、准确、完整的；\n",
+            fontsize=11,
+            fontname="china-s",
+        )
+        bid_pdf.write_bytes(bdoc.tobytes())
+        bdoc.close()
+
+        self.real_backend._register_external_pdf(pid, "tender", "招标文件正文.pdf", tender_pdf)
+        self.real_backend._register_external_pdf(pid, "bid", "投标文件.pdf", bid_pdf)
+
+        counts = self.service._extract_job(lambda *a: None, pid)
+        self.assertGreater(counts["requirements"], 0)
+        self.assertTrue((proj_dir / "auto_annotations.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

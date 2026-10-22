@@ -1,0 +1,358 @@
+{
+  "2022/11.11annotations": {
+    "stats": {
+      "total_candidates": 1582,
+      "retained_requirements": 614,
+      "filtered_noise": 968,
+      "noise_reduction_rate": 0.6119,
+      "category_distribution": {
+        "Qualification": 102,
+        "Document": 226,
+        "Technical": 39,
+        "Commercial": 128,
+        "Schedule": 19,
+        "Consistency": 20,
+        "Integrity": 20,
+        "Scoring": 60
+      }
+    },
+    "eval": {
+      "gold_main_clauses": 358,
+      "auto_extracted_clauses": 614,
+      "recalled_gold_clauses": 337,
+      "end_to_end_gold_recall": 0.9413,
+      "matched_category_accuracy": 0.8042,
+      "exact_category_matches": 271,
+      "sample_matches": [
+        {
+          "gold_id": "T0001",
+          "page": 7,
+          "gold_type": "Schedule",
+          "pred_id": "T0005",
+          "pred_type": "Schedule",
+          "overlap_score": 0.875,
+          "gold_text": "计划工期为360日历天。",
+          "pred_text": "计划工期：360日历天。"
+        },
+        {
+          "gold_id": "T0002",
+          "page": 7,
+          "gold_type": "Commercial",
+          "pred_id": "T0006",
+          "pred_type": "Commercial",
+          "overlap_score": 0.9623,
+          "gold_text": "项目招标控制价115046243.64元，含暂列金8000000.00元。",
+          "pred_text": "项目招标控制价（或合同估算价）：115046243.64元（含暂列金：8000000.00元）"
+        },
+        {
+          "gold_id": "T0003",
+          "page": 7,
+          "gold_type": "Qualification",
+          "pred_id": "T0008",
+          "pred_type": "Qualification",
+          "overlap_score": 0.6702,
+          "gold_text": "投标人须具有独立法人资格。",
+          "pred_text": "投标人资质要求：具有独立法人资格，具备公路工程施工总承包三级及以上资质，具有有效的安全生产许可证，并在人员、设备、资金等方面具有相应的施工能力。"
+        },
+        {
+          "gold_id": "T0004",
+          "page": 7,
+          "gold_type": "Qualification",
+          "pred_id": "T0008",
+          "pred_type": "Qualification",
+          "overlap_score": 0.7919,
+          "gold_text": "投标人须具备公路工程施工总承包三级及以上资质。",
+          "pred_text": "投标人资质要求：具有独立法人资格，具备公路工程施工总承包三级及以上资质，具有有效的安全生产许可证，并在人员、设备、资金等方面具有相应的施工能力。"
+        },
+        {
+          "gold_id": "T0005",
+          "page": 7,
+          "gold_type": "Qualification",
+          "pred_id": "T0008",
+          "pred_type": "Qualification",
+          "overlap_score": 0.6902,
+          "gold_text": "投标人须具有有效安全生产许可证。",
+          "pred_text": "投标人资质要求：具有独立法人资格，具备公路工程施工总承包三级及以上资质，具有有效的安全生产许可证，并在人员、设备、资金等方面具有相应的施工能力。"
+        },
+        {
+          "gold_id": "T0006",
+          "page": 7,
+          "gold_type": "Qualification",
+          "pred_id": "T0008",
+          "pred_type": "Qualification",
+          "overlap_score": 0.7453,
+          "gold_text": "投标人须在人员、设备、资金方面具有相应施工能力。",
+          "pred_text": "投标人资质要求：具有独立法人资格，具备公路工程施工总承包三级及以上资质，具有有效的安全生产许可证，并在人员、设备、资金等方面具有相应的施工能力。"
+        },
+        {
+          "gold_id": "T0007",
+          "page": 7,
+          "gold_type": "Qualification",
+          "pred_id": "T0009",
+          "pred_type": "Qualification",
+          "overlap_score": 0.766,
+          "gold_text": "项目经理须具有公路工程专业一级注册建造师资格。",
+          "pred_text": "项目经理（项目负责人）资格要求：须具备公路工程专业一级注册建造师资格且在投标单位注册，具备有效的安全生产考核合格证书，目前未在其他项目上任职，或虽在其他项目上任"
+        },
+        {
+          "gold_id": "T0008",
+          "page": 7,
+          "gold_type": "Qualification",
+          "pred_id": "T0009",
+          "pred_type": "Qualification",
+          "overlap_score": 0.6995,
+          "gold_text": "项目经理建造师须在投标单位注册。",
+          "pred_text": "项目经理（项目负责人）资格要求：须具备公路工程专业一级注册建造师资格且在投标单位注册，具备有效的安全生产考核合格证书，目前未在其他项目上任职，或虽在其他项目上任"
+        },
+        {
+          "gold_id": "T0009",
+          "page": 7,
+          "gold_type": "Qualification",
+          "pred_id": "T0009",
+          "pred_type": "Qualification",
+          "overlap_score": 0.7171,
+          "gold_text": "项目经理须具有有效安全生产考核合格证书。",
+          "pred_text": "项目经理（项目负责人）资格要求：须具备公路工程专业一级注册建造师资格且在投标单位注册，具备有效的安全生产考核合格证书，目前未在其他项目上任职，或虽在其他项目上任"
+        },
+        {
+          "gold_id": "T0010",
+          "page": 7,
+          "gold_type": "Qualification",
+          "pred_id": "T0009",
+          "pred_type": "Qualification",
+          "overlap_score": 0.7356,
+          "gold_text": "项目经理须未在其他项目任职，或虽任职但本项目中标后能够从原项目撤离。",
+          "pred_text": "项目经理（项目负责人）资格要求：须具备公路工程专业一级注册建造师资格且在投标单位注册，具备有效的安全生产考核合格证书，目前未在其他项目上任职，或虽在其他项目上任"
+        },
+        {
+          "gold_id": "T0011",
+          "page": 7,
+          "gold_type": "Qualification",
+          "pred_id": "T0010",
+          "pred_type": "Qualification",
+          "overlap_score": 0.7597,
+          "gold_text": "拟派项目经理须于2017年1月1日至投标截止时间以项目经理身份至少完成一个新建、改建或扩建三级及以上公路施工项目，单合同含长度≥15公里或金额≥5000万元，内",
+          "pred_text": "项目经理业绩要求：拟派项目经理2017年1月1日至投标截止时间，作为项目经理至少完成过一个含长度不少于15公里的新建(或改建或扩建)三级及以上公路工程施工项目业"
+        },
+        {
+          "gold_id": "T0012",
+          "page": 7,
+          "gold_type": "Document",
+          "pred_id": "T0010",
+          "pred_type": "Qualification",
+          "overlap_score": 0.4908,
+          "gold_text": "项目经理业绩须提供合同。",
+          "pred_text": "项目经理业绩要求：拟派项目经理2017年1月1日至投标截止时间，作为项目经理至少完成过一个含长度不少于15公里的新建(或改建或扩建)三级及以上公路工程施工项目业"
+        },
+        {
+          "gold_id": "T0013",
+          "page": 7,
+          "gold_type": "Document",
+          "pred_id": "T0009",
+          "pred_type": "Qualification",
+          "overlap_score": 0.3786,
+          "gold_text": "项目经理业绩须提供中标通知书。",
+          "pred_text": "项目经理（项目负责人）资格要求：须具备公路工程专业一级注册建造师资格且在投标单位注册，具备有效的安全生产考核合格证书，目前未在其他项目上任职，或虽在其他项目上任"
+        },
+        {
+          "gold_id": "T0014",
+          "page": 7,
+          "gold_type": "Document",
+          "pred_id": "T0012",
+          "pred_type": "Document",
+          "overlap_score": 0.7374,
+          "gold_text": "项目经理业绩须提供交工或竣工验收证明，须有建设、设计、监理、施工单位等盖章确认。",
+          "pred_text": "交工或竣工验收证明文件（须有建设单位、设计单位、监理单位、施工单位等盖章确认）。业绩时间以交工或竣工验收时间为准。"
+        },
+        {
+          "gold_id": "T0015",
+          "page": 7,
+          "gold_type": "Qualification",
+          "pred_id": "T0013",
+          "pred_type": "Qualification",
+          "overlap_score": 0.8359,
+          "gold_text": "项目总工须具有公路工程相关专业中级及以上职称，相关专业包括公路工程、桥梁、公路与桥梁、交通土建、隧道（地下结构）、交通工程等。",
+          "pred_text": "项目总工资格要求：公路工程相关专业中级及以上职称（公路工程相关专业包括公路工程、桥梁工程、公路与桥梁工程、交通土建、隧道（地下结构）工程、。"
+        }
+      ]
+    }
+  },
+  "2024/2024.1.11-annotations": {
+    "stats": {
+      "total_candidates": 2255,
+      "retained_requirements": 787,
+      "filtered_noise": 1468,
+      "noise_reduction_rate": 0.651,
+      "category_distribution": {
+        "Qualification": 142,
+        "Document": 244,
+        "Technical": 50,
+        "Commercial": 212,
+        "Schedule": 17,
+        "Consistency": 33,
+        "Integrity": 19,
+        "Scoring": 70
+      }
+    },
+    "eval": {
+      "gold_main_clauses": 218,
+      "auto_extracted_clauses": 787,
+      "recalled_gold_clauses": 207,
+      "end_to_end_gold_recall": 0.9495,
+      "matched_category_accuracy": 0.8357,
+      "exact_category_matches": 173,
+      "sample_matches": [
+        {
+          "gold_id": "T0002",
+          "page": 3,
+          "gold_type": "Schedule",
+          "pred_id": "T0003",
+          "pred_type": "Schedule",
+          "overlap_score": 0.5768,
+          "gold_text": "投标工期须响应420日历天。",
+          "pred_text": "项目概况与招标范围：计划工期：420 日历天；"
+        },
+        {
+          "gold_id": "T0003",
+          "page": 4,
+          "gold_type": "Qualification",
+          "pred_id": "T0008",
+          "pred_type": "Qualification",
+          "overlap_score": 0.8236,
+          "gold_text": "投标人须具备独立法人资格。",
+          "pred_text": "投标人资格要求：投标人资质要求：（1）具备独立法人资格；"
+        },
+        {
+          "gold_id": "T0004",
+          "page": 4,
+          "gold_type": "Qualification",
+          "pred_id": "T0009",
+          "pred_type": "Qualification",
+          "overlap_score": 0.8346,
+          "gold_text": "投标人须具有建筑工程施工总承包贰级及以上资质。",
+          "pred_text": "投标人资格要求：投标人资质要求：（2）具备建筑工程施工总承包贰级及以上资。"
+        },
+        {
+          "gold_id": "T0005",
+          "page": 4,
+          "gold_type": "Document",
+          "pred_id": "T0014",
+          "pred_type": "Document",
+          "overlap_score": 0.5887,
+          "gold_text": "投标人业绩的竣工验收报告或验收表须有建设、施工、监理、设计四方盖章，至少一份证明材料须反映工程建筑面积。",
+          "pred_text": "工验收报告（或竣工验收表）应具备建设、施工、监理、设计四方盖章，时间以竣工验收报告（或：投标人业绩要求：投标人自开标之日起上推五年内完成过单项合同建筑面积≥40"
+        },
+        {
+          "gold_id": "T0006",
+          "page": 4,
+          "gold_type": "Document",
+          "pred_id": "T0013",
+          "pred_type": "Document",
+          "overlap_score": 0.7618,
+          "gold_text": "投标人业绩须提供合同或中标通知书，并提供竣工验收报告或竣工验收表。",
+          "pred_text": "工业厂房工程业绩，业绩需提供合同或中标通知书，同时提供竣工验收报告（或竣工验收表），竣：投标人业绩要求：投标人自开标之日起上推五年内完成过单项合同建筑面积≥40"
+        },
+        {
+          "gold_id": "T0007",
+          "page": 4,
+          "gold_type": "Qualification",
+          "pred_id": "T0013",
+          "pred_type": "Document",
+          "overlap_score": 0.7068,
+          "gold_text": "投标人须在开标之日起上推五年内完成单项合同建筑面积不低于40000平方米的工业厂房工程业绩。",
+          "pred_text": "工业厂房工程业绩，业绩需提供合同或中标通知书，同时提供竣工验收报告（或竣工验收表），竣：投标人业绩要求：投标人自开标之日起上推五年内完成过单项合同建筑面积≥40"
+        },
+        {
+          "gold_id": "T0008",
+          "page": 4,
+          "gold_type": "Qualification",
+          "pred_id": "T0020",
+          "pred_type": "Qualification",
+          "overlap_score": 0.5215,
+          "gold_text": "拟派项目经理不得在其他项目任职，但能够在本项目中标后从原项目调整至本项目的除外。",
+          "pred_text": "目中标后能够从原项目调整至本项目：项目经理业绩要求：无。"
+        },
+        {
+          "gold_id": "T0009",
+          "page": 4,
+          "gold_type": "Qualification",
+          "pred_id": "T0017",
+          "pred_type": "Qualification",
+          "overlap_score": 0.8258,
+          "gold_text": "拟派项目经理须具有建筑工程专业一级注册建造师资格。",
+          "pred_text": "不通过：项目经理资格要求：投标人拟委任项目经理须具备建筑工程专业一级注册建造师资格，具。"
+        },
+        {
+          "gold_id": "T0010",
+          "page": 4,
+          "gold_type": "Qualification",
+          "pred_id": "T0018",
+          "pred_type": "Qualification",
+          "overlap_score": 0.7531,
+          "gold_text": "拟派项目经理须具有有效的安全生产考核合格B类证书。",
+          "pred_text": "备有效的安全生产考核合格(B 类)证书，且目前未在其他项目上任职或虽在其他项目上任职但本项：项目经理资格要求：投标人拟委任项目经理须具备建筑工程专业一级注册建造"
+        },
+        {
+          "gold_id": "T0011",
+          "page": 4,
+          "gold_type": "Qualification",
+          "pred_id": "T0022",
+          "pred_type": "Qualification",
+          "overlap_score": 0.6597,
+          "gold_text": "投标人不得处于宣城市各级工程建设主管部门或其他履职部门不良行为记录披露期。",
+          "pred_text": "不良行为，至投标截止之日仍在披露期内的；：被宣城市各级工程建设行业行政主管部门或其他部门行使工程建设领域行政执法权记。"
+        },
+        {
+          "gold_id": "T0012",
+          "page": 4,
+          "gold_type": "Qualification",
+          "pred_id": "T0024",
+          "pred_type": "Qualification",
+          "overlap_score": 0.7553,
+          "gold_text": "投标人不得处于宣城市各级公共资源交易综合管理部门不良行为记录披露期。",
+          "pred_text": "的；：被宣城市各级公共资源交易综合管理部门记不良行为，至投标截止之日仍在披露期内。"
+        },
+        {
+          "gold_id": "T0013",
+          "page": 4,
+          "gold_type": "Qualification",
+          "pred_id": "T0027",
+          "pred_type": "Qualification",
+          "overlap_score": 0.7496,
+          "gold_text": "投标人不得处于设区市级及以上工程建设主管部门或公共资源交易综合管理部门明文限制投标期限内；所属子公司的不良记录不影响投标人资格。",
+          "pred_text": "所属子公司有不良行为记录的，不影响投标人的投标资格）。：被设区的市级及以上工程建设行业行政主管部门或公共资源交易综合管理部门给予明。"
+        },
+        {
+          "gold_id": "T0014",
+          "page": 4,
+          "gold_type": "Qualification",
+          "pred_id": "T0028",
+          "pred_type": "Qualification",
+          "overlap_score": 0.5269,
+          "gold_text": "本项目不接受联合体投标。",
+          "pred_text": "所属子公司有不良行为记录的，不影响投标人的投标资格）。：是否接受联合体：否。"
+        },
+        {
+          "gold_id": "T0017",
+          "page": 5,
+          "gold_type": "Consistency",
+          "pred_id": "T0033",
+          "pred_type": "Qualification",
+          "overlap_score": 0.7055,
+          "gold_text": "参加答辩的项目经理须与投标文件中拟派项目经理一致。",
+          "pred_text": "投标文件中拟派的项目经理不一致的，作无效投标处理，并报监管部门作相应处理。。：本项目设有项目经理答辩，由评标委员会出题进行不见面变声答辩，参加答辩的项目经。"
+        },
+        {
+          "gold_id": "T0018",
+          "page": 5,
+          "gold_type": "Scoring",
+          "pred_id": "T0032",
+          "pred_type": "Scoring",
+          "overlap_score": 0.7185,
+          "gold_text": "项目经理未按要求参加答辩的，该答辩评分为零分。",
+          "pred_text": "明。逾期或未按要求参加答辩的，视为放弃答辩，其答辩评分按零分处理。参加答辩的项目经理与：本项目设有项目经理答辩，由评标委员会出题进行不见面变声答辩，参加答辩的项"
+        }
+      ]
+    }
+  }
+}

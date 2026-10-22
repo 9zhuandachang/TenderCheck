@@ -358,7 +358,7 @@ def list_results(round_id: int):
     rows = query(
         "SELECT r.*, q.clause_no, q.text AS req_text, q.category, q.applicable, q.na_reason, q.origin, "
         "q.source_doc_id, q.page AS req_page, q.amended_by_doc_id, q.amendment_page, q.amendment_status, "
-        "q.constraint_json "
+        "q.constraint_json, q.original_json "
         "FROM results r JOIN requirements q ON q.id = r.requirement_id "
         "WHERE r.round_id=? ORDER BY q.origin='drawing', q.id",
         (round_id,),
@@ -370,7 +370,7 @@ def get_result(result_id: int):
     rows = query(
         "SELECT r.*, q.clause_no, q.text AS req_text, q.category, q.applicable, q.na_reason, q.origin, "
         "q.source_doc_id, q.page AS req_page, q.amended_by_doc_id, q.amendment_page, q.amendment_status, "
-        "q.constraint_json "
+        "q.constraint_json, q.original_json "
         "FROM results r JOIN requirements q ON q.id = r.requirement_id WHERE r.id=?",
         (result_id,),
     )

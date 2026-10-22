@@ -254,22 +254,36 @@ with st.container(border=True, key="overview_step2_pipeline"):
             st.rerun()
         else:
             try:
-                reqs = store.list_requirements(pid, include_drawings=False)
-                if not reqs:
-                    service.extract_requirements(pid)
-                    for _ in range(50):
-                        if not store.active_jobs(pid, "extract"):
+                with st.status("Running TenderCheck automated extraction & compliance review...", expanded=True) as status_box:
+                    for _ in range(300):
+                        if not store.active_jobs(pid, "parse"):
                             break
                         time.sleep(0.1)
-                for r in store.pending_amendments(pid):
-                    service.decide_amendment(r["id"], True, ui.actor(), ui.role())
-                if not store.get_project(pid)["req_confirmed_at"]:
-                    service.confirm_requirements(pid, ui.actor(), ui.role())
-                service.start_review(pid, ui.actor(), ui.role())
-                for _ in range(50):
-                    if not store.active_jobs(pid, "review"):
-                        break
-                    time.sleep(0.1)
+                    reqs = store.list_requirements(pid, include_drawings=False)
+                    if not reqs:
+                        st.write("1/3 · Segmenting tender PDF, running Binary Requirement Filter & 8-Class Classifier...")
+                        service.extract_requirements(pid)
+                        for _ in range(600):
+                            if not store.active_jobs(pid, "extract"):
+                                break
+                            time.sleep(0.1)
+                    for r in store.pending_amendments(pid):
+                        service.decide_amendment(r["id"], True, ui.actor(), ui.role())
+                    if not store.get_project(pid)["req_confirmed_at"]:
+                        service.confirm_requirements(pid, ui.actor(), ui.role())
+                    reqs_now = store.reviewable_requirements(pid)
+                    st.write(f"2/3 · Building Bid RAG Index & Global Context across {len(bid_docs)} bid file(s)...")
+                    st.write(f"3/3 · Executing Slot Grounding & ComplianceRuleEngine on **{len(reqs_now)} clauses**...")
+                    service.start_review(pid, ui.actor(), ui.role())
+                    for _ in range(600):
+                        if not store.active_jobs(pid, "review"):
+                            break
+                        time.sleep(0.1)
+                    status_box.update(
+                        label=f"Pipeline complete! All {len(reqs_now)} clauses extracted, retrieved, and evaluated.",
+                        state="complete",
+                        expanded=False,
+                    )
                 ui.flash("Extraction and compliance review completed.")
                 st.rerun()
             except ServiceError as e:

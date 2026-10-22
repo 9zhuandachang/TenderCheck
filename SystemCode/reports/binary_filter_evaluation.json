@@ -1,0 +1,389 @@
+{
+  "dataset_summary": {
+    "num_non_holdout_projects": 69,
+    "num_holdout_projects": 2,
+    "train_samples": 130507,
+    "val_samples": 18278,
+    "test_samples": 37500,
+    "holdout_clean_samples": 3470,
+    "holdout_full_samples": 3837
+  },
+  "models_comparison_on_test": {
+    "calibrated_linear_svc": {
+      "split": "in_domain_test",
+      "threshold": 0.5,
+      "num_samples": 37500,
+      "positive_support": 3472,
+      "negative_support": 34028,
+      "accuracy": 0.9673,
+      "roc_auc": 0.9775,
+      "macro_f1": 0.8948,
+      "positive_class": {
+        "precision": 0.8858,
+        "recall": 0.7419,
+        "f1": 0.8075,
+        "support": 3472
+      },
+      "negative_class": {
+        "precision": 0.9741,
+        "recall": 0.9902,
+        "f1": 0.9821,
+        "support": 34028
+      },
+      "confusion_matrix": {
+        "labels": [
+          "Noise (0)",
+          "Requirement (1)"
+        ],
+        "matrix": [
+          [
+            33696,
+            332
+          ],
+          [
+            896,
+            2576
+          ]
+        ]
+      }
+    },
+    "logistic_regression": {
+      "split": "in_domain_test",
+      "threshold": 0.74,
+      "num_samples": 37500,
+      "positive_support": 3472,
+      "negative_support": 34028,
+      "accuracy": 0.9654,
+      "roc_auc": 0.979,
+      "macro_f1": 0.8991,
+      "positive_class": {
+        "precision": 0.7986,
+        "recall": 0.837,
+        "f1": 0.8173,
+        "support": 3472
+      },
+      "negative_class": {
+        "precision": 0.9833,
+        "recall": 0.9785,
+        "f1": 0.9809,
+        "support": 34028
+      },
+      "confusion_matrix": {
+        "labels": [
+          "Noise (0)",
+          "Requirement (1)"
+        ],
+        "matrix": [
+          [
+            33295,
+            733
+          ],
+          [
+            566,
+            2906
+          ]
+        ]
+      }
+    }
+  },
+  "validation_metrics": {
+    "split": "val",
+    "threshold": 0.74,
+    "num_samples": 18278,
+    "positive_support": 2205,
+    "negative_support": 16073,
+    "accuracy": 0.9611,
+    "roc_auc": 0.9873,
+    "macro_f1": 0.9134,
+    "positive_class": {
+      "precision": 0.7976,
+      "recall": 0.9079,
+      "f1": 0.8492,
+      "support": 2205
+    },
+    "negative_class": {
+      "precision": 0.9871,
+      "recall": 0.9684,
+      "f1": 0.9777,
+      "support": 16073
+    },
+    "confusion_matrix": {
+      "labels": [
+        "Noise (0)",
+        "Requirement (1)"
+      ],
+      "matrix": [
+        [
+          15565,
+          508
+        ],
+        [
+          203,
+          2002
+        ]
+      ]
+    }
+  },
+  "in_domain_test_metrics": {
+    "split": "in_domain_test",
+    "threshold": 0.74,
+    "num_samples": 37500,
+    "positive_support": 3472,
+    "negative_support": 34028,
+    "accuracy": 0.9654,
+    "roc_auc": 0.979,
+    "macro_f1": 0.8991,
+    "positive_class": {
+      "precision": 0.7986,
+      "recall": 0.837,
+      "f1": 0.8173,
+      "support": 3472
+    },
+    "negative_class": {
+      "precision": 0.9833,
+      "recall": 0.9785,
+      "f1": 0.9809,
+      "support": 34028
+    },
+    "confusion_matrix": {
+      "labels": [
+        "Noise (0)",
+        "Requirement (1)"
+      ],
+      "matrix": [
+        [
+          33295,
+          733
+        ],
+        [
+          566,
+          2906
+        ]
+      ]
+    }
+  },
+  "holdout_overall_clean_metrics": {
+    "split": "holdout_2_projects_clean",
+    "threshold": 0.74,
+    "num_samples": 3470,
+    "positive_support": 502,
+    "negative_support": 2968,
+    "accuracy": 0.9135,
+    "roc_auc": 0.9625,
+    "macro_f1": 0.8414,
+    "positive_class": {
+      "precision": 0.6608,
+      "recall": 0.8267,
+      "f1": 0.7345,
+      "support": 502
+    },
+    "negative_class": {
+      "precision": 0.9694,
+      "recall": 0.9282,
+      "f1": 0.9484,
+      "support": 2968
+    },
+    "confusion_matrix": {
+      "labels": [
+        "Noise (0)",
+        "Requirement (1)"
+      ],
+      "matrix": [
+        [
+          2755,
+          213
+        ],
+        [
+          87,
+          415
+        ]
+      ]
+    }
+  },
+  "holdout_overall_full_metrics": {
+    "split": "holdout_2_projects_all_candidates",
+    "threshold": 0.74,
+    "num_samples": 3837,
+    "positive_support": 502,
+    "negative_support": 3335,
+    "accuracy": 0.8772,
+    "roc_auc": 0.9381,
+    "macro_f1": 0.782,
+    "positive_class": {
+      "precision": 0.5194,
+      "recall": 0.8267,
+      "f1": 0.638,
+      "support": 502
+    },
+    "negative_class": {
+      "precision": 0.9714,
+      "recall": 0.8849,
+      "f1": 0.9261,
+      "support": 3335
+    },
+    "confusion_matrix": {
+      "labels": [
+        "Noise (0)",
+        "Requirement (1)"
+      ],
+      "matrix": [
+        [
+          2951,
+          384
+        ],
+        [
+          87,
+          415
+        ]
+      ]
+    }
+  },
+  "holdout_per_project_end_to_end": {
+    "2022/11.11annotations": {
+      "alignment_stats": {
+        "total_candidates": 1582,
+        "total_gold_main": 358,
+        "covered_gold_main": 353,
+        "gold_coverage_rate": 0.986,
+        "positive_samples": 292,
+        "negative_samples": 1110,
+        "skipped_ambiguous": 180
+      },
+      "binary_classification_metrics": {
+        "split": "2022/11.11annotations_clean",
+        "threshold": 0.74,
+        "num_samples": 1402,
+        "positive_support": 292,
+        "negative_support": 1110,
+        "accuracy": 0.9051,
+        "roc_auc": 0.9604,
+        "macro_f1": 0.8518,
+        "positive_class": {
+          "precision": 0.7955,
+          "recall": 0.7329,
+          "f1": 0.7629,
+          "support": 292
+        },
+        "negative_class": {
+          "precision": 0.9312,
+          "recall": 0.9505,
+          "f1": 0.9407,
+          "support": 1110
+        },
+        "confusion_matrix": {
+          "labels": [
+            "Noise (0)",
+            "Requirement (1)"
+          ],
+          "matrix": [
+            [
+              1055,
+              55
+            ],
+            [
+              78,
+              214
+            ]
+          ]
+        }
+      },
+      "end_to_end_extraction_at_optimal_threshold": {
+        "total_raw_candidates": 1582,
+        "retained_candidates": 330,
+        "filtered_out_noise_candidates": 1252,
+        "noise_reduction_rate": 0.7914,
+        "total_gold_clauses": 358,
+        "segmenter_gold_covered": 350,
+        "segmenter_gold_recall": 0.9777,
+        "post_filter_gold_covered": 290,
+        "post_filter_gold_recall": 0.8101,
+        "gold_retention_ratio": 0.8286
+      },
+      "end_to_end_extraction_at_chapter_aware_high_recall": {
+        "total_raw_candidates": 1582,
+        "retained_candidates": 616,
+        "filtered_out_noise_candidates": 966,
+        "noise_reduction_rate": 0.6106,
+        "total_gold_clauses": 358,
+        "segmenter_gold_covered": 350,
+        "segmenter_gold_recall": 0.9777,
+        "post_filter_gold_covered": 337,
+        "post_filter_gold_recall": 0.9413,
+        "gold_retention_ratio": 0.9629
+      }
+    },
+    "2024/2024.1.11-annotations": {
+      "alignment_stats": {
+        "total_candidates": 2255,
+        "total_gold_main": 218,
+        "covered_gold_main": 207,
+        "gold_coverage_rate": 0.9495,
+        "positive_samples": 210,
+        "negative_samples": 1858,
+        "skipped_ambiguous": 187
+      },
+      "binary_classification_metrics": {
+        "split": "2024/2024.1.11-annotations_clean",
+        "threshold": 0.74,
+        "num_samples": 2068,
+        "positive_support": 210,
+        "negative_support": 1858,
+        "accuracy": 0.9192,
+        "roc_auc": 0.9795,
+        "macro_f1": 0.8298,
+        "positive_class": {
+          "precision": 0.5599,
+          "recall": 0.9571,
+          "f1": 0.7065,
+          "support": 210
+        },
+        "negative_class": {
+          "precision": 0.9947,
+          "recall": 0.915,
+          "f1": 0.9532,
+          "support": 1858
+        },
+        "confusion_matrix": {
+          "labels": [
+            "Noise (0)",
+            "Requirement (1)"
+          ],
+          "matrix": [
+            [
+              1700,
+              158
+            ],
+            [
+              9,
+              201
+            ]
+          ]
+        }
+      },
+      "end_to_end_extraction_at_optimal_threshold": {
+        "total_raw_candidates": 2255,
+        "retained_candidates": 469,
+        "filtered_out_noise_candidates": 1786,
+        "noise_reduction_rate": 0.792,
+        "total_gold_clauses": 218,
+        "segmenter_gold_covered": 202,
+        "segmenter_gold_recall": 0.9266,
+        "post_filter_gold_covered": 199,
+        "post_filter_gold_recall": 0.9128,
+        "gold_retention_ratio": 0.9851
+      },
+      "end_to_end_extraction_at_chapter_aware_high_recall": {
+        "total_raw_candidates": 2255,
+        "retained_candidates": 792,
+        "filtered_out_noise_candidates": 1463,
+        "noise_reduction_rate": 0.6488,
+        "total_gold_clauses": 218,
+        "segmenter_gold_covered": 202,
+        "segmenter_gold_recall": 0.9266,
+        "post_filter_gold_covered": 202,
+        "post_filter_gold_recall": 0.9266,
+        "gold_retention_ratio": 1.0
+      }
+    }
+  }
+}

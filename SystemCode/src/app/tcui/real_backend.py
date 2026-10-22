@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -423,28 +424,57 @@ def _build_evidence_list(
     passages: List[Dict[str, Any]],
     doc_sources: Dict[str, Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """Build ordered evidence items with multi-document PDF resolution and Chinese quote snippets."""
+    """Build up to 5 deduplicated evidence page items with multi-document PDF resolution and Chinese quote snippets."""
     evidence: List[Dict[str, Any]] = []
-    seen_keys = set()
+    seen_doc_pages = set()
+    seen_page_text_sigs = set()
     passage_by_id = {p.get("evidence_id"): p for p in passages if p.get("evidence_id")}
 
     def _add_ev(doc_id: Optional[str], page: Optional[int], snippet: str, role_label: str, eid: str = "") -> None:
         if not page:
             return
-        src = doc_sources.get(doc_id or "", {})
-        key = (src.get("path") or doc_id or "", int(page), snippet[:40])
-        if key in seen_keys:
+        p_meta = passage_by_id.get(eid, {})
+        resolved_doc_id = doc_id or p_meta.get("document_id") or ""
+        src = doc_sources.get(resolved_doc_id, {})
+        doc_key = src.get("path") or resolved_doc_id
+        page_int = int(page)
+
+        # 1. Deduplicate identical (document, page) so the same page is never added twice
+        dp_key = (doc_key, page_int)
+        if dp_key in seen_doc_pages:
             return
-        seen_keys.add(key)
+
+        page_passages = [
+            p.get("text", "").strip()
+            for p in passages
+            if (p.get("document_id") == resolved_doc_id or not resolved_doc_id)
+            and int(p.get("page_start") or 0) == page_int
+            and p.get("text")
+        ]
+        if p_meta.get("text") and p_meta["text"].strip() not in page_passages:
+            page_passages.insert(0, p_meta["text"].strip())
+        rag_full = "\n".join(page_passages) if page_passages else snippet.strip()
+
+        # 2. Deduplicate near-identical attachment copies sharing the same page number and text (e.g. sub02 vs sub03)
+        norm_sig = re.sub(r"\s+", "", (rag_full or snippet))[:60]
+        pt_key = (page_int, norm_sig)
+        if norm_sig and pt_key in seen_page_text_sigs:
+            return
+
+        seen_doc_pages.add(dp_key)
+        if norm_sig:
+            seen_page_text_sigs.add(pt_key)
+
         evidence.append(
             {
-                "page": int(page),
+                "page": page_int,
                 "snippet": snippet.strip(),
+                "rag_text": rag_full,
                 "role": role_label,
                 "evidence_id": eid,
-                "document_id": doc_id or "",
+                "document_id": resolved_doc_id,
                 "doc_path": src.get("path"),
-                "doc_label": src.get("label") or doc_id or "Bid",
+                "doc_label": src.get("label") or resolved_doc_id or "Bid",
                 "doc_pages": src.get("pages"),
             }
         )
@@ -504,12 +534,12 @@ def _build_evidence_list(
         _add_ev(
             p.get("document_id"),
             p.get("page_start"),
-            p.get("text", "")[:260],
+            p.get("text", ""),
             f"检索候选段落 · {eid} ({score_str})",
             eid,
         )
 
-    return evidence[:8]
+    return evidence[:5]
 
 
 def format_backend_result(
@@ -743,6 +773,214 @@ def rereview_real_backend_result(
     rule_res = rule_engine.evaluate(ext)
     doc_sources = _load_doc_sources()
     return format_backend_result(req["text"], req["category"], ext, rule_res, passages, doc_sources)
+
+
+_AUTO_ANNOTATOR_SINGLETON: Optional[Any] = None
+
+
+def _get_auto_annotator() -> Any:
+    """Lazy-load and cache `AutoTenderAnnotator` (`BinaryRequirementFilter` + 8-class `roberta_wwm_ext`)."""
+    global _AUTO_ANNOTATOR_SINGLETON
+    if _AUTO_ANNOTATOR_SINGLETON is None:
+        from src.extraction.auto_annotator import AutoTenderAnnotator
+
+        bin_dir = SYSTEMCODE_ROOT / "models" / "binary_filter"
+        roberta_dir = SYSTEMCODE_ROOT / "models" / "roberta_wwm_ext"
+        _AUTO_ANNOTATOR_SINGLETON = AutoTenderAnnotator(
+            binary_model_dir=bin_dir,
+            eight_class_model_dir=roberta_dir,
+            chapter_aware=True,
+        )
+    return _AUTO_ANNOTATOR_SINGLETON
+
+
+def is_chinese_pdf(pdf_path: Path) -> bool:
+    """Detect whether a PDF document contains Chinese engineering text (vs. synthetic English demo PDFs)."""
+    if not pdf_path.exists():
+        return False
+    try:
+        with fitz.open(str(pdf_path)) as doc:
+            sample_pages = min(len(doc), 8)
+            cjk_count = 0
+            for idx in range(sample_pages):
+                txt = doc[idx].get_text("text") or ""
+                cjk_count += len(re.findall(r"[\u4e00-\u9fff]", txt))
+                if cjk_count >= 25:
+                    return True
+    except Exception:
+        return False
+    return False
+
+
+def extract_chinese_project_requirements(
+    project_id: int,
+    progress: Optional[Callable[[str, int, int], None]] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    If the project's tender PDFs are Chinese documents, run the end-to-end local
+    `AutoTenderAnnotator` (`segment_tender_pdf` -> `BinaryRequirementFilter` ->
+    8-class `roberta_wwm_ext`/`tfidf_svm` classifier), persist `auto_annotations.json`,
+    and populate the `requirements` table. Returns `None` if documents are English demo PDFs.
+    """
+    tenders = store.list_documents(project_id, "tender", selected_only=True)
+    addenda = store.list_documents(project_id, "addendum", selected_only=True)
+    if not tenders:
+        return None
+
+    if not any(is_chinese_pdf(Path(d["path"])) for d in tenders):
+        return None
+
+    store.execute("DELETE FROM requirements WHERE project_id=? AND origin IN ('extracted','addendum')", (project_id,))
+    store.execute("DELETE FROM drawings WHERE project_id=? AND source='extracted'", (project_id,))
+
+    annotator = _get_auto_annotator()
+    tender_paths = [Path(d["path"]) for d in tenders]
+    addendum_paths = [Path(d["path"]) for d in addenda]
+    doc_by_name = {Path(d["path"]).name: d for d in (tenders + addenda)}
+    default_tender_doc = tenders[0]
+
+    items, stats = annotator.annotate_pdfs(tender_paths, addendum_paths, progress=progress)
+
+    # Persist standard v1.3 auto_annotations.json in the project folder
+    proj_folder = store.project_dir(project_id)
+    proj_folder.mkdir(parents=True, exist_ok=True)
+    (proj_folder / "auto_annotations.json").write_text(
+        json.dumps([x.to_v13_dict() for x in items], ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    counts = {"requirements": 0, "amendments": 0, "drawings": 0, "stats": stats}
+    now_ts = store.now()
+    with store.connect() as con:
+        for item in items:
+            matched_doc = doc_by_name.get(item.doc_name, default_tender_doc)
+            is_addendum = matched_doc["category"] == "addendum"
+            category = item.Requirement_Type if item.Requirement_Type in config.CATEGORIES else "Document"
+            constraint = {
+                "type": "document" if category == "Document" else "presence",
+                "clause_type": category,
+                "field": category,
+            }
+            original_meta = {
+                "text": item.Requirement,
+                "raw_text": item.raw_text,
+                "category": category,
+                "constraint": constraint,
+                "page": item.Page,
+                "section": item.Section,
+                "binary_prob": item.binary_prob,
+                "category_confidence": item.category_confidence,
+            }
+            con.execute(
+                """
+                INSERT INTO requirements (
+                    project_id, clause_no, text, category, category_score,
+                    constraint_json, source_doc_id, page, origin, original_json,
+                    amended_by_doc_id, amendment_page, amendment_text, amendment_status,
+                    applicable, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                """,
+                (
+                    project_id,
+                    item.ID,
+                    item.Requirement,
+                    category,
+                    float(item.category_confidence),
+                    json.dumps(constraint, ensure_ascii=False),
+                    matched_doc["id"],
+                    int(item.Page),
+                    "addendum" if is_addendum else "extracted",
+                    json.dumps(original_meta, ensure_ascii=False),
+                    matched_doc["id"] if is_addendum else None,
+                    int(item.Page) if is_addendum else None,
+                    item.Requirement if is_addendum else None,
+                    "accepted" if is_addendum else None,
+                    now_ts,
+                ),
+            )
+            if is_addendum:
+                counts["amendments"] += 1
+            else:
+                counts["requirements"] += 1
+
+    store.update("projects", project_id, {"req_confirmed_at": now_ts})
+    store.log_action(project_id, "extract_chinese_requirements", payload=counts)
+    return counts
+
+
+def evaluate_chinese_project_clauses(
+    project_id: int,
+    reqs: List[Dict[str, Any]],
+    progress: Optional[Callable[[str, int, int], None]] = None,
+) -> Optional[Dict[int, Dict[str, Any]]]:
+    """
+    Run the end-to-end Chinese RAG + GlobalContext + DeepSeekSlotExtractor +
+    ComplianceRuleEngine pipeline on any Chinese project's requirements and bid PDFs.
+    Returns `None` if the requirements are English demo clauses.
+    """
+    if not reqs:
+        return {}
+    cjk_clauses = sum(1 for r in reqs[:20] if re.search(r"[\u4e00-\u9fff]", str(r.get("text") or "")))
+    if cjk_clauses == 0:
+        return None
+
+    from src.extraction.chinese_pipeline import (
+        FastChineseBidRetriever,
+        build_global_context_with_full_bid_scan,
+        parse_bid_pdfs_for_rag,
+    )
+
+    bid_docs = store.list_documents(project_id, "bid", selected_only=True)
+    if not bid_docs:
+        return None
+
+    child_chunks, parent_map, doc_sources = parse_bid_pdfs_for_rag(bid_docs, progress=progress)
+    retriever = FastChineseBidRetriever(child_chunks, parent_map, doc_sources)
+
+    cases: List[Dict[str, Any]] = []
+    passages_by_req_id: Dict[int, List[Dict[str, Any]]] = {}
+    for r in reqs:
+        rid = int(r["id"])
+        cid = str(r.get("clause_no") or f"T{rid:04d}")
+        r_text = str(r.get("text") or "")
+        r_cat = str(r.get("category") or "Document")
+        top_passages = retriever.retrieve_passages(r_text, r_cat, top_k=5)
+        passages_by_req_id[rid] = top_passages
+        cases.append(
+            {
+                "clause_id": cid,
+                "requirement": r_text,
+                "category": r_cat,
+                "evidence_context": json.dumps(top_passages, ensure_ascii=False),
+            }
+        )
+
+    global_ctx = build_global_context_with_full_bid_scan(cases, parent_map, doc_sources)
+    deepseek_extractor = DeepSeekSlotExtractor(cache_only=False)
+    rule_engine = ComplianceRuleEngine()
+
+    total = len(reqs)
+    outputs_by_req_id: Dict[int, Dict[str, Any]] = {}
+    for idx, r in enumerate(reqs, start=1):
+        rid = int(r["id"])
+        cid = str(r.get("clause_no") or f"T{rid:04d}")
+        r_text = str(r.get("text") or "")
+        r_cat = str(r.get("category") or "Document")
+        if progress and (idx == 1 or idx % 20 == 0 or idx == total):
+            progress(f"正在检索投标证据并执行符号规则核验 {cid} ({idx}/{total})", idx, total)
+
+        local_passages = [dict(p) for p in passages_by_req_id.get(rid, [])]
+        ev_str = json.dumps(local_passages, ensure_ascii=False)
+        ext = deepseek_extractor.extract(cid, r_text, r_cat, ev_str)
+        ext, hydrated_str = hydrate_with_global_context(ext, ev_str, global_ctx, normalizer=deepseek_extractor)
+        final_passages = json.loads(hydrated_str) if hydrated_str else local_passages
+
+        rule_res = rule_engine.evaluate(ext)
+        out = format_backend_result(r_text, r_cat, ext, rule_res, final_passages, doc_sources)
+        outputs_by_req_id[rid] = out
+
+    return outputs_by_req_id
+
 
 
 S604_KNOWN_ISSUES = [
