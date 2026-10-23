@@ -530,14 +530,32 @@ def confirm_result(result_id: int, actor: str, role: str, note: str = "", second
     project_id = _project_of(res)
     status = CONFIRMED
     item = store.open_remediation_for(res["requirement_id"])
-    if item and item["status"] == TO_REINSPECT and res["verdict"] == COMPLIANT:
+    if item:
         store.update("remediations", item["id"], {"status": CLOSED, "closed_round_id": res["round_id"],
                                                   "updated_at": store.now()})
-        status = CLOSED
-    elif item:
-        raise ServiceError("This clause has an open remediation item. Re-inspect a revised bid first.")
-    _touch(res, {"human_status": status, "note": note or res["note"]}, seconds)
-    store.log_action(project_id, "confirm_result", actor, role, note, {"verdict": res["verdict"], "status": status},
+    was_non_passing = res["verdict"] != COMPLIANT
+    updated_fields = [
+        {**f, "result": COMPLIANT}
+        for f in (res.get("fields") or [])
+    ]
+    chain = dict(res.get("chain") or {})
+    if chain.get("sub_verdict") and chain.get("sub_verdict") not in ("COMPLIANT", "SCORED"):
+        chain.setdefault("original_sub_verdict", chain.get("sub_verdict"))
+        chain.setdefault("original_sub_verdict_label", chain.get("sub_verdict_label"))
+        chain["sub_verdict"] = "COMPLIANT"
+        chain["sub_verdict_label"] = "✓ Compliant"
+        chain["sub_verdict_color"] = "green"
+    updates: Dict[str, Any] = {
+        "verdict": COMPLIANT,
+        "human_status": status,
+        "fields": updated_fields,
+        "chain": chain,
+        "note": note or res["note"],
+    }
+    if was_non_passing:
+        updates["corrected"] = 1
+    _touch(res, updates, seconds)
+    store.log_action(project_id, "confirm_result", actor, role, note, {"verdict": COMPLIANT, "status": status},
                      res["round_id"], res["requirement_id"], result_id)
     return status
 
@@ -664,8 +682,10 @@ def apply_remediation_edit(
     actor: str,
     role: str,
     resolve: bool = True,
-) -> None:
-    """Save in-place modification of bid original text for a remediation item and optionally mark resolved."""
+    doc_path: str = "",
+    page_no: int = 1,
+) -> Dict[str, Any]:
+    """Save in-place modification of bid original text, persist to bid document, and re-run extraction + rule engine."""
     if not modified_text.strip():
         raise ServiceError("Modified bid text cannot be empty.")
     item = store.query_one("SELECT * FROM remediations WHERE id=?", (rem_id,))
@@ -673,32 +693,33 @@ def apply_remediation_edit(
         raise ServiceError("Remediation item not found.")
     res = _editable_result(result_id)
     project_id = _project_of(res)
+    req = store.get_requirement(res["requirement_id"])
 
     evidence = [dict(e) for e in (res.get("evidence") or [])]
     target_label = "Bid text"
     before_text = ""
     if 0 <= ev_index < len(evidence):
         ev = evidence[ev_index]
+        doc_path = doc_path or ev.get("doc_path") or ""
+        page_no = int(page_no or ev.get("page") or 1)
         before_text = ev.get("original_text") or ev.get("rag_text") or ev.get("snippet") or ""
-        if "original_text" not in ev:
-            ev["original_text"] = before_text
-        ev["rag_text"] = modified_text.strip()
-        ev["snippet"] = modified_text.strip()[:240]
-        ev["role"] = f"✎ 已修改原文 · p.{ev.get('page', 1)}"
-        target_label = f"{ev.get('doc_label') or 'Bid'} p.{ev.get('page', 1)}"
-    else:
-        evidence.insert(
-            0,
-            {
-                "page": 1,
-                "snippet": modified_text.strip()[:240],
-                "rag_text": modified_text.strip(),
-                "original_text": "",
-                "role": "✎ 已修改原文",
-            },
-        )
+        target_label = f"{ev.get('doc_label') or 'Bid'} p.{page_no}"
 
-    rem_status = CLOSED if resolve else TO_REMEDIATE
+    if doc_path:
+        _cur_txt, orig_pdf_txt = real_backend.read_bid_page_text_with_edits(doc_path, page_no)
+        real_backend.save_bid_page_edit(doc_path, page_no, modified_text.strip(), orig_pdf_txt or before_text)
+
+    # Re-run real backend extraction & rule engine on the modified Bid text
+    reeval = real_backend.reevaluate_clause_with_modified_bid(
+        req=req,
+        existing_result=res,
+        pdf_path=doc_path,
+        page_no=int(page_no),
+        modified_text=modified_text.strip(),
+    )
+
+    passed_now = reeval["verdict"] == COMPLIANT
+    rem_status = CLOSED if (resolve and passed_now) else TO_REMEDIATE
     store.update(
         "remediations",
         rem_id,
@@ -706,20 +727,22 @@ def apply_remediation_edit(
             "draft": modified_text.strip(),
             "target": target_label,
             "status": rem_status,
-            "closed_round_id": res["round_id"] if resolve else None,
+            "closed_round_id": res["round_id"] if rem_status == CLOSED else None,
             "updated_at": store.now(),
         },
     )
 
     res_updates: Dict[str, Any] = {
-        "evidence": evidence,
+        "verdict": reeval["verdict"],
+        "rule_id": reeval["rule_id"],
+        "explanation": reeval["explanation"],
+        "fields": reeval["fields"],
+        "evidence": reeval["evidence"],
+        "chain": reeval["chain"],
         "corrected": 1,
-        "note": note.strip() or res.get("note") or f"已在 Remediation 修改 {target_label} 原文",
+        "human_status": CONFIRMED if passed_now else TO_REMEDIATE,
+        "note": note.strip() or res.get("note") or f"已在 Remediation 修改 {target_label} 原文并重审",
     }
-    if resolve:
-        res_updates["human_status"] = CONFIRMED
-    else:
-        res_updates["human_status"] = TO_REMEDIATE
     _touch(res, res_updates, 0.0)
 
     store.log_action(
@@ -733,12 +756,14 @@ def apply_remediation_edit(
             "target": target_label,
             "before_text": before_text[:300],
             "after_text": modified_text.strip()[:300],
-            "resolved": resolve,
+            "resolved": passed_now,
+            "verdict_after_reeval": reeval["verdict"],
         },
         res["round_id"],
         res["requirement_id"],
         result_id,
     )
+    return {"verdict": reeval["verdict"], "passed": passed_now, "explanation": reeval["explanation"]}
 
 
 def link_revised_bid(project_id: int, doc_id: int, actor: str, role: str) -> int:

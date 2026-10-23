@@ -1,10 +1,10 @@
 import html
 from pathlib import Path
-import re
+import pymupdf as fitz
 import streamlit as st
 
-from tcui import service, store, ui
-from tcui.config import CLOSED, CONFIRMED, TO_REINSPECT, TO_REMEDIATE
+from tcui import real_backend, service, store, ui
+from tcui.config import CLOSED
 from tcui.service import ServiceError
 
 project = ui.require_project()
@@ -28,25 +28,21 @@ result_by_req_id = {r["requirement_id"]: r for r in results}
 items = store.list_remediations(pid)
 
 # ----------------------------------------------------------------- top bar
-top_l, top_r = st.columns([4, 1.3], vertical_alignment="center")
-top_l.markdown(
-    f"### Remediation · 原文修改工作台  \n<span class='tc-muted'>{html.escape(project['name'])}</span>",
-    unsafe_allow_html=True,
-)
+top_l, top_r = st.columns([4, 1.2], vertical_alignment="center")
+top_l.markdown(f"### Remediation  \n<span class='tc-muted'>{html.escape(project['name'])}</span>", unsafe_allow_html=True)
 if top_r.button("Back to Workspace", icon=":material/arrow_back:", width="stretch"):
     ui.go("workspace")
 
 if not items:
     with st.container(border=True):
         st.info(
-            "当前还没有进入整改池的条款。请在 **Review Workspace** 审标时，对需要修改投标书原文的条款点击 **To remediation**，系统会自动跳转到本页面进行原文修改。",
+            "当前还没有待修改的条款。请在 **Review Workspace** 中点击 **To remediation** 进入本页面。",
             icon=":material/info:",
         )
         if st.button("前往 Review Workspace", type="primary", icon=":material/compare:"):
             ui.go("workspace")
     st.stop()
 
-# Order: open items (To remediate / To reinspect) first, then Closed
 items_sorted = sorted(items, key=lambda x: (x["status"] == CLOSED, x["clause_no"]))
 item_by_id = {i["id"]: i for i in items_sorted}
 
@@ -76,20 +72,46 @@ def _select_rem(rem_id: int) -> None:
     st.session_state["rem_selected_id"] = rem_id
 
 
-def _build_ai_suggestion_preview(req_text: str, orig_text: str, clause_no: str) -> str:
-    """Frontend placeholder generator for AI revision preview (backend LLM not connected yet)."""
-    clean_req = req_text.strip()
-    if not orig_text.strip():
-        return f"【响应承诺（针对 {clause_no}）】我方完全响应并满足招标文件要求：{clean_req}"
-    return (
-        f"{orig_text.strip()}\n\n"
-        f"【AI 建议修订补充（针对 {clause_no} 招标要求）】经核实，我方郑重确认并修正如下："
-        f"完全满足“{clean_req}”之规定，相关人员、证书及承诺事项均以前述核定内容为准，不存在任何前后不一致情形。"
+@st.cache_data(show_spinner=False)
+def _read_bid_page_text(pdf_path: str, page_no: int) -> str:
+    """Read raw text directly from the Bid PDF page (1-indexed)."""
+    p = Path(pdf_path)
+    if not p.exists():
+        return ""
+    try:
+        with fitz.open(str(p)) as doc:
+            idx = max(0, min(len(doc) - 1, int(page_no) - 1))
+            return doc[idx].get_text("text").strip()
+    except Exception:
+        return ""
+
+
+# Collect available Bid documents (primary Bid + supporting volumes if any)
+bid_doc = docs.get(rnd["bid_doc_id"])
+bid_volumes = []
+if bid_doc and bid_doc.get("path") and Path(bid_doc["path"]).exists():
+    bid_volumes.append(
+        {
+            "label": bid_doc.get("filename") or bid_doc.get("label") or "Bid Document",
+            "path": str(bid_doc["path"]),
+            "pages": int(bid_doc.get("pages") or 1),
+        }
     )
+if real_backend.is_s604_project(project):
+    seen_paths = {v["path"] for v in bid_volumes}
+    for doc_id, src in sorted(real_backend._load_doc_sources().items()):
+        if src.get("exists") and src["path"] not in seen_paths:
+            seen_paths.add(src["path"])
+            bid_volumes.append(
+                {
+                    "label": src["label"],
+                    "path": src["path"],
+                    "pages": int(src.get("pages") or 1),
+                }
+            )
 
-
-# ----------------------------------------------------------------- 3-column layout
-cols = st.columns([1.05, 2.15, 1.8], gap="small")
+# ----------------------------------------------------------------- 2-column clean layout
+cols = st.columns([1.1, 3.2], gap="medium")
 
 # ================================================================= Left: Problem clauses list
 with cols[0]:
@@ -106,7 +128,7 @@ with cols[0]:
             status_txt = "已修改" if it["status"] == CLOSED else "待修改"
             meta = f"{it['category']} · {status_txt}"
             st.button(
-                f"{icon} **{it['clause_no']}** {it['req_text'][:38]}…  \n{meta if is_sel else f':gray[{meta}]'}",
+                f"{icon} **{it['clause_no']}** {it['req_text']}  \n{meta if is_sel else f':gray[{meta}]'}",
                 key=f"rem_item_{it['id']}",
                 width="stretch",
                 type="primary" if is_sel else "secondary",
@@ -114,142 +136,130 @@ with cols[0]:
                 args=(it["id"],),
             )
 
-# ================================================================= Middle: Issue & Original Text Editor
+# ================================================================= Right: Requirement + AI Suggestion + Direct Bid Editor
 with cols[1]:
     with st.container(border=True):
-        h1, h2 = st.columns([2.5, 2.5], vertical_alignment="center")
-        h1.markdown(f"#### {cur_res['clause_no']} · {cur_res['category']}")
-        rem_badge = (
-            ":green-badge[:material/check_circle: 已修改原文]"
-            if cur_item["status"] == CLOSED
-            else ":violet-badge[:material/build: 待修改原文]"
-        )
-        h2.markdown(f"{ui.verdict_md(cur_res['verdict'])} {rem_badge}")
-
+        # 1. Tender Requirement
+        st.markdown(f"#### {cur_res['clause_no']} · {cur_res['category']}")
         st.markdown(
-            f"<div class='tc-req'><mark>招标要求 (Tender Requirement)</mark> &nbsp;{html.escape(str(cur_res['req_text']))}</div>",
+            f"<div class='tc-req'><mark>Tender Requirement</mark> &nbsp;{html.escape(str(cur_res['req_text']))}</div>",
             unsafe_allow_html=True,
         )
-        if cur_res.get("fields"):
-            ui.comparison_table(cur_res["fields"])
-        st.caption(f"**问题说明：** {cur_res.get('explanation') or cur_item.get('issue') or ''}")
 
-    # Evidence page selection & direct original text editing
-    evidence = cur_res.get("evidence") or []
-    ev_idx = 0
-    with st.container(border=True):
-        st.markdown("##### 直接修改投标文件原文 (Modify Bid Original Text)")
+        # Determine initial Bid volume & page to open (prefer the conflicting page B if present)
+        evidence = cur_res.get("evidence") or []
+        default_vol_idx = 0
+        default_page = 1
+        default_ev_idx = 0
+        if evidence and bid_volumes:
+            for e_i, ev_cand in enumerate(evidence):
+                if "冲突证据 B" in str(ev_cand.get("role") or "") or "无在建工程" in str(ev_cand.get("snippet") or ""):
+                    default_ev_idx = e_i
+                    break
+            ev0 = evidence[default_ev_idx]
+            ev0_path = ev0.get("doc_path")
+            ev0_page = int(ev0.get("page") or 1)
+            for v_i, v in enumerate(bid_volumes):
+                if ev0_path and Path(v["path"]) == Path(ev0_path):
+                    default_vol_idx = v_i
+                    default_page = max(1, min(v["pages"], ev0_page))
+                    break
+            else:
+                default_page = max(1, min(bid_volumes[0]["pages"], ev0_page))
 
-        if evidence:
-            page_freq = {}
-            for item in evidence:
-                page_freq[item["page"]] = page_freq.get(item["page"], 0) + 1
+        vol_key = f"rem_bid_vol_{cur_rem_id}"
+        page_key = f"rem_bid_page_{cur_rem_id}"
+        if vol_key not in st.session_state:
+            st.session_state[vol_key] = default_vol_idx
+        cur_vol_idx = int(st.session_state[vol_key])
+        if cur_vol_idx >= len(bid_volumes):
+            cur_vol_idx = 0
 
-            def _fmt_ev_tab(i: int) -> str:
-                ev_item = evidence[i]
-                pg = ev_item["page"]
-                if page_freq.get(pg, 1) <= 1:
-                    return f"p.{pg}"
-                raw_lbl = str(ev_item.get("doc_label") or "").replace(".pdf", "").replace(".PDF", "")
-                short_lbl = re.sub(r"^\d+\.?|[（）()]", "", raw_lbl).strip()
-                tag = short_lbl[-4:] if len(short_lbl) > 4 else (short_lbl or f"#{i + 1}")
-                return f"p.{pg}·{tag}"
+        cur_vol = bid_volumes[cur_vol_idx] if bid_volumes else {"label": "Bid", "path": "", "pages": 1}
+        max_pages = max(1, int(cur_vol["pages"]))
 
-            ev_idx = st.segmented_control(
-                "选择要修改的投标书证据页",
-                list(range(len(evidence))),
-                default=0,
-                key=f"rem_ev_sel_{cur_rem_id}",
-                required=True,
-                format_func=_fmt_ev_tab,
-                help="切换该条款关联的不同投标书页面以定位并修改原文",
-                width="stretch",
-                wrap=False,
-            ) or 0
-            cur_ev = evidence[ev_idx]
-            target_desc = f"{cur_ev.get('doc_label') or '投标文件'} · 第 {cur_ev['page']} 页 ({cur_ev.get('role') or ''})"
-            st.caption(f"当前定位位置：**{target_desc}**")
-            orig_text = (
-                cur_ev.get("original_text")
-                or cur_ev.get("rag_text")
-                or cur_ev.get("snippet")
-                or ""
-            )
-            current_edit_default = (
-                cur_ev.get("rag_text")
-                or cur_item.get("draft")
-                or cur_ev.get("snippet")
-                or ""
-            )
-        else:
-            cur_ev = None
-            st.caption("当前条款未检索到现成段落，可直接下方编写补充响应原文。")
-            orig_text = "（原投标书中未检出对应段落）"
-            current_edit_default = cur_item.get("draft") or ""
+        if page_key not in st.session_state:
+            st.session_state[page_key] = default_page
+        cur_page = max(1, min(max_pages, int(st.session_state[page_key])))
 
-        with st.expander("查看修改前投标书原文 (Original Bid Text)", expanded=True):
-            st.markdown(
-                f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;"
-                f"font-size:0.9rem;color:#334155;max-height:150px;overflow-y:auto;white-space:pre-wrap;'>"
-                f"{html.escape(orig_text)}</div>",
-                unsafe_allow_html=True,
-            )
+        raw_bid_page_text, _orig_pdf_text = (
+            real_backend.read_bid_page_text_with_edits(cur_vol["path"], cur_page)
+            if cur_vol["path"]
+            else ("", "")
+        )
+        editor_key = f"rem_direct_bid_{cur_rem_id}_{cur_vol_idx}_{cur_page}"
+        if editor_key not in st.session_state:
+            st.session_state[editor_key] = raw_bid_page_text or (cur_item.get("draft") or "")
 
-        # AI Suggestion Toolbar (Frontend UI preview only, backend not wired yet)
-        ai_col1, ai_col2 = st.columns([1.4, 2.6], vertical_alignment="center")
-        ai_state_key = f"rem_ai_show_{cur_rem_id}_{ev_idx}"
-        editor_key = f"rem_editor_{cur_rem_id}_{ev_idx}"
-
-        if ai_col1.button(
+        # 2. AI Modification Suggestion (DeepSeek API)
+        ai_cache_key = f"rem_ai_sug_{cur_rem_id}_{cur_vol_idx}_{cur_page}"
+        if st.button(
             "AI 修改建议",
             icon=":material/auto_awesome:",
-            key=f"rem_ai_btn_{cur_rem_id}_{ev_idx}",
-            width="stretch",
+            key=f"rem_ai_btn_{cur_rem_id}",
             disabled=signed,
         ):
-            st.session_state[ai_state_key] = True
+            with st.spinner("正在调用 DeepSeek 生成修改建议..."):
+                st.session_state[ai_cache_key] = real_backend.generate_remediation_suggestion(
+                    clause_no=cur_res["clause_no"],
+                    req_text=cur_res["req_text"],
+                    explanation=cur_res.get("explanation") or cur_item.get("issue") or "",
+                    orig_text=st.session_state.get(editor_key) or raw_bid_page_text,
+                    all_evidence=evidence,
+                )
 
-        ai_col2.caption("生成针对该条款的合规原文改写方案（前端演示，暂未接入后端模型）")
-
-        if st.session_state.get(ai_state_key):
-            preview_suggestion = _build_ai_suggestion_preview(
-                cur_res["req_text"], orig_text, cur_res["clause_no"]
-            )
+        ai_data = st.session_state.get(ai_cache_key)
+        if ai_data:
             with st.container(border=True):
-                st.markdown("**✨ AI 建议修改稿（预览演示）**")
+                st.markdown(f"**✨ AI 修改建议：** {ai_data.get('diagnosis', '')}")
                 st.markdown(
-                    f"<div style='background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 10px;"
-                    f"font-size:0.9rem;color:#166534;white-space:pre-wrap;'>{html.escape(preview_suggestion)}</div>",
+                    f"<div style='background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 12px;"
+                    f"font-size:0.9rem;color:#166534;white-space:pre-wrap;max-height:180px;overflow-y:auto;'>"
+                    f"{html.escape(ai_data.get('replacement_span') or ai_data.get('revised_text') or '')}</div>",
                     unsafe_allow_html=True,
                 )
-                sc1, sc2 = st.columns([1.5, 1.5])
-                if sc1.button("填入下方编辑框", key=f"rem_ai_apply_{cur_rem_id}_{ev_idx}", type="primary", width="stretch"):
-                    st.session_state[editor_key] = preview_suggestion
-                    st.session_state[ai_state_key] = False
-                    st.rerun()
-                if sc2.button("收起建议", key=f"rem_ai_hide_{cur_rem_id}_{ev_idx}", width="stretch"):
-                    st.session_state[ai_state_key] = False
+                if st.button(
+                    "应用建议到下方投标书",
+                    key=f"rem_apply_ai_{cur_rem_id}",
+                    type="primary",
+                    icon=":material/done:",
+                ):
+                    st.session_state[editor_key] = ai_data.get("revised_text") or st.session_state[editor_key]
                     st.rerun()
 
-        if editor_key not in st.session_state:
-            st.session_state[editor_key] = current_edit_default
+        st.divider()
+
+        # 3. Open Bid Document directly for editing
+        nav1, nav2 = st.columns([2.8, 1.2], vertical_alignment="center")
+        if len(bid_volumes) > 1:
+            sel_vol = nav1.selectbox(
+                "投标书分册 (Bid Volume)",
+                list(range(len(bid_volumes))),
+                index=cur_vol_idx,
+                format_func=lambda i: f"{bid_volumes[i]['label']} ({bid_volumes[i]['pages']}p)",
+                key=vol_key,
+            )
+            if sel_vol != cur_vol_idx:
+                st.session_state[page_key] = 1
+                st.rerun()
+        else:
+            nav1.markdown(f"**投标书原件 (Bid Document)：** `{cur_vol['label']}`")
+
+        nav2.number_input(
+            f"页码 (1 - {max_pages})",
+            min_value=1,
+            max_value=max_pages,
+            key=page_key,
+        )
 
         modified_text = st.text_area(
-            "修改后投标书原文 (可直接在此编辑原文)",
-            height=200,
+            f"Bid 原文内容（第 {cur_page} / {max_pages} 页 · 可直接在此修改）",
+            height=340,
             key=editor_key,
             disabled=signed,
         )
-        rem_note = st.text_input(
-            "修改说明 / 备注 (可选)",
-            value=cur_res.get("note") or "",
-            key=f"rem_note_{cur_rem_id}",
-            placeholder="例如：已将投标函项目经理在建表述与承诺书统一修改",
-            disabled=signed,
-        )
 
-        b1, b2, b3 = st.columns([2.1, 1.2, 1.3])
-        if b1.button(
+        if st.button(
             "Save & Return to Workspace",
             type="primary",
             icon=":material/check_circle:",
@@ -257,94 +267,26 @@ with cols[1]:
             disabled=signed,
         ):
             try:
-                service.apply_remediation_edit(
+                outcome = service.apply_remediation_edit(
                     cur_rem_id,
                     cur_res["id"],
-                    ev_idx,
+                    default_ev_idx,
                     modified_text,
-                    rem_note,
+                    f"已在投标书 {cur_vol['label']} 第 {cur_page} 页完成修改",
                     ui.actor(),
                     ui.role(),
                     resolve=True,
+                    doc_path=cur_vol["path"],
+                    page_no=cur_page,
                 )
-                ui.flash(f"已完成条款 {cur_res['clause_no']} 原文修改并确认，正在返回 Review Workspace。")
+                ui.render_page.clear()
+                if outcome.get("passed"):
+                    ui.flash(f"已保存至投标文件并重新核验：条款 {cur_res['clause_no']} 重审通过 (✓ Compliant)！")
+                else:
+                    ui.flash(
+                        f"已保存修改并重新核验：条款 {cur_res['clause_no']} 仍存在未消除的问题（{outcome.get('verdict')}）。",
+                        "warning",
+                    )
                 ui.go("workspace", ws_focus_requirement=cur_res["requirement_id"])
             except ServiceError as e:
                 st.error(str(e))
-
-        if b2.button(
-            "暂存草稿",
-            icon=":material/save:",
-            width="stretch",
-            disabled=signed,
-        ):
-            try:
-                service.apply_remediation_edit(
-                    cur_rem_id,
-                    cur_res["id"],
-                    ev_idx,
-                    modified_text,
-                    rem_note,
-                    ui.actor(),
-                    ui.role(),
-                    resolve=False,
-                )
-                ui.flash(f"条款 {cur_res['clause_no']} 原文修改草稿已暂存。")
-                st.rerun()
-            except ServiceError as e:
-                st.error(str(e))
-
-        if b3.button(
-            "返回审标",
-            icon=":material/arrow_back:",
-            width="stretch",
-        ):
-            ui.go("workspace", ws_focus_requirement=cur_res["requirement_id"])
-
-# ================================================================= Right: PDF Document Reference
-with cols[2]:
-    pdf_mode = st.segmented_control(
-        "PDF 预览源",
-        ["投标书原件 (BID)", "招标书原件 (TENDER)"],
-        default="投标书原件 (BID)",
-        key=f"rem_pdf_mode_{cur_rem_id}",
-        required=True,
-        label_visibility="collapsed",
-        width="stretch",
-    )
-    if pdf_mode == "招标书原件 (TENDER)":
-        t_doc = docs.get(cur_res["source_doc_id"])
-        t_page = cur_res["req_page"]
-        st.markdown(
-            f"<div class='tc-pane-title'><b>TENDER</b> <span class='tc-muted'>{html.escape(t_doc['label'] if t_doc else '')}</span></div>",
-            unsafe_allow_html=True,
-        )
-        ui.pdf_pane("rem_tender", t_doc, t_page, cur_res["req_text"])
-    else:
-        bid_doc = docs.get(rnd["bid_doc_id"])
-        if evidence and cur_ev:
-            ev_doc = bid_doc
-            if cur_ev.get("doc_path") and Path(cur_ev["doc_path"]).exists():
-                ev_doc = {
-                    "id": cur_ev.get("document_id") or (bid_doc["id"] if bid_doc else 0),
-                    "path": cur_ev["doc_path"],
-                    "label": cur_ev.get("doc_label") or (bid_doc["label"] if bid_doc else "Bid"),
-                    "pages": cur_ev.get("doc_pages") or (bid_doc["pages"] if bid_doc else 1),
-                }
-            st.markdown(
-                f"<div class='tc-pane-title'><b>BID</b> <span class='tc-muted'>{html.escape(ev_doc['label'] if ev_doc else '')}</span></div>",
-                unsafe_allow_html=True,
-            )
-            ui.pdf_pane(
-                "rem_bid",
-                ev_doc,
-                cur_ev["page"],
-                cur_ev.get("snippet", ""),
-                secondary_highlight=cur_ev.get("original_text") or cur_ev.get("rag_text") or cur_ev.get("snippet", ""),
-            )
-        else:
-            st.markdown(
-                f"<div class='tc-pane-title'><b>BID</b> <span class='tc-muted'>{html.escape(bid_doc['label'] if bid_doc else '')}</span></div>",
-                unsafe_allow_html=True,
-            )
-            ui.pdf_pane("rem_bid", bid_doc, 1)

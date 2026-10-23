@@ -30,10 +30,10 @@ used = [docs[d]["label"] for d in (rnd["doc_ids"] or []) if d in docs]
 top[0].markdown(f"**{project['name']}**  \n<span class='tc-muted'>{' · '.join(used)}</span>", unsafe_allow_html=True)
 summary = service.round_summary(round_id)
 np_total = summary.get("non_passing", summary["non_compliant"] + summary["insufficient"])
-np_rev = summary.get("non_passing_reviewed", 0)
+all_total = summary.get("applicable") or summary.get("total") or 1
 top[1].progress(
-    np_rev / np_total if np_total else 1.0,
-    text=f"Non-passing reviewed: {np_rev}/{np_total}",
+    np_total / all_total if all_total else 0.0,
+    text=f"Non-passing / All: {np_total}/{all_total}",
 )
 signed = bool(rnd["signed_at"])
 if signed:
@@ -42,28 +42,49 @@ if signed:
 # ----------------------------------------------------------------- clause filters
 results = store.list_results(round_id)
 result_by_id = {r["id"]: r for r in results}
-FILTERS = ["All", NON_COMPLIANT, INSUFFICIENT, COMPLIANT, "Unreviewed", "In remediation", "Not applicable"]
+
+REASON_TAG_MAP = {
+    label: code for code, (label, _color) in real_backend.SUB_VERDICT_LABELS.items()
+}
+REASON_TAG_OPTIONS = list(REASON_TAG_MAP.keys())
+
+FILTERS = [
+    "All",
+    NON_COMPLIANT,
+    INSUFFICIENT,
+    COMPLIANT,
+    "Unreviewed",
+    "In remediation",
+]
 if st.session_state.get("ws_filter") not in FILTERS:
     st.session_state["ws_filter"] = "All"
 
-f1, f2, f3 = st.columns([2.2, 2.2, 2.2], vertical_alignment="bottom")
+f1, f2, f3, f4 = st.columns([1.8, 2.0, 1.8, 1.6], vertical_alignment="bottom")
 flt = f1.selectbox("Verdict / Status", FILTERS, key="ws_filter")
-cats = f2.multiselect("Category", config.CATEGORIES, key="ws_cats", placeholder="All categories")
-search = f3.text_input("Search", key="ws_search", placeholder="Clause No. (e.g. T0056)")
+reason_tags = f2.multiselect(
+    "Result (Reason Tag)",
+    REASON_TAG_OPTIONS,
+    key="ws_reason_tags",
+    placeholder="All results",
+)
+cats = f3.multiselect("Category", config.CATEGORIES, key="ws_cats", placeholder="All categories")
+search = f4.text_input("Search", key="ws_search", placeholder="Clause No. (e.g. T0056)")
 
 
 def _match(r):
-    if flt == "Not applicable":
-        if r["applicable"]:
-            return False
-    elif not r["applicable"] and flt != "All":
+    if not r["applicable"] and flt != "All":
         return False
+    r_sub = (r.get("chain") or {}).get("sub_verdict")
     if flt in (NON_COMPLIANT, INSUFFICIENT, COMPLIANT) and r["verdict"] != flt:
         return False
     if flt == "Unreviewed" and r["human_status"] != UNREVIEWED:
         return False
     if flt == "In remediation" and r["human_status"] not in (TO_REMEDIATE, TO_REINSPECT):
         return False
+    if reason_tags:
+        allowed_codes = {REASON_TAG_MAP[t] for t in reason_tags if t in REASON_TAG_MAP}
+        if r_sub not in allowed_codes:
+            return False
     if cats and r["category"] not in cats:
         return False
     q = search.strip().lower()
@@ -122,7 +143,7 @@ with cols[0]:
             selected = r["id"] == current_id
             meta = f"{r['category']} · {status}"
             st.button(
-                f"{mark} **{r['clause_no']}** {r['req_text'][:44]}…  \n{meta if selected else f':gray[{meta}]'}",
+                f"{mark} **{r['clause_no']}** {r['req_text']}  \n{meta if selected else f':gray[{meta}]'}",
                 key=f"nav_{r['id']}", width="stretch", on_click=_select, args=(r["id"],),
                 type="primary" if selected else "secondary",
             )
@@ -285,7 +306,7 @@ with st.container(border=True):
         st.session_state[f"ws_rag_sel_{current_id}"] = active_ev_idx
 
         rag_sel_idx = st.segmented_control(
-            "Bid Response (RAG 候选段落)",
+            "Bid content (RAG 候选段落)",
             list(range(len(evidence))),
             key=f"ws_rag_sel_{current_id}",
             required=True,
@@ -296,7 +317,16 @@ with st.container(border=True):
             wrap=False,
         )
         sel_ev = evidence[rag_sel_idx if rag_sel_idx is not None else active_ev_idx]
-        rag_body = (sel_ev.get("rag_text") or sel_ev.get("snippet") or "").strip()
+        saved_page_edit = real_backend.get_bid_page_edit(
+            sel_ev.get("doc_path") or (bid_doc["path"] if bid_doc else ""),
+            int(sel_ev.get("page") or 1),
+        )
+        rag_body = (
+            (saved_page_edit.get("modified_text") if saved_page_edit else None)
+            or sel_ev.get("rag_text")
+            or sel_ev.get("snippet")
+            or ""
+        ).strip()
         quote_span = (sel_ev.get("snippet") or "").strip()
         escaped_body = html.escape(rag_body)
         if quote_span and len(quote_span) < len(rag_body) and html.escape(quote_span) in escaped_body:
@@ -304,18 +334,21 @@ with st.container(border=True):
             escaped_body = escaped_body.replace(
                 escaped_quote, f"<mark class='tc-quote'>{escaped_quote}</mark>", 1
             )
+        escaped_body = escaped_body.replace("\r\n", "\n").replace("\n", "<br/>")
         meta_line = (
             f"{html.escape(str(sel_ev.get('doc_label') or 'Bid'))} · "
             f"p.{sel_ev['page']} · {html.escape(str(sel_ev.get('role') or ''))}"
         )
         st.markdown(
-            f"<div class='tc-bid'><mark class='tc-tag'>Bid Response</mark> "
+            f"<div class='tc-bid' style='min-height: 160px; max-height: 360px; overflow-y: auto;'>"
+            f"<mark class='tc-tag'>Bid content</mark> "
             f"<span class='tc-muted'>{meta_line}</span><br/>{escaped_body}</div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
-            "<div class='tc-bid'><mark class='tc-tag'>Bid Response</mark> "
+            "<div class='tc-bid' style='min-height: 160px; max-height: 360px; overflow-y: auto;'>"
+            "<mark class='tc-tag'>Bid content</mark> "
             "<span class='tc-muted'>未在投标书中检索到对应候选段落 (No RAG evidence retrieved)</span></div>",
             unsafe_allow_html=True,
         )
@@ -328,8 +361,6 @@ with st.container(border=True):
         st.markdown(f"{res['explanation']}")
     if not res["applicable"]:
         st.caption(f"Not applicable: {res['na_reason']}")
-    if res["note"]:
-        st.caption(f"Reviewer note: {res['note']}")
 
     # 5. Reasoning chain
     chain = res["chain"] or {}
@@ -373,9 +404,8 @@ with st.container(border=True):
         st.caption("Retrieval scores describe search relevance only; they are not a compliance confidence.")
 
     # ------------------------------------------------------------- actions
-    note = st.text_input("Reviewer note", key=f"ws_note_{current_id}", placeholder="Optional note for the record",
-                         disabled=signed)
-    a1, a2, a3, a4 = st.columns(4)
+    note = ""
+    a1, a2 = st.columns(2)
 
     def _run(fn, *args, success=""):
         try:
@@ -410,24 +440,6 @@ with st.container(border=True):
             ui.go("remediation", rem_focus_id=rem_id, rem_focus_req=res["requirement_id"])
         except ServiceError as e:
             st.error(str(e))
-
-    with a3.popover("Add evidence", icon=":material/add_link:", width="stretch", disabled=signed):
-        max_pg = (bid_doc["pages"] if bid_doc and bid_doc.get("pages") else 2000)
-        pg = st.number_input("Bid page", min_value=1, max_value=max_pg, value=1,
-                             key=f"ws_addev_page_{current_id}")
-        ev_note = st.text_input("What does this page show?", key=f"ws_addev_note_{current_id}")
-        if st.button("Add", key=f"ws_addev_btn_{current_id}"):
-            _run(service.add_evidence, current_id, pg, ev_note, ui.actor(), ui.role(), ui.take_elapsed(),
-                 success="Evidence added.")
-            st.rerun()
-
-    with a4.popover("Not applicable", icon=":material/block:", width="stretch",
-                    disabled=signed or not res["applicable"]):
-        na = st.text_input("Reason (required)", key=f"ws_na_{current_id}")
-        if st.button("Mark not applicable", key=f"ws_na_{current_id}_btn"):
-            _run(service.mark_not_applicable, current_id, na, ui.actor(), ui.role(), ui.take_elapsed(),
-                 success="Marked not applicable.")
-            st.rerun()
 
     history = store.list_actions(pid, res["requirement_id"])
     if history:

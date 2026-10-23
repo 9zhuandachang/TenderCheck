@@ -51,12 +51,12 @@ CSS = """
 .st-key-ws_nav button p {text-align: left;}
 table.tc-cmp {width: 100%; border-collapse: collapse; background: #ffffff; font-size: 0.95rem;}
 table.tc-cmp th {text-align: left; color: #5b6472; font-weight: 600; border-bottom: 2px solid #d9dde3; padding: 6px 10px;}
-table.tc-cmp td {border-bottom: 1px solid #eceff3; padding: 8px 10px; font-variant-numeric: tabular-nums;}
+table.tc-cmp td {border-bottom: 1px solid #eceff3; padding: 8px 10px; font-variant-numeric: tabular-nums; word-break: break-word; white-space: normal; vertical-align: top;}
 div[data-testid="stMetric"] {background: #ffffff; border: 1px solid #e3e6eb; border-radius: 8px; padding: 10px 14px;}
 .tc-muted {color: #5b6472; font-size: 0.85rem;}
-.tc-req {background: #fff8db; border: 1px solid #f5d061; border-left: 5px solid #d97706; padding: 10px 14px; border-radius: 6px; margin: 6px 0 10px 0; font-weight: 500; color: #1f2937;}
+.tc-req {background: #fff8db; border: 1px solid #f5d061; border-left: 5px solid #d97706; padding: 10px 14px; border-radius: 6px; margin: 6px 0 10px 0; font-weight: 500; color: #1f2937; word-break: break-word;}
 .tc-req mark {background: #fde047; padding: 1px 4px; border-radius: 3px; font-weight: 600;}
-.tc-bid {background: #f0f7ff; border: 1px solid #bfdbfe; border-left: 5px solid #2563eb; padding: 12px 16px; border-radius: 6px; margin: 4px 0 12px 0; color: #1e293b; line-height: 1.6; min-height: 140px; max-height: 420px; overflow-y: auto; white-space: pre-wrap;}
+.tc-bid {background: #f0f7ff; border: 1px solid #bfdbfe; border-left: 5px solid #2563eb; padding: 12px 16px; border-radius: 6px; margin: 4px 0 12px 0; color: #1e293b; line-height: 1.6; min-height: 160px; max-height: 360px; overflow-y: auto; word-break: break-word; white-space: normal;}
 .tc-bid mark.tc-tag {background: #dbeafe; color: #1d4ed8; padding: 1px 6px; border-radius: 3px; font-weight: 600;}
 .tc-bid mark.tc-quote {background: #fef08a; color: #1f2937; padding: 1px 3px; border-radius: 3px; font-weight: 600;}
 .tc-pdf {height: 640px; overflow: auto; border: 1px solid #d9dde3; border-radius: 6px; background: #ffffff;}
@@ -494,10 +494,41 @@ def render_page(
     mode: str = "tender",
     secondary_highlight: str = "",
 ) -> bytes:
+    from . import real_backend
+
     doc = fitz.open(path)
     try:
         idx = min(max(0, page_no - 1), max(0, len(doc) - 1))
         page = doc[idx]
+        if mode == "bid":
+            saved_edit = real_backend.get_bid_page_edit(path, page_no)
+            if saved_edit and saved_edit.get("modified_text"):
+                orig_lines = [ln.strip() for ln in (saved_edit.get("original_text") or "").splitlines() if ln.strip()]
+                mod_lines = [ln.strip() for ln in (saved_edit.get("modified_text") or "").splitlines() if ln.strip()]
+                orig_set = set(orig_lines)
+                mod_set = set(mod_lines)
+                removed_lines = [ln for ln in orig_lines if ln not in mod_set and len(ln) >= 6]
+                added_lines = [ln for ln in mod_lines if ln not in orig_set and len(ln) >= 6]
+                if removed_lines and added_lines:
+                    old_ln = removed_lines[0]
+                    new_ln = added_lines[0]
+                    hit_rects = page.search_for(old_ln[:24]) or page.search_for(old_ln[-12:])
+                    if hit_rects:
+                        u_rect = hit_rects[0]
+                        for r in hit_rects[1:]:
+                            u_rect |= r
+                        box = fitz.Rect(
+                            max(36, u_rect.x0 - 2),
+                            u_rect.y0 - 2,
+                            min(page.rect.width - 36, max(u_rect.x1 + 140, page.rect.width - 48)),
+                            u_rect.y1 + 18,
+                        )
+                        page.draw_rect(box, color=(0.13, 0.77, 0.37), fill=(0.94, 0.99, 0.95), width=1.0)
+                        page.insert_htmlbox(
+                            box,
+                            f"<div style='font-size:9.5pt;line-height:1.25;color:#14532d;font-weight:bold;'>"
+                            f"{html.escape(new_ln)}</div>",
+                        )
         if highlight or secondary_highlight:
             if mode == "tender":
                 # Highlight the entire involved original paragraph(s) in the Tender PDF
