@@ -252,64 +252,130 @@ with st.container(border=True):
         tags.append(f":gray-badge[Corrected · system said {res['original_verdict']}]")
     h1.markdown(f"#### {res['clause_no']} · {res['category']}")
     h2.markdown(" ".join(tags))
+
+    # 1. Yellow Tender Requirement box
     st.markdown(
         f"<div class='tc-req'><mark>Tender Requirement</mark> &nbsp;{html.escape(str(res['req_text']))}</div>",
         unsafe_allow_html=True,
     )
 
-    left, right = st.columns([3, 2], gap="medium")
-    with left:
-        ui.comparison_table(res["fields"] or [])
-        st.markdown(f"{res['explanation'] or ''}")
-        if not res["applicable"]:
-            st.caption(f"Not applicable: {res['na_reason']}")
-        if res["note"]:
-            st.caption(f"Reviewer note: {res['note']}")
-    with right:
-        with st.expander("Reasoning chain", icon=":material/account_tree:"):
-            chain = res["chain"] or {}
-            if "classify" in chain:
-                c = chain["classify"]
-                ctype_info = f" · `{c['clause_type']}`" if c.get("clause_type") else ""
-                score = f" · keyword share {c['score']:.2f}" if c.get("score") is not None else ""
-                st.markdown(f"**1 · Classify** → {c['category']}{ctype_info}{score}  \n:gray[{c['method']}]")
-            if "retrieve" in chain:
-                c = chain["retrieve"]
-                hits_list = c.get("hits") or []
-                hits = (
-                    ", ".join(
-                        f"{h.get('evidence_id', '') + ' ' if h.get('evidence_id') else ''}p.{h['page']} ({h['score']:.2f})"
-                        for h in hits_list
-                    )
-                    or "no pages"
+    # 2. Selectable Bid Response RAG passages (synced with the BID PDF viewer above)
+    if evidence:
+        def _sync_ev_from_rag() -> None:
+            st.session_state[ev_key] = st.session_state[f"ws_rag_sel_{current_id}"]
+
+        def _fmt_rag_option(i: int) -> str:
+            ev_item = evidence[i]
+            eid = ev_item.get("evidence_id") or f"#{i + 1}"
+            pg = ev_item["page"]
+            role_txt = str(ev_item.get("role") or "")
+            if "冲突" in role_txt:
+                prefix = "⚡ "
+            elif "★" in role_txt or "核验" in role_txt or "锚点" in role_txt:
+                prefix = "★ "
+            elif "✎" in role_txt:
+                prefix = "✎ "
+            else:
+                prefix = ""
+            return f"{prefix}{eid} · p.{pg}"
+
+        active_ev_idx = int(st.session_state.get(ev_key) or 0)
+        if active_ev_idx >= len(evidence):
+            active_ev_idx = 0
+        st.session_state[f"ws_rag_sel_{current_id}"] = active_ev_idx
+
+        rag_sel_idx = st.segmented_control(
+            "Bid Response (RAG 候选段落)",
+            list(range(len(evidence))),
+            key=f"ws_rag_sel_{current_id}",
+            required=True,
+            format_func=_fmt_rag_option,
+            on_change=_sync_ev_from_rag,
+            label_visibility="collapsed",
+            width="stretch",
+            wrap=False,
+        )
+        sel_ev = evidence[rag_sel_idx if rag_sel_idx is not None else active_ev_idx]
+        rag_body = (sel_ev.get("rag_text") or sel_ev.get("snippet") or "").strip()
+        quote_span = (sel_ev.get("snippet") or "").strip()
+        escaped_body = html.escape(rag_body)
+        if quote_span and len(quote_span) < len(rag_body) and html.escape(quote_span) in escaped_body:
+            escaped_quote = html.escape(quote_span)
+            escaped_body = escaped_body.replace(
+                escaped_quote, f"<mark class='tc-quote'>{escaped_quote}</mark>", 1
+            )
+        meta_line = (
+            f"{html.escape(str(sel_ev.get('doc_label') or 'Bid'))} · "
+            f"p.{sel_ev['page']} · {html.escape(str(sel_ev.get('role') or ''))}"
+        )
+        st.markdown(
+            f"<div class='tc-bid'><mark class='tc-tag'>Bid Response</mark> "
+            f"<span class='tc-muted'>{meta_line}</span><br/>{escaped_body}</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            "<div class='tc-bid'><mark class='tc-tag'>Bid Response</mark> "
+            "<span class='tc-muted'>未在投标书中检索到对应候选段落 (No RAG evidence retrieved)</span></div>",
+            unsafe_allow_html=True,
+        )
+
+    # 3. Field structured comparison table
+    ui.comparison_table(res["fields"] or [])
+
+    # 4. Verdict detail (e.g., 【⚠ Conflicting Evidence】 / 【🌐 External Web Check】 + explanation)
+    if res.get("explanation"):
+        st.markdown(f"{res['explanation']}")
+    if not res["applicable"]:
+        st.caption(f"Not applicable: {res['na_reason']}")
+    if res["note"]:
+        st.caption(f"Reviewer note: {res['note']}")
+
+    # 5. Reasoning chain
+    chain = res["chain"] or {}
+    with st.expander("Reasoning chain", icon=":material/account_tree:"):
+        if "classify" in chain:
+            c = chain["classify"]
+            ctype_info = f" · `{c['clause_type']}`" if c.get("clause_type") else ""
+            score = f" · keyword share {c['score']:.2f}" if c.get("score") is not None else ""
+            st.markdown(f"**1 · Classify** → {c['category']}{ctype_info}{score}  \n:gray[{c['method']}]")
+        if "retrieve" in chain:
+            c = chain["retrieve"]
+            hits_list = c.get("hits") or []
+            hits = (
+                ", ".join(
+                    f"{h.get('evidence_id', '') + ' ' if h.get('evidence_id') else ''}p.{h['page']} ({h['score']:.2f})"
+                    for h in hits_list
                 )
-                kw = ", ".join(c.get("keywords") or [])
-                kw_str = f"; slots: {kw}" if kw else ""
-                st.markdown(f"**2 · Retrieve** → {hits}  \n:gray[{c['method']}{kw_str}]")
-            if "extract" in chain:
-                c = chain["extract"]
-                act = c.get("actual") or {}
-                if act.get("value") is not None:
-                    bid_val = engine.format_value(act["value"], act.get("unit") or "")
-                elif act.get("text"):
-                    bid_val = str(act["text"])[:60]
-                elif "matched" in act or "terms" in act:
-                    bid_val = f"{act.get('matched', 0)}/{act.get('terms', 0)} terms matched"
-                else:
-                    bid_val = "structured slots extracted"
-                if act.get("page"):
-                    bid_val += f" (p.{act['page']})"
-                st.markdown(f"**3 · Extract** → required `{engine.describe_constraint(c.get('required') or {})}`; "
-                            f"bid `{bid_val}`  \n:gray[{c['method']}]")
-            if "rule" in chain:
-                c = chain["rule"]
-                st.markdown(f"**4 · Rule** `{c['rule_id']}` ({c['rule_version']})  \n`{c['trace']}`")
-            st.caption("Retrieval scores describe search relevance only; they are not a compliance confidence.")
+                or "no pages"
+            )
+            kw = ", ".join(c.get("keywords") or [])
+            kw_str = f"; slots: {kw}" if kw else ""
+            st.markdown(f"**2 · Retrieve** → {hits}  \n:gray[{c['method']}{kw_str}]")
+        if "extract" in chain:
+            c = chain["extract"]
+            act = c.get("actual") or {}
+            if act.get("value") is not None:
+                bid_val = engine.format_value(act["value"], act.get("unit") or "")
+            elif act.get("text"):
+                bid_val = str(act["text"])[:60]
+            elif "matched" in act or "terms" in act:
+                bid_val = f"{act.get('matched', 0)}/{act.get('terms', 0)} terms matched"
+            else:
+                bid_val = "structured slots extracted"
+            if act.get("page"):
+                bid_val += f" (p.{act['page']})"
+            st.markdown(f"**3 · Extract** → required `{engine.describe_constraint(c.get('required') or {})}`; "
+                        f"bid `{bid_val}`  \n:gray[{c['method']}]")
+        if "rule" in chain:
+            c = chain["rule"]
+            st.markdown(f"**4 · Rule** `{c['rule_id']}` ({c['rule_version']})  \n`{c['trace']}`")
+        st.caption("Retrieval scores describe search relevance only; they are not a compliance confidence.")
 
     # ------------------------------------------------------------- actions
     note = st.text_input("Reviewer note", key=f"ws_note_{current_id}", placeholder="Optional note for the record",
                          disabled=signed)
-    a1, a2, a3, a4, a5 = st.columns(5)
+    a1, a2, a3, a4 = st.columns(4)
 
     def _run(fn, *args, success=""):
         try:
@@ -337,41 +403,13 @@ with st.container(border=True):
     a1.button("Confirm", type="primary", icon=":material/check:", width="stretch", on_click=_confirm,
               disabled=signed or not res["applicable"])
 
-    @st.dialog("Correct extracted values")
-    def correct_dialog():
-        c = dict(res["constraint"] or {})
-        if c.get("type") != "numeric":
-            st.info("This clause is checked for presence/qualification, not a single numeric value. Use **Add evidence** "
-                    "to point at the right bid page, then confirm with a note.")
-            return
-        st.caption("The rule is re-run with the corrected values. The original values stay in the audit log.")
-        actual_txt = (res["fields"] or [{}])[0].get("actual", "")
-        x1, x2, x3 = st.columns(3)
-        ops = ["<=", ">=", "=="]
-        cur_op = c.get("operator") if c.get("operator") in ops else "<="
-        op = x1.selectbox("Operator", ops, index=ops.index(cur_op), format_func=lambda o: engine.OP_SYMBOL[o])
-        req_v = x2.number_input("Required value", value=float(c.get("value") or 0.0))
-        unit = x3.text_input("Unit", c.get("unit") or "")
-        actual_hint = (res["chain"] or {}).get("extract", {}).get("actual", {})
-        y1, y2 = st.columns(2)
-        act_v = y1.text_input("Bid value", "" if actual_hint.get("value") is None else f"{actual_hint['value']:g}",
-                              help=f"Extracted: {actual_txt}")
-        act_u = y2.text_input("Bid unit", actual_hint.get("unit") or c.get("unit") or "")
-        reason = st.text_area("Reason for correction")
-        if st.button("Save and re-run rule", type="primary"):
-            try:
-                value = float(act_v.replace(",", "")) if act_v.strip() else None
-                service.correct_result(current_id, {**c, "operator": op, "value": req_v, "unit": unit}, value,
-                                       act_u, reason, ui.actor(), ui.role(), ui.take_elapsed())
-                ui.flash("Correction saved and rule re-run.")
-                st.rerun()
-            except ValueError:
-                st.error("Bid value must be a number.")
-            except ServiceError as e:
-                st.error(str(e))
-
-    if a2.button("Correct", icon=":material/edit:", width="stretch", disabled=signed):
-        correct_dialog()
+    if a2.button("To remediation", icon=":material/build:", width="stretch",
+                 disabled=signed or res["verdict"] == COMPLIANT or not res["applicable"]):
+        try:
+            rem_id = service.send_to_remediation(current_id, note, ui.actor(), ui.role(), ui.take_elapsed())
+            ui.go("remediation", rem_focus_id=rem_id, rem_focus_req=res["requirement_id"])
+        except ServiceError as e:
+            st.error(str(e))
 
     with a3.popover("Add evidence", icon=":material/add_link:", width="stretch", disabled=signed):
         max_pg = (bid_doc["pages"] if bid_doc and bid_doc.get("pages") else 2000)
@@ -390,11 +428,6 @@ with st.container(border=True):
             _run(service.mark_not_applicable, current_id, na, ui.actor(), ui.role(), ui.take_elapsed(),
                  success="Marked not applicable.")
             st.rerun()
-
-    a5.button("To remediation", icon=":material/build:", width="stretch",
-              disabled=signed or res["verdict"] == COMPLIANT or not res["applicable"],
-              on_click=lambda: _run(service.send_to_remediation, current_id, note, ui.actor(), ui.role(),
-                                    ui.take_elapsed(), success=f"Clause {res['clause_no']} sent to remediation."))
 
     history = store.list_actions(pid, res["requirement_id"])
     if history:

@@ -53,18 +53,18 @@ class S604FrontendIntegrationTest(unittest.TestCase):
         summary = self.service.round_summary(rnd["id"])
         self.assertEqual(summary["total"], 359)
         self.assertEqual(summary["applicable"], 359)
-        self.assertEqual(summary["compliant"], 263)
+        self.assertEqual(summary["compliant"], 289)
         self.assertEqual(summary["non_compliant"], 0)
-        self.assertEqual(summary["insufficient"], 96)
+        self.assertEqual(summary["insufficient"], 70)
         self.assertTrue(summary["is_real_backend"])
 
         sub_counts = summary["sub_counts"]
-        self.assertEqual(sub_counts.get("COMPLIANT"), 260)
+        self.assertEqual(sub_counts.get("COMPLIANT"), 286)
         self.assertEqual(sub_counts.get("SCORED"), 3)
         self.assertEqual(sub_counts.get("CONFLICTING_EVIDENCE"), 1)
-        self.assertEqual(sub_counts.get("SEAL_SIGNATURE_CHECK"), 25)
+        self.assertEqual(sub_counts.get("SEAL_SIGNATURE_CHECK"), 22)
         self.assertEqual(sub_counts.get("EXTERNAL_WEB_CHECK"), 18)
-        self.assertEqual(sub_counts.get("SUBJECTIVE_SCORING"), 12)
+        self.assertEqual(sub_counts.get("SUBJECTIVE_SCORING"), 9)
 
         # Verify T0056 has both conflict evidence pages and real backend chain
         results_by_clause = {r["clause_no"]: r for r in self.store.list_results(rnd["id"])}

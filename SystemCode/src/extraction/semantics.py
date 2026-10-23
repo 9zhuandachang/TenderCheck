@@ -163,7 +163,7 @@ def has_document_body(quote, requirement=''):
     text = re.sub(r'\s+', '', normalized(quote))
     if re.search(r'_{2,}|某某|XXX', text, re.I) or ('□' in text and not re.search(r'[\uf052☑√✓]', text)):
         return False
-    if '投标函' in requirement and not any(w in requirement for w in ('保证金', '附录', '清单', '一致', '单位章', '公章', '签字', '盖章')):
+    if '投标函' in requirement and not any(w in requirement for w in ('保证金', '附录', '清单', '一致', '单位章', '公章', '签字', '盖章', '基本账户', '开户行', '账号')):
         offer = re.search(r'(?:愿意以|愿以).*(?:投标总价|投标总报价|投标报价)', text)
         letter = '投标函' in text and '我方已仔细研究' in text
         priced = '含报价' in requirement and '不含报价' not in requirement

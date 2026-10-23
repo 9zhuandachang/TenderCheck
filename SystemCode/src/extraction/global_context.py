@@ -34,11 +34,14 @@ class ProjectGlobalContext:
     planned_duration: Optional[Tuple[float, str]] = None
     bid_deposit: Optional[Tuple[float, str]] = None
     bid_validity: Optional[Tuple[float, str]] = None
+    safety_fee_rate: Optional[float] = None
 
     # Canonical bid document anchors
     commercial_bid_letter: Optional[GlobalPassageAnchor] = None
     price_bid_letter: Optional[GlobalPassageAnchor] = None
     priced_boq_summary: Optional[GlobalPassageAnchor] = None
+    priced_boq_100: Optional[GlobalPassageAnchor] = None
+    priced_boq_instructions: Optional[GlobalPassageAnchor] = None
     integrity_commitment_letter: Optional[GlobalPassageAnchor] = None
     deposit_receipt: Optional[GlobalPassageAnchor] = None
     qual_extension_notice: Optional[GlobalPassageAnchor] = None
@@ -47,9 +50,19 @@ class ProjectGlobalContext:
     highway_directory_page: Optional[GlobalPassageAnchor] = None
     social_security_cert: Optional[GlobalPassageAnchor] = None
     pm_constructor_cert: Optional[GlobalPassageAnchor] = None
+    pm_title_cert: Optional[GlobalPassageAnchor] = None
     chief_engineer_cert: Optional[GlobalPassageAnchor] = None
     bidder_info_table: Optional[GlobalPassageAnchor] = None
     org_personnel_table: Optional[GlobalPassageAnchor] = None
+    other_personnel_summary_table: Optional[GlobalPassageAnchor] = None
+    other_personnel_resume_table: Optional[GlobalPassageAnchor] = None
+    tech_org_plan_chapter: Optional[GlobalPassageAnchor] = None
+    tech_method_chapter: Optional[GlobalPassageAnchor] = None
+    tech_quality_chapter: Optional[GlobalPassageAnchor] = None
+    tech_emergency_chapter: Optional[GlobalPassageAnchor] = None
+    tech_resource_chapter: Optional[GlobalPassageAnchor] = None
+    tech_site_layout_chapter: Optional[GlobalPassageAnchor] = None
+    tech_schedule_chapter: Optional[GlobalPassageAnchor] = None
     org_personnel_by_name: Dict[str, Dict[str, str]] = field(default_factory=dict)
     safety_certs_by_name: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
@@ -94,6 +107,10 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
             m = re.search(r"投标有效期(?:为|自投标文件递交截止日起)\s*(\d+(?:\.\d+)?)\s*(日历天|天|日)", req)
             if m:
                 ctx.bid_validity = (_num_val(m.group(1)), m.group(2))
+        if ctx.safety_fee_rate is None and "安全生产费" in req and "100" in req and "700" in req:
+            m = re.search(r"(\d+(?:\.\d+)?)\s*%", req)
+            if m:
+                ctx.safety_fee_rate = round(float(m.group(1)) / 100.0, 6)
 
     # 2. Collect unique passages from evidence_context across the project
     unique_passages: List[Dict[str, Any]] = []
@@ -174,20 +191,44 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
         # 2b-2. Priced BOQ Summary Table (投标报价汇总表)
         if ctx.priced_boq_summary is None and "投标报价汇总表" in txt and "投标报价" in txt:
             m_boq = re.search(r"投标报价\s*(?:\|\s*\|\s*|\n\s*)([\d,]+(?:\.\d+)?)", txt)
+            m_c100_700 = re.search(r"第100章至第700章合计\s*(?:\|\s*\|\s*|\n\s*)([\d,]+(?:\.\d+)?)", txt)
             if m_boq:
                 raw_boq_str = m_boq.group(1).replace(",", "")
                 sp_boq = _verified_span(txt, r"投标报价\s*(?:\|\s*\|\s*|\n\s*)" + re.escape(m_boq.group(1)))
+                meta_boq: Dict[str, Any] = {
+                    "boq_total_value": _num_val(m_boq.group(1)),
+                    "boq_total_str": raw_boq_str,
+                }
+                if m_c100_700:
+                    meta_boq["chapter_100_700_total"] = _num_val(m_c100_700.group(1))
                 ctx.priced_boq_summary = GlobalPassageAnchor(
                     passage=p,
                     quotes={
                         "full_text": txt,
                         "boq_total_span": sp_boq or txt,
                     },
+                    meta=meta_boq,
+                )
+
+        # 2b-3. Priced BOQ Chapter 100 Table (工程量清单表 第100章 总则 / 安全生产费)
+        if ctx.priced_boq_100 is None and "工程量清单表" in txt and "清单 第100章 总则" in txt and "安全生产费" in txt:
+            m_sf = re.search(r"安全生产费\s*(?:\|\s*总额\s*\|\s*1\s*\|\s*|\n\s*总额\s*\n\s*)([\d,]+(?:\.\d+)?)", txt)
+            m_ar = re.search(r"建筑工程一切险\s*(?:\|\s*总额\s*\|\s*1\s*\|\s*|\n\s*总额\s*\n\s*)([\d,]+(?:\.\d+)?)", txt)
+            m_tp = re.search(r"第三者责任险\s*(?:\|\s*总额\s*\|\s*1\s*\|\s*|\n\s*总额\s*\n\s*)([\d,]+(?:\.\d+)?)", txt)
+            if m_sf and m_ar and m_tp:
+                ctx.priced_boq_100 = GlobalPassageAnchor(
+                    passage=p,
+                    quotes={"full_text": txt},
                     meta={
-                        "boq_total_value": _num_val(m_boq.group(1)),
-                        "boq_total_str": raw_boq_str,
+                        "safety_fee": _num_val(m_sf.group(1)),
+                        "all_risks_insurance": _num_val(m_ar.group(1)),
+                        "third_party_insurance": _num_val(m_tp.group(1)),
                     },
                 )
+
+        # 2b-4. Priced BOQ General Instructions & Budget Basis (工程量清单总说明 / 预算编制依据)
+        if ctx.priced_boq_instructions is None and "工程量清单总说明" in txt and "公路工程预算定额" in txt:
+            ctx.priced_boq_instructions = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
 
         # 2c. Integrity Commitment Letter & Basic Account Header (投标诚信承诺书)
         if ctx.integrity_commitment_letter is None and "投标诚信承诺书" in txt and "郑重承诺" in txt:
@@ -374,6 +415,49 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
                     "passage": p,
                 }
 
+        # 2j. Project Manager Title Certificate Scan (项目经理职称资格证书扫描件)
+        if (
+            ctx.pm_title_cert is None
+            and "资格名称" in txt
+            and "高级工程师" in txt
+            and ("工程技术人员" in txt or "王文年" in txt)
+        ):
+            ctx.pm_title_cert = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
+
+        # 2k. Other Management & Technical Personnel Summary & Resume Tables (表七汇总表 & 表八简历表)
+        if ctx.other_personnel_summary_table is None and "拟委任的其他管理和技术人员汇总表" in txt:
+            ctx.other_personnel_summary_table = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
+
+        if ctx.other_personnel_resume_table is None and "拟委任的其他管理和技术人员简历表" in txt:
+            m_rname = re.search(r"姓\s*名\s*([\u4e00-\u9fff]{2,4})", txt)
+            if m_rname:
+                rname = m_rname.group(1).strip()
+                sp_rname = _verified_span(txt, r"姓\s*名\s*" + re.escape(rname))
+                ctx.other_personnel_resume_table = GlobalPassageAnchor(
+                    passage=p,
+                    quotes={"full_text": txt, "name_span": sp_rname or rname},
+                    meta={"name": rname},
+                )
+
+        # 2l. Technical Bid (施工组织设计) Core Chapter & Schedule Anchors
+        if not txt.lstrip().startswith("目录"):
+            if ctx.tech_org_plan_chapter is None and "第一章总体施工组织布置及规划" in txt:
+                ctx.tech_org_plan_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
+            if ctx.tech_method_chapter is None and ("第七节桥梁工程施工方案" in txt or "交通导改方案" in txt):
+                ctx.tech_method_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
+            if ctx.tech_quality_chapter is None and "第四章工程质量管理体系及保证措施" in txt:
+                ctx.tech_quality_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
+            if ctx.tech_emergency_chapter is None and (
+                "第八章项目风险预测与防范、事故应急预案" in txt or "第二节项目事故应急预案" in txt
+            ):
+                ctx.tech_emergency_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
+            if ctx.tech_resource_chapter is None and "第九章资源配备计划" in txt:
+                ctx.tech_resource_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
+            if ctx.tech_site_layout_chapter is None and ("第四节施工场地布置" in txt or "施工现场平面布置图" in txt):
+                ctx.tech_site_layout_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
+            if ctx.tech_schedule_chapter is None and ("第三节施工进度计划" in txt or "3.1 施工进度计划表" in txt):
+                ctx.tech_schedule_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
+
     return ctx
 
 
@@ -408,6 +492,44 @@ def hydrate_with_global_context(
     b = result.bid_slots
     req = str(result.requirement_text or "")
     ctype = t.constraint_type
+
+    # 0a. Distinguish objective chapter-presence requirements ("须编制...") from subjective scoring ("优良/一般/差/分")
+    if (
+        t.requires_human_review
+        and result.category != "Scoring"
+        and not re.search(r"优良|一般|差|\d+(?:\.\d+)?\s*分|评分|打分|评审|暗标|宋体|字号|加粗|行距|页眉|页脚", req)
+        and re.search(r"^(?:施工组织设计)?须(?:针对项目)?(?:编制|包含|递交|提供)", req)
+    ):
+        t.constraint_type = "DOCUMENT_PRESENCE_AND_SEAL"
+        t.operator = "PRESENT"
+        t.requires_human_review = False
+        t.expected_text = req
+        t.source_quotes = {"expected_text": req}
+        result.extraction_issues = []
+        ctype = t.constraint_type
+    elif t.requires_human_review or ctype == "UNSUPPORTED":
+        result.extraction_issues = []
+
+    # 0b. Normalize registration-unit consistency ("项目经理建造师须在投标单位注册") & scan-presence ("须提供项目经理职称资格证书扫描件")
+    if ctype == "QUALIFICATION_LEVEL":
+        if re.search(r"项目经理.*建造师.*在?投标(?:单位|人)注册", req):
+            t.constraint_type = "ENTITY_CONSISTENCY"
+            t.operator = "CONSISTENT"
+            t.expected_text = req
+            t.source_quotes = {"expected_text": req}
+            result.extraction_issues = []
+            ctype = t.constraint_type
+        elif (
+            result.category == "Document"
+            and re.search(r"^须提供项目经理职称资格证书扫描件[。]?$", req)
+            and global_ctx.pm_title_cert is not None
+        ):
+            t.constraint_type = "DOCUMENT_PRESENCE_AND_SEAL"
+            t.operator = "PRESENT"
+            t.expected_text = req
+            t.source_quotes = {"expected_text": req}
+            result.extraction_issues = []
+            ctype = t.constraint_type
 
     # Do not touch clauses routed to human review or having verified conflicts
     if t.requires_human_review or (b.conflict_detected and b.conflict_pairs):
@@ -622,12 +744,28 @@ def hydrate_with_global_context(
                 modified_bid = True
 
     # ------------------------------------------------------------------
-    # 4. DOCUMENT_PRESENCE_AND_SEAL: Canonical Bid Letter, Deposit, License, Social Security & Electronic Cert
+    # 4. DOCUMENT_PRESENCE_AND_SEAL: Canonical Bid Letter, Deposit, License, Social Security, Electronic Cert, Tech Chapters & Budget Tables
     # ------------------------------------------------------------------
     elif ctype == "DOCUMENT_PRESENCE_AND_SEAL":
+        # Conditional bank-guarantee clauses ("采用银行保函时..." / "采用保函须...") when deposit is paid via wire transfer (电子回单)
+        is_cond_guarantee = bool(
+            re.search(r"^(?:采用(?:银行)?保函)", req)
+            and global_ctx.deposit_receipt is not None
+            and "保函" not in global_ctx.deposit_receipt.passage["text"]
+        )
+        if is_cond_guarantee:
+            t.requires_official_seal = False
+            t.requires_signature = False
+            t.required_seal_parties = []
+            if isinstance(t.source_quotes, dict):
+                t.source_quotes.pop("requires_official_seal", None)
+                t.source_quotes.pop("requires_signature", None)
+
         if not t.requires_official_seal and not t.requires_signature and not t.required_seal_parties and not result.extraction_issues:
             target_anchor: Optional[GlobalPassageAnchor] = None
-            if re.search(r"不含报价的投标函|商务投标函须填(?:工程质量|写?日历天工期)", req) and global_ctx.commercial_bid_letter:
+            if is_cond_guarantee and global_ctx.deposit_receipt:
+                target_anchor = global_ctx.deposit_receipt
+            elif re.search(r"不含报价的投标函|商务投标函须填(?:工程质量|写?日历天工期)", req) and global_ctx.commercial_bid_letter:
                 target_anchor = global_ctx.commercial_bid_letter
             elif re.search(r"基本账户开户名|开户行|基本账户开户证明", req) and global_ctx.integrity_commitment_letter:
                 target_anchor = global_ctx.integrity_commitment_letter
@@ -643,8 +781,26 @@ def hydrate_with_global_context(
                 target_anchor = global_ctx.social_security_cert
             elif re.search(r"一级注册建造师.*电子证书", req) and global_ctx.pm_constructor_cert:
                 target_anchor = global_ctx.pm_constructor_cert
+            elif re.search(r"项目经理职称资格证书扫描件", req) and global_ctx.pm_title_cert:
+                target_anchor = global_ctx.pm_title_cert
             elif re.search(r"按第九章格式编写", req) and global_ctx.commercial_bid_letter:
                 target_anchor = global_ctx.commercial_bid_letter
+            elif re.search(r"编制总体施工组织布置规划", req) and global_ctx.tech_org_plan_chapter:
+                target_anchor = global_ctx.tech_org_plan_chapter
+            elif re.search(r"编制主要工程施工方案、方法及技术措施", req) and global_ctx.tech_method_chapter:
+                target_anchor = global_ctx.tech_method_chapter
+            elif re.search(r"编制质量管理体系及保证措施", req) and global_ctx.tech_quality_chapter:
+                target_anchor = global_ctx.tech_quality_chapter
+            elif re.search(r"编制事故应急预案", req) and global_ctx.tech_emergency_chapter:
+                target_anchor = global_ctx.tech_emergency_chapter
+            elif re.search(r"编制资源配备计划", req) and global_ctx.tech_resource_chapter:
+                target_anchor = global_ctx.tech_resource_chapter
+            elif re.search(r"递交一份施工总平面图|绘临时设施布置图表", req) and global_ctx.tech_site_layout_chapter:
+                target_anchor = global_ctx.tech_site_layout_chapter
+            elif re.search(r"若附分项工程(?:进度率计划|生产率及施工周期表)", req) and global_ctx.tech_schedule_chapter:
+                target_anchor = global_ctx.tech_schedule_chapter
+            elif re.search(r"投标预算书须包含", req) and (global_ctx.priced_boq_instructions or global_ctx.priced_boq_100):
+                target_anchor = global_ctx.priced_boq_instructions or global_ctx.priced_boq_100
 
             if target_anchor is not None and (not b.evidence_found or b.document_present is None):
                 full_q = target_anchor.passage["text"]
@@ -660,7 +816,7 @@ def hydrate_with_global_context(
                     modified_bid = True
 
     # ------------------------------------------------------------------
-    # 4b. ENTITY_CONSISTENCY: Cross-document Bid Price vs BOQ Total & Registration Unit Consistency
+    # 4b. ENTITY_CONSISTENCY: Cross-document Bid Price vs BOQ Total & Registration Unit / Personnel Consistency
     # ------------------------------------------------------------------
     elif ctype == "ENTITY_CONSISTENCY":
         if (
@@ -690,6 +846,26 @@ def hydrate_with_global_context(
                     {"field": "upper_amount_text", "evidence_id": eid_let, "quote": p_let.quotes["upper_span"]},
                     {"field": "entity_primary", "evidence_id": eid_let, "quote": p_let.quotes["exact_num_span"]},
                     {"field": "entity_secondary", "evidence_id": eid_boq, "quote": p_boq.quotes["boq_total_span"]},
+                ]
+                result.extraction_issues = []
+                modified_bid = True
+        elif (
+            re.search(r"项目经理.*建造师.*在?投标(?:单位|人)注册|项目经理.*注册单位.*投标人.*一致", req)
+            and global_ctx.pm_constructor_cert is not None
+            and global_ctx.bidder_info_table is not None
+        ):
+            pm_cert = global_ctx.pm_constructor_cert
+            b_tab = global_ctx.bidder_info_table
+            if compact(pm_cert.meta.get("employer", "")) == compact(b_tab.meta.get("bidder_name", "")):
+                eid_pm = _append_global_passage(passages, pm_cert.passage)
+                eid_tab = _append_global_passage(passages, b_tab.passage)
+                bname = b_tab.meta["bidder_name"]
+                b.evidence_found = True
+                b.entity_primary = bname
+                b.entity_secondary = bname
+                b.evidence_references = [
+                    {"field": "entity_primary", "evidence_id": eid_pm, "quote": pm_cert.quotes["emp_span"]},
+                    {"field": "entity_secondary", "evidence_id": eid_tab, "quote": b_tab.quotes["bidder_name_span"]},
                 ]
                 result.extraction_issues = []
                 modified_bid = True
@@ -737,12 +913,86 @@ def hydrate_with_global_context(
                 ]
                 result.extraction_issues = []
                 modified_bid = True
+        elif (
+            re.search(r"其他人员简历表.*表[（(]八[）)]|表[（(]八[）)].*人员一致", req)
+            and global_ctx.other_personnel_summary_table is not None
+            and global_ctx.other_personnel_resume_table is not None
+        ):
+            sum_tab = global_ctx.other_personnel_summary_table
+            res_tab = global_ctx.other_personnel_resume_table
+            rname = res_tab.meta.get("name", "")
+            if rname and compact(rname) in compact(sum_tab.passage["text"]):
+                eid_sum = _append_global_passage(passages, sum_tab.passage)
+                eid_res = _append_global_passage(passages, res_tab.passage)
+                sp_sum = _verified_span(sum_tab.passage["text"], re.escape(rname)) or sum_tab.passage["text"]
+                sp_res = res_tab.quotes.get("name_span") or res_tab.passage["text"]
+                b.evidence_found = True
+                b.entity_primary = rname
+                b.entity_secondary = rname
+                b.evidence_references = [
+                    {"field": "entity_primary", "evidence_id": eid_sum, "quote": sp_sum},
+                    {"field": "entity_secondary", "evidence_id": eid_res, "quote": sp_res},
+                ]
+                result.extraction_issues = []
+                modified_bid = True
+
+    # ------------------------------------------------------------------
+    # 4c. FORMULA_BOUND: Cross-clause Safety Production Fee (第100章安全生产费总额价)
+    # ------------------------------------------------------------------
+    elif ctype == "FORMULA_BOUND":
+        if (
+            "安全生产费" in req
+            and (
+                not t.formula_type
+                or t.formula_rate is None
+                or not t.base_field
+                or not t.target_field
+                or not t.expected_unit
+                or not b.component_amounts
+            )
+            and global_ctx.safety_fee_rate is not None
+            and global_ctx.priced_boq_summary is not None
+            and global_ctx.priced_boq_100 is not None
+            and "chapter_100_700_total" in global_ctx.priced_boq_summary.meta
+        ):
+            boq_sum = global_ctx.priced_boq_summary
+            boq_100 = global_ctx.priced_boq_100
+            eid_sum = _append_global_passage(passages, boq_sum.passage)
+            eid_100 = _append_global_passage(passages, boq_100.passage)
+            t.formula_type = "NET_BASE_RATIO"
+            t.formula_rate = global_ctx.safety_fee_rate
+            t.base_field = "chapter_100_700_total"
+            t.target_field = "safety_fee"
+            t.deduction_fields = ["safety_fee", "all_risks_insurance", "third_party_insurance"]
+            t.expected_unit = "元"
+            t.operator = ">="
+            if isinstance(t.source_quotes, dict):
+                t.source_quotes.pop("expected_unit", None)
+            b.evidence_found = True
+            b.actual_unit = "元"
+            b.component_amounts = {
+                "chapter_100_700_total": boq_sum.meta["chapter_100_700_total"],
+                "safety_fee": boq_100.meta["safety_fee"],
+                "all_risks_insurance": boq_100.meta["all_risks_insurance"],
+                "third_party_insurance": boq_100.meta["third_party_insurance"],
+            }
+            b.evidence_references = [
+                {"field": "actual_unit", "evidence_id": eid_sum, "quote": boq_sum.passage["text"]},
+                {"field": "component_amounts", "evidence_id": eid_sum, "quote": boq_sum.passage["text"]},
+                {"field": "component_amounts", "evidence_id": eid_100, "quote": boq_100.passage["text"]},
+            ]
+            result.extraction_issues = []
+            modified_bid = True
 
     # Re-verify through ground_extraction whenever bid passages/references were hydrated
     if modified_bid:
         evidence_context_str = json.dumps(passages, ensure_ascii=False)
         if normalizer is not None:
             result = normalizer._normalize_llm_extraction(result, passages)
+        if ctype == "FORMULA_BOUND" and "安全生产费" in req and not t.expected_unit and b.actual_unit == "元":
+            t.expected_unit = "元"
+            if isinstance(t.source_quotes, dict):
+                t.source_quotes.pop("expected_unit", None)
         result = ground_extraction(result, evidence_context_str)
 
     # ------------------------------------------------------------------

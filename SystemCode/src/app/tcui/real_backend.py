@@ -576,13 +576,24 @@ def format_backend_result(
             }
         )
 
+    issue_map = {
+        "Performance document lacks a link to the currently proposed project manager": "业绩证明文件未直接体现本次拟任项目经理姓名（或缺少业主变更批复），需人工核对人员业绩对应关系",
+        "Numeric comparison operator is not explicit or is ambiguous in the requirement": "招标条款中的数值比较关系（如±误差边界）非单一上下限，需结合综合单价说明人工复核",
+        "Conflict flag lacks a verified two-sided evidence pair": "疑似前后表述矛盾，需人工对照原件复核双方引文",
+        "Conflict requires an explicit subject, requirement aspect and common period": "跨段落矛盾核验需人工确认同一主体与时段",
+        "Conflict subject lacks an explicit current-role quotation": "跨段落矛盾核验需人工确认拟任岗位主体归属",
+        "Text fact is not stated in cited text: actual_text": "摘要表述非原文逐字子串，需对照原件核实",
+    }
+    translated_issues = [issue_map.get(i, i).rstrip("。") for i in (ext.extraction_issues or [])]
+
     explanation_parts = [f"【{sub_label}】"]
     if rule_res.awarded_score is not None:
         explanation_parts.append(f"量化得分：{rule_res.awarded_score:g} 分。")
-    if rule_res.explanation:
+    raw_issue_join = "; ".join(ext.extraction_issues or [])
+    if rule_res.explanation and rule_res.explanation != raw_issue_join:
         explanation_parts.append(rule_res.explanation)
-    if ext.extraction_issues:
-        explanation_parts.append("防幻觉/接地拦截：" + "；".join(ext.extraction_issues))
+    if translated_issues:
+        explanation_parts.append("核验提示：" + "；".join(dict.fromkeys(translated_issues)) + "。")
 
     t_dict = ext_dict.get("tender_slots") or {}
     ctype = t_dict.get("constraint_type") or "UNSUPPORTED"

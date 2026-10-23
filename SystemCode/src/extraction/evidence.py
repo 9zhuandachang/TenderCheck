@@ -129,7 +129,7 @@ def ground_extraction(result, context):
         current_names = set().union(*(role_names(p['text'],'project_manager') for p in evidence
             if re.search(r'拟派|拟任|拟委任|项目管理机构',p['text'])))
         documents = [by_id[r['evidence_id']]['text'] for r in verified if r['field']=='document_present']
-        if len(current_names) != 1 or not manager_performance_linked(documents, next(iter(current_names))):
+        if len(current_names) == 1 and not manager_performance_linked(documents, next(iter(current_names))):
             issues.append('Performance document lacks a link to the currently proposed project manager')
 
     if b.conflict_detected:

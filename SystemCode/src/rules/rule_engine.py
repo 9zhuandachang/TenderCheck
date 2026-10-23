@@ -945,7 +945,7 @@ class ComplianceRuleEngine:
                 # 1. Personnel Attribution & Role-Change Approval Chain (for personal performance)
                 if req_role in {"project_manager", "chief_engineer"}:
                     if not proposed_person:
-                        incomplete_projects.append(f"{pname}:缺少当前拟任{req_role}姓名")
+                        incomplete_projects.append(f"{pname}:缺少当前拟任{'项目经理' if req_role == 'project_manager' else '项目总工'}姓名")
                         continue
                     perf_role = canonical_role(proj.get("performed_role", ""))
                     if not perf_role:

@@ -56,6 +56,9 @@ div[data-testid="stMetric"] {background: #ffffff; border: 1px solid #e3e6eb; bor
 .tc-muted {color: #5b6472; font-size: 0.85rem;}
 .tc-req {background: #fff8db; border: 1px solid #f5d061; border-left: 5px solid #d97706; padding: 10px 14px; border-radius: 6px; margin: 6px 0 10px 0; font-weight: 500; color: #1f2937;}
 .tc-req mark {background: #fde047; padding: 1px 4px; border-radius: 3px; font-weight: 600;}
+.tc-bid {background: #f0f7ff; border: 1px solid #bfdbfe; border-left: 5px solid #2563eb; padding: 12px 16px; border-radius: 6px; margin: 4px 0 12px 0; color: #1e293b; line-height: 1.6; min-height: 140px; max-height: 420px; overflow-y: auto; white-space: pre-wrap;}
+.tc-bid mark.tc-tag {background: #dbeafe; color: #1d4ed8; padding: 1px 6px; border-radius: 3px; font-weight: 600;}
+.tc-bid mark.tc-quote {background: #fef08a; color: #1f2937; padding: 1px 3px; border-radius: 3px; font-weight: 600;}
 .tc-pdf {height: 640px; overflow: auto; border: 1px solid #d9dde3; border-radius: 6px; background: #ffffff;}
 .tc-pdf img {display: block; margin: 0 auto;}
 .tc-pane-title {white-space: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; line-height: 1.5; padding-bottom: 2px;}
@@ -640,16 +643,16 @@ RESULT_COLOR = {COMPLIANT: "#1e7d3c", NON_COMPLIANT: "#b42318", INSUFFICIENT: "#
 
 
 def comparison_table(fields: List[Dict[str, Any]]) -> None:
-    """Requirement vs bid response, the primary explanation of a verdict."""
+    """Structured field & bid response summary table."""
     cells = "".join(
-        f"<tr><td>{html.escape(str(f['field']))}</td><td>{html.escape(str(f['required']))}</td>"
+        f"<tr><td>{html.escape(str(f['field']))}</td>"
         f"<td>{html.escape(str(f['actual']))}</td>"
         f"<td style='color:{RESULT_COLOR.get(f['result'], '#333')};font-weight:600'>"
         f"{verdict_icon(f['result'])} {html.escape(str(f['result']))}</td></tr>"
         for f in fields
     )
     st.markdown(
-        "<table class='tc-cmp'><thead><tr><th>Field</th><th>Tender requirement</th><th>Bid response</th>"
+        "<table class='tc-cmp'><thead><tr><th>Field</th><th>Bid response</th>"
         f"<th>Result</th></tr></thead><tbody>{cells}</tbody></table>",
         unsafe_allow_html=True,
     )

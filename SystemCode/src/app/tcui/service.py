@@ -655,6 +655,92 @@ def save_draft(rem_id: int, kb_refs: List[str], draft: str, target: str, actor: 
                      requirement_id=item["requirement_id"])
 
 
+def apply_remediation_edit(
+    rem_id: int,
+    result_id: int,
+    ev_index: int,
+    modified_text: str,
+    note: str,
+    actor: str,
+    role: str,
+    resolve: bool = True,
+) -> None:
+    """Save in-place modification of bid original text for a remediation item and optionally mark resolved."""
+    if not modified_text.strip():
+        raise ServiceError("Modified bid text cannot be empty.")
+    item = store.query_one("SELECT * FROM remediations WHERE id=?", (rem_id,))
+    if not item:
+        raise ServiceError("Remediation item not found.")
+    res = _editable_result(result_id)
+    project_id = _project_of(res)
+
+    evidence = [dict(e) for e in (res.get("evidence") or [])]
+    target_label = "Bid text"
+    before_text = ""
+    if 0 <= ev_index < len(evidence):
+        ev = evidence[ev_index]
+        before_text = ev.get("original_text") or ev.get("rag_text") or ev.get("snippet") or ""
+        if "original_text" not in ev:
+            ev["original_text"] = before_text
+        ev["rag_text"] = modified_text.strip()
+        ev["snippet"] = modified_text.strip()[:240]
+        ev["role"] = f"✎ 已修改原文 · p.{ev.get('page', 1)}"
+        target_label = f"{ev.get('doc_label') or 'Bid'} p.{ev.get('page', 1)}"
+    else:
+        evidence.insert(
+            0,
+            {
+                "page": 1,
+                "snippet": modified_text.strip()[:240],
+                "rag_text": modified_text.strip(),
+                "original_text": "",
+                "role": "✎ 已修改原文",
+            },
+        )
+
+    rem_status = CLOSED if resolve else TO_REMEDIATE
+    store.update(
+        "remediations",
+        rem_id,
+        {
+            "draft": modified_text.strip(),
+            "target": target_label,
+            "status": rem_status,
+            "closed_round_id": res["round_id"] if resolve else None,
+            "updated_at": store.now(),
+        },
+    )
+
+    res_updates: Dict[str, Any] = {
+        "evidence": evidence,
+        "corrected": 1,
+        "note": note.strip() or res.get("note") or f"已在 Remediation 修改 {target_label} 原文",
+    }
+    if resolve:
+        res_updates["human_status"] = CONFIRMED
+    else:
+        res_updates["human_status"] = TO_REMEDIATE
+    _touch(res, res_updates, 0.0)
+
+    store.log_action(
+        project_id,
+        "apply_remediation_edit",
+        actor,
+        role,
+        note,
+        {
+            "remediation_id": rem_id,
+            "target": target_label,
+            "before_text": before_text[:300],
+            "after_text": modified_text.strip()[:300],
+            "resolved": resolve,
+        },
+        res["round_id"],
+        res["requirement_id"],
+        result_id,
+    )
+
+
 def link_revised_bid(project_id: int, doc_id: int, actor: str, role: str) -> int:
     """A new bid version moves every item awaiting remediation to re-inspection."""
     items = [i for i in store.list_remediations(project_id, open_only=True) if i["status"] == TO_REMEDIATE]
