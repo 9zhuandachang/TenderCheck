@@ -57,7 +57,7 @@ SystemCode/
 ### 2.1 Downloading Model Checkpoints
 Download the trained model weights from **Google Drive** *(insert link here)* and extract them into `SystemCode/models/`:
 - `SystemCode/models/binary_filter/` (`config.json`, `binary_filter_pipeline.joblib`)
-- `SystemCode/models/roberta_wwm_ext/` (`config.json`, `tokenizer.json`, `vocab.txt`, `model.safetensors`)
+- `SystemCode/models/roberta_wwm_ext/` (`classifier_meta.json`, `config.json`, `tokenizer.json`, `tokenizer_config.json`, `model.safetensors`)
 
 ### 2.2 Launching the Streamlit Workspace
 From the repository root or `SystemCode/`:

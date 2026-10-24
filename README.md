@@ -135,9 +135,10 @@ Because full neural network weights (`model.safetensors`, ~400 MB) exceed GitHub
   │   ├── config.json
   │   └── binary_filter_pipeline.joblib      # Step 1: Trained 24-feature binary filter
   └── roberta_wwm_ext/
+      ├── classifier_meta.json
       ├── config.json
       ├── tokenizer.json
-      ├── vocab.txt
+      ├── tokenizer_config.json
       └── model.safetensors                  # Step 2: Fine-tuned 8-class RoBERTa weights
   ```
   *(Note: Even if the Google Drive weights are not yet downloaded locally, the S604 359-clause workspace and all Step 4–6 evaluations run out-of-the-box using the committed caches and built-in structural fallback.)*
