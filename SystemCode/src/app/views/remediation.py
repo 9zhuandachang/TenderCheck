@@ -36,10 +36,10 @@ if top_r.button("Back to Workspace", icon=":material/arrow_back:", width="stretc
 if not items:
     with st.container(border=True):
         st.info(
-            "当前还没有待修改的条款。请在 **Review Workspace** 中点击 **To remediation** 进入本页面。",
+            "No clauses in remediation yet. Click **To remediation** in the **Review Workspace** to add clauses here.",
             icon=":material/info:",
         )
-        if st.button("前往 Review Workspace", type="primary", icon=":material/compare:"):
+        if st.button("Go to Review Workspace", type="primary", icon=":material/compare:"):
             ui.go("workspace")
     st.stop()
 
@@ -64,7 +64,7 @@ cur_item = item_by_id[cur_rem_id]
 cur_res = result_by_req_id.get(cur_item["requirement_id"])
 
 if not cur_res:
-    st.warning("该整改项对应的审查结果不存在。")
+    st.warning("Review result not found for this remediation item.")
     st.stop()
 
 
@@ -113,19 +113,19 @@ if real_backend.is_s604_project(project):
 # ----------------------------------------------------------------- 2-column clean layout
 cols = st.columns([1.1, 3.2], gap="medium")
 
-# ================================================================= Left: Problem clauses list
+# ================================================================= Left: Clauses list
 with cols[0]:
     open_cnt = sum(1 for i in items_sorted if i["status"] != CLOSED)
     closed_cnt = sum(1 for i in items_sorted if i["status"] == CLOSED)
     st.markdown(
-        f"**问题条款** <span class='tc-muted'>({open_cnt} 待改 · {closed_cnt} 已改)</span>",
+        f"**Clauses** <span class='tc-muted'>({open_cnt} open · {closed_cnt} resolved)</span>",
         unsafe_allow_html=True,
     )
     with st.container(height=680, border=False, key="rem_nav"):
         for it in items_sorted:
             is_sel = it["id"] == cur_rem_id
             icon = "✓" if it["status"] == CLOSED else "✎"
-            status_txt = "已修改" if it["status"] == CLOSED else "待修改"
+            status_txt = "Resolved" if it["status"] == CLOSED else "To remediate"
             meta = f"{it['category']} · {status_txt}"
             st.button(
                 f"{icon} **{it['clause_no']}** {it['req_text']}  \n{meta if is_sel else f':gray[{meta}]'}",
@@ -181,6 +181,7 @@ with cols[1]:
         if page_key not in st.session_state:
             st.session_state[page_key] = default_page
         cur_page = max(1, min(max_pages, int(st.session_state[page_key])))
+        st.session_state[page_key] = cur_page
 
         raw_bid_page_text, _orig_pdf_text = (
             real_backend.read_bid_page_text_with_edits(cur_vol["path"], cur_page)
@@ -191,15 +192,15 @@ with cols[1]:
         if editor_key not in st.session_state:
             st.session_state[editor_key] = raw_bid_page_text or (cur_item.get("draft") or "")
 
-        # 2. AI Modification Suggestion (DeepSeek API)
+        # 2. AI Suggestion (DeepSeek API)
         ai_cache_key = f"rem_ai_sug_{cur_rem_id}_{cur_vol_idx}_{cur_page}"
         if st.button(
-            "AI 修改建议",
+            "AI suggestion",
             icon=":material/auto_awesome:",
             key=f"rem_ai_btn_{cur_rem_id}",
             disabled=signed,
         ):
-            with st.spinner("正在调用 DeepSeek 生成修改建议..."):
+            with st.spinner("Generating AI suggestion via DeepSeek..."):
                 st.session_state[ai_cache_key] = real_backend.generate_remediation_suggestion(
                     clause_no=cur_res["clause_no"],
                     req_text=cur_res["req_text"],
@@ -211,49 +212,37 @@ with cols[1]:
         ai_data = st.session_state.get(ai_cache_key)
         if ai_data:
             with st.container(border=True):
-                st.markdown(f"**✨ AI 修改建议：** {ai_data.get('diagnosis', '')}")
+                st.markdown(f"**✨ AI suggestion:** {ai_data.get('diagnosis', '')}")
                 st.markdown(
                     f"<div style='background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 12px;"
                     f"font-size:0.9rem;color:#166534;white-space:pre-wrap;max-height:180px;overflow-y:auto;'>"
                     f"{html.escape(ai_data.get('replacement_span') or ai_data.get('revised_text') or '')}</div>",
                     unsafe_allow_html=True,
                 )
-                if st.button(
-                    "应用建议到下方投标书",
-                    key=f"rem_apply_ai_{cur_rem_id}",
-                    type="primary",
-                    icon=":material/done:",
-                ):
-                    st.session_state[editor_key] = ai_data.get("revised_text") or st.session_state[editor_key]
-                    st.rerun()
 
         st.divider()
 
         # 3. Open Bid Document directly for editing
         nav1, nav2 = st.columns([2.8, 1.2], vertical_alignment="center")
         if len(bid_volumes) > 1:
-            sel_vol = nav1.selectbox(
-                "投标书分册 (Bid Volume)",
+            nav1.selectbox(
+                "Bid Volume",
                 list(range(len(bid_volumes))),
-                index=cur_vol_idx,
                 format_func=lambda i: f"{bid_volumes[i]['label']} ({bid_volumes[i]['pages']}p)",
                 key=vol_key,
             )
-            if sel_vol != cur_vol_idx:
-                st.session_state[page_key] = 1
-                st.rerun()
         else:
-            nav1.markdown(f"**投标书原件 (Bid Document)：** `{cur_vol['label']}`")
+            nav1.markdown(f"**Bid Document:** `{cur_vol['label']}`")
 
         nav2.number_input(
-            f"页码 (1 - {max_pages})",
+            f"Page (1 - {max_pages})",
             min_value=1,
             max_value=max_pages,
             key=page_key,
         )
 
         modified_text = st.text_area(
-            f"Bid 原文内容（第 {cur_page} / {max_pages} 页 · 可直接在此修改）",
+            f"Bid content (Page {cur_page} of {max_pages})",
             height=340,
             key=editor_key,
             disabled=signed,
@@ -272,7 +261,7 @@ with cols[1]:
                     cur_res["id"],
                     default_ev_idx,
                     modified_text,
-                    f"已在投标书 {cur_vol['label']} 第 {cur_page} 页完成修改",
+                    f"Updated Bid {cur_vol['label']} p.{cur_page}",
                     ui.actor(),
                     ui.role(),
                     resolve=True,
@@ -281,10 +270,10 @@ with cols[1]:
                 )
                 ui.render_page.clear()
                 if outcome.get("passed"):
-                    ui.flash(f"已保存至投标文件并重新核验：条款 {cur_res['clause_no']} 重审通过 (✓ Compliant)！")
+                    ui.flash(f"Saved to Bid document and re-evaluated: Clause {cur_res['clause_no']} is now Compliant (✓ Compliant).")
                 else:
                     ui.flash(
-                        f"已保存修改并重新核验：条款 {cur_res['clause_no']} 仍存在未消除的问题（{outcome.get('verdict')}）。",
+                        f"Saved and re-evaluated: Clause {cur_res['clause_no']} still has unresolved issues ({outcome.get('verdict')}).",
                         "warning",
                     )
                 ui.go("workspace", ws_focus_requirement=cur_res["requirement_id"])

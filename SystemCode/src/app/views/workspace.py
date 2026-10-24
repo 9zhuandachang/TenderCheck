@@ -306,7 +306,7 @@ with st.container(border=True):
         st.session_state[f"ws_rag_sel_{current_id}"] = active_ev_idx
 
         rag_sel_idx = st.segmented_control(
-            "Bid content (RAG 候选段落)",
+            "Bid content",
             list(range(len(evidence))),
             key=f"ws_rag_sel_{current_id}",
             required=True,
@@ -349,7 +349,7 @@ with st.container(border=True):
         st.markdown(
             "<div class='tc-bid' style='min-height: 160px; max-height: 360px; overflow-y: auto;'>"
             "<mark class='tc-tag'>Bid content</mark> "
-            "<span class='tc-muted'>未在投标书中检索到对应候选段落 (No RAG evidence retrieved)</span></div>",
+            "<span class='tc-muted'>No RAG evidence retrieved</span></div>",
             unsafe_allow_html=True,
         )
 
