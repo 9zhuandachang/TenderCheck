@@ -155,7 +155,7 @@ $env:DEEPSEEK_API_KEY="sk-..."
 ### 4.2 Launching the Streamlit Review Workspace
 
 ```bash
-streamlit run SystemCode/src/app/app.py
+streamlit run SystemCode/src/app/main.py
 ```
 
 The workspace supports two primary workflows:
