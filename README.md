@@ -90,8 +90,6 @@ TenderCheck/
 │   ├── extraction_rules_plan.md       # Step 4–5 slot extraction & grounding design
 │   └── TenderCheck_Frontend_Design.md # Streamlit Review Workspace UI architecture
 └── SystemCode/                        # Core implementation, models, benchmarks & Streamlit app
-    ├── README.md                      # Detailed developer & reproduction CLI reference
-    ├── requirements.txt               # Unified ML, rule engine & Streamlit frontend dependencies
     ├── train_binary_filter.py         # Step 1: Train & evaluate BinaryRequirementFilter
     ├── train_classifier.py            # Step 2: Train & evaluate 8-class RoBERTa classifier
     ├── run_rag_pipeline.py            # Step 3: Build & query Parent-Child Hybrid Bid RAG
@@ -118,7 +116,7 @@ conda create -n tendercheck python=3.11 -y
 conda activate tendercheck
 
 # 2. Install all dependencies (ML, RAG, Rule Engine & Streamlit UI)
-pip install -r SystemCode/requirements.txt
+pip install -r requirements.txt
 ```
 
 #### Downloading Pre-Trained & Fine-Tuned Model Checkpoints
@@ -197,4 +195,4 @@ python replay_compliance_responses.py \
 python -m unittest tests/test_compliance_rules.py tests/test_compliance_reference.py tests/test_rule_contracts_and_suite.py tests/test_extraction_benchmark_and_eval.py
 ```
 
-For detailed CLI options and module internals, see [`SystemCode/README.md`](SystemCode/README.md) and the technical documents in [`docs/`](docs/).
+For detailed module designs and evaluation reports, see the technical documents in [`docs/`](docs/).
