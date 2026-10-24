@@ -76,7 +76,7 @@ python SystemCode/run_reasoning_diagnostics.py run `
 
 可选 `--labels` 仅接受另行提供的人工端到端标签，要求 `schema_version=1`、`evaluation_scope=end_to_end_compliance`、`cases_sha256` 和完整 ID 列表；已核对行须有 `review_status=human_verified`、`reviewer`、`review_note` 和 `expected_verdict`。结果另存 `human_end_to_end_comparison.json`，不能解释为单独的抽取或规则准确率。旧自动生成的待标注模板不自动迁移为新评测集。
 
-已有 S604 50 条在线运行和离线回放均作为流程诊断保留。10 条试运行见 [历史诊断报告](experiments/reasoning_pilot_10.md)。当前抽取契约为 `passage-facts-v6`，原始缓存和报告不改写；旧命令 `evaluate_compliance_reasoning.py` 仍兼容并提示新入口。
+已有 S604 50 条在线运行和离线回放均作为流程诊断保留。10 条试运行见 [历史诊断报告](experiments/reasoning_pilot_10.md)。当前抽取契约为 `passage-facts-v11-arch`，原始缓存和报告不改写。
 
 ## 抽取与规则第一批完善（2026-10-20）
 

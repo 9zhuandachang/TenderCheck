@@ -91,9 +91,7 @@ TenderCheck/
 │   └── TenderCheck_Frontend_Design.md # Streamlit Review Workspace UI architecture
 └── SystemCode/                        # Core implementation, models, benchmarks & Streamlit app
     ├── README.md                      # Detailed developer & reproduction CLI reference
-    ├── requirements.txt               # Core ML & rule engine dependencies
-    ├── requirements-app.txt           # Streamlit frontend dependencies
-    ├── requirements-rag.txt           # Hybrid RAG & local model dependencies
+    ├── requirements.txt               # Unified ML, rule engine & Streamlit frontend dependencies
     ├── train_binary_filter.py         # Step 1: Train & evaluate BinaryRequirementFilter
     ├── train_classifier.py            # Step 2: Train & evaluate 8-class RoBERTa classifier
     ├── run_rag_pipeline.py            # Step 3: Build & query Parent-Child Hybrid Bid RAG
@@ -119,9 +117,8 @@ TenderCheck/
 conda create -n tendercheck python=3.11 -y
 conda activate tendercheck
 
-# 2. Install core and frontend dependencies
+# 2. Install all dependencies (ML, RAG, Rule Engine & Streamlit UI)
 pip install -r SystemCode/requirements.txt
-pip install -r SystemCode/requirements-app.txt
 ```
 
 #### Downloading Pre-Trained & Fine-Tuned Model Checkpoints

@@ -1,3 +1,0 @@
-# Optional local Qwen NF4/int8 runtime tested in this project.
--r requirements.txt
-bitsandbytes==0.50.2

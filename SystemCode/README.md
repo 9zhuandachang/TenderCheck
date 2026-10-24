@@ -65,7 +65,6 @@ From the repository root or `SystemCode/`:
 ```bash
 # Install dependencies
 pip install -r SystemCode/requirements.txt
-pip install -r SystemCode/requirements-app.txt
 
 # Launch Streamlit UI
 streamlit run SystemCode/src/app/app.py

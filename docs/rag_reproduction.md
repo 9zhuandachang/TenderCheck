@@ -9,7 +9,7 @@
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-python -m pip install -r SystemCode/requirements-rag.txt
+python -m pip install -r SystemCode/requirements.txt
 python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
