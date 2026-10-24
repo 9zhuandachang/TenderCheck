@@ -20,7 +20,6 @@ PyTorch 需要与 GPU、驱动匹配的 CUDA 构建。基础依赖仅规定较�
 | 视觉解析 | `SystemCode/models/pretrained/Qwen2.5-VL-7B-Instruct` | `Qwen/Qwen2.5-VL-7B-Instruct` |
 | 向量编码 | `SystemCode/models/pretrained/bge-m3` | `BAAI/bge-m3` |
 | 重排序 | `SystemCode/models/pretrained/bge-reranker-v2-m3` | `BAAI/bge-reranker-v2-m3` |
-| 机器学习八分类 | `SystemCode/models/tfidf_svm` | 项目训练产物 |
 | 深度学习八分类 | `SystemCode/models/roberta_wwm_ext` | 项目训练产物 |
 
 前三者下载到完整目录；八分类不能用未微调的基础 RoBERTa 替代。现有加载器会合并已提供的分段权重。NF4 只量化 Qwen 语言部分，视觉编码器和输出头保留 BF16。
@@ -78,8 +77,6 @@ python SystemCode/scripts/rebuild_rag_index.py --bid_input "$bid" `
 此入口只评测八分类；段落检索使用 [证据检索入口](passage_rag_evaluation.md)，提取及规则使用 [无台账推理入口](evidence_reasoning.md)。历史台账对照代码已移除，如需复现历史报告请检出对应旧提交。
 
 ```powershell
-python SystemCode/scripts/compare_classifiers.py `
-  --classifier tfidf_svm=SystemCode/models/tfidf_svm `
   --classifier roberta_wwm_ext=SystemCode/models/roberta_wwm_ext `
   --holdout_json SystemCode/data/holdout_eval/2022__11.11annotations.json `
   --holdout_json SystemCode/data/holdout_eval/2024__2024.1.11-annotations.json `

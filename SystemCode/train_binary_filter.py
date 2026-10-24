@@ -329,28 +329,11 @@ def main() -> None:
         sum(1 - s.label for s in test_samples),
     )
 
-    # Step 3: Train BinaryRequirementFilter (SVM & LR comparison)
-    svm_model = BinaryRequirementFilter(classifier_type="svm", c_value=0.8, random_state=42)
-    val_report_svm = svm_model.fit(train_samples, val_samples=val_samples)
-    test_report_svm = svm_model.evaluate(test_samples, split_name="in_domain_test")
-
-    lr_model = BinaryRequirementFilter(classifier_type="lr", c_value=1.5, random_state=42)
-    val_report_lr = lr_model.fit(train_samples, val_samples=val_samples)
-    test_report_lr = lr_model.evaluate(test_samples, split_name="in_domain_test")
-
-    logger.info(
-        "In-Domain Test Comparison -> SVM: Acc=%.4f, Macro-F1=%.4f, Pos-F1=%.4f, AUC=%.4f | LR: Acc=%.4f, Macro-F1=%.4f, Pos-F1=%.4f, AUC=%.4f",
-        test_report_svm["accuracy"],
-        test_report_svm["macro_f1"],
-        test_report_svm["positive_class"]["f1"],
-        test_report_svm["roc_auc"],
-        test_report_lr["accuracy"],
-        test_report_lr["macro_f1"],
-        test_report_lr["positive_class"]["f1"],
-        test_report_lr["roc_auc"],
-    )
-
-    best_model = svm_model if test_report_svm["positive_class"]["f1"] >= test_report_lr["positive_class"]["f1"] else lr_model
+    # Step 3: Train BinaryRequirementFilter
+    best_model = BinaryRequirementFilter(classifier_type="lr", c_value=1.5, random_state=42)
+    val_report = best_model.fit(train_samples, val_samples=val_samples)
+    test_report = best_model.evaluate(test_samples, split_name="in_domain_test")
+    logger.info("In-Domain Test -> Acc=%.4f, Macro-F1=%.4f, Pos-F1=%.4f, AUC=%.4f", test_report["accuracy"], test_report["macro_f1"], test_report["positive_class"]["f1"], test_report["roc_auc"])
     best_model.save(args.model_dir)
 
     # Step 4: Evaluate on strictly unseen Holdout Projects (S604 `2022/11.11` & `2024/2024.1.11`)
@@ -406,12 +389,8 @@ def main() -> None:
             "holdout_clean_samples": len(holdout_samples_clean),
             "holdout_full_samples": len(holdout_samples_full),
         },
-        "models_comparison_on_test": {
-            "calibrated_linear_svc": test_report_svm,
-            "logistic_regression": test_report_lr,
-        },
-        "validation_metrics": val_report_svm if best_model is svm_model else val_report_lr,
-        "in_domain_test_metrics": test_report_svm if best_model is svm_model else test_report_lr,
+        "validation_metrics": val_report,
+        "in_domain_test_metrics": test_report,
         "holdout_overall_clean_metrics": holdout_overall_clean,
         "holdout_overall_full_metrics": holdout_overall_full,
         "holdout_per_project_end_to_end": holdout_book_reports,

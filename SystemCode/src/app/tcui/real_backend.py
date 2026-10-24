@@ -9,6 +9,7 @@ Connects the Streamlit UI (`tcui`) to the real compliance pipeline in `SystemCod
 
 from __future__ import annotations
 
+import datetime
 import hashlib
 import json
 import os
@@ -32,7 +33,10 @@ from src.extraction.global_context import (  # noqa: E402
     build_project_global_context,
     hydrate_with_global_context,
 )
-from src.extraction.llm_extractor import DeepSeekSlotExtractor  # noqa: E402
+from src.extraction.llm_extractor import (  # noqa: E402
+    DeepSeekSlotExtractor,
+    HeuristicSlotExtractor,
+)
 from src.extraction.schema import (  # noqa: E402
     BidEvidenceSlots,
     StructuredExtractionResult,
@@ -41,6 +45,26 @@ from src.extraction.schema import (  # noqa: E402
 from src.rules import ComplianceRuleEngine  # noqa: E402
 
 REPO_ROOT = SYSTEMCODE_ROOT.parent
+
+
+def _ensure_env_loaded() -> None:
+    """Load `.env` from `SYSTEMCODE_ROOT` or `REPO_ROOT` if `DEEPSEEK_API_KEY` is not yet in `os.environ`."""
+    if os.environ.get("DEEPSEEK_API_KEY"):
+        return
+    for candidate in (SYSTEMCODE_ROOT / ".env", REPO_ROOT / ".env"):
+        if candidate.exists():
+            try:
+                for line in candidate.read_text(encoding="utf-8", errors="ignore").splitlines():
+                    s = line.strip()
+                    if not s or s.startswith("#") or "=" not in s:
+                        continue
+                    k, v = s.split("=", 1)
+                    k = k.strip()
+                    v = v.strip().strip("'\"")
+                    if k and k not in os.environ:
+                        os.environ[k] = v
+            except Exception:
+                pass
 
 # Canonical paths for the S604 full-359 dataset and index
 S604_ANNOTATIONS_PATH = SYSTEMCODE_ROOT / "data" / "annotation" / "2022" / "11.11annotations.json"
@@ -69,7 +93,7 @@ def is_s604_project(project: Optional[Dict[str, Any]]) -> bool:
     if not project:
         return False
     name = project.get("name") or ""
-    return "S604" in name or "飞毕路" in name or "359" in name
+    return "全量359条" in name or "飞毕路美丽公路" in name
 
 
 def _find_s604_data_dir() -> Optional[Path]:
@@ -791,7 +815,148 @@ def rereview_real_backend_result(
     rule_engine = ComplianceRuleEngine()
     rule_res = rule_engine.evaluate(ext)
     doc_sources = _load_doc_sources()
+    proj_id = req.get("project_id")
+    if proj_id:
+        for d in store.list_documents(int(proj_id)):
+            p = Path(d["path"])
+            entry = {
+                "path": str(p),
+                "label": d.get("label") or d.get("filename") or p.name,
+                "filename": d.get("filename") or p.name,
+                "pages": int(d.get("pages") or 1),
+                "exists": p.exists(),
+            }
+            doc_sources[f"bid_doc_{d['id']}"] = entry
+            doc_sources[str(d["id"])] = entry
     return format_backend_result(req["text"], req["category"], ext, rule_res, passages, doc_sources)
+
+
+def _infer_project_reference_date(
+    project_id: int,
+    reqs: List[Dict[str, Any]],
+    parent_map: Dict[str, Any],
+) -> str:
+    """
+    Infer the project's review reference date (bid submission deadline / bid opening date)
+    from tender clauses, bid letter dates, or project metadata. Defaults to today's ISO date.
+    """
+    project = store.get_project(project_id)
+    if is_s604_project(project):
+        return S604_REVIEW_DATE
+
+    date_pat = re.compile(
+        r"(?:投标截止时间|递交投标文件截止时间|开标时间|投标截止日期)[^0-9\n]{0,25}"
+        r"(20\d{2})\s*[年\-/.]\s*(\d{1,2})\s*[月\-/.]\s*(\d{1,2})"
+    )
+    for r in reqs:
+        m = date_pat.search(str(r.get("text") or ""))
+        if m:
+            y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if 1 <= mo <= 12 and 1 <= d <= 31:
+                return f"{y:04d}-{mo:02d}-{d:02d}"
+
+    sign_pat = re.compile(r"(?:日期|日\s*期)\s*[:：]?\s*(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日")
+    for p in list(parent_map.values())[:40]:
+        txt = str(p.get("text") or "")
+        if "投标函" in txt or "承诺" in txt:
+            m = sign_pat.search(txt)
+            if m:
+                y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+                if 1 <= mo <= 12 and 1 <= d <= 31:
+                    return f"{y:04d}-{mo:02d}-{d:02d}"
+
+    return datetime.date.today().isoformat()
+
+
+def _offline_chinese_slot_fallback(
+    cid: str,
+    r_text: str,
+    r_cat: str,
+    ev_str: str,
+    ref_date: str,
+) -> StructuredExtractionResult:
+    """
+    Deterministic Chinese slot-extraction fallback when `DEEPSEEK_API_KEY` is unavailable
+    or an individual API request fails, ensuring `hydrate_with_global_context` and
+    `ComplianceRuleEngine` still execute end-to-end without crashing.
+    """
+    heur = HeuristicSlotExtractor(review_reference_date=ref_date)
+    ext = heur.extract(cid, r_text, r_cat, ev_str, review_reference_date=ref_date)
+    t = ext.tender_slots
+    b = ext.bid_slots
+    if t.constraint_type != "UNKNOWN":
+        return ext
+
+    passages = json.loads(ev_str) if ev_str else []
+    first_p = passages[0] if passages else None
+
+    if "安全生产费" in r_text:
+        t.constraint_type = "FORMULA_BOUND"
+        t.operator = ">="
+        t.target_field = "safety_fee"
+        t.expected_unit = "元"
+    elif r_cat == "Consistency" or ("一致" in r_text or "大写" in r_text):
+        t.constraint_type = "ENTITY_CONSISTENCY"
+        t.operator = "CONSISTENT"
+        t.expected_text = r_text[:80]
+        if "大写" in r_text or "总价" in r_text or "报价" in r_text:
+            t.target_field = "rmb_upper_consistency"
+    elif r_cat == "Qualification":
+        if "业绩" in r_text:
+            t.constraint_type = "PERFORMANCE_CHAIN_AND_SCORING"
+            t.operator = "=="
+            t.review_reference_date = ref_date
+            t.scoring_mode = "COMPLIANCE"
+            if "项目经理" in r_text:
+                t.required_role = "project_manager"
+            elif "项目总工" in r_text or "总工程师" in r_text:
+                t.required_role = "chief_engineer"
+        elif re.search(r"\d+\s*[人名]", r_text):
+            t.constraint_type = "STAFFING_COUNT_AND_QUALIFICATION"
+            t.operator = "LEVEL_GE"
+            t.review_reference_date = ref_date
+        else:
+            t.constraint_type = "QUALIFICATION_LEVEL"
+            t.operator = "LEVEL_GE"
+            t.expected_text = r_text[:80]
+            t.review_reference_date = ref_date
+            if "项目经理" in r_text:
+                t.required_role = "project_manager"
+            elif "项目总工" in r_text or "总工程师" in r_text:
+                t.required_role = "chief_engineer"
+            else:
+                t.required_role = "bidder"
+    elif r_cat in ("Commercial", "Schedule") or re.search(
+        r"工期|投标有效期|最高(?:投标)?限价|招标控制价|履约(?:保证金|担保)", r_text
+    ):
+        t.constraint_type = "NUMERIC_BOUND"
+        t.operator = "<=" if re.search(r"最高(?:投标)?限价|招标控制价|工期", r_text) else ">="
+    elif r_cat == "Scoring":
+        t.constraint_type = "QUALITATIVE_OR_SCORING"
+        t.operator = "QUALITATIVE_MATCH"
+        t.requires_human_review = True
+        if first_p and first_p.get("text"):
+            b.evidence_found = True
+            b.actual_text = str(first_p["text"])[:160]
+    elif r_cat == "Integrity":
+        t.constraint_type = "PROHIBITION_AND_COMMITMENT"
+        t.operator = "NOT_VIOLATED"
+        t.expected_text = r_text[:80]
+    else:
+        t.constraint_type = "DOCUMENT_PRESENCE_AND_SEAL"
+        t.operator = "PRESENT"
+        t.expected_text = r_text[:80]
+        if "盖章" in r_text or "公章" in r_text:
+            t.requires_official_seal = True
+        if first_p and first_p.get("text"):
+            q = str(first_p["text"]).strip()[:120]
+            if len(q) >= 15:
+                b.evidence_found = True
+                b.document_present = True
+                b.evidence_references = [
+                    {"field": "document_present", "evidence_id": first_p["evidence_id"], "quote": q}
+                ]
+    return ground_extraction(ext, ev_str)
 
 
 _AUTO_ANNOTATOR_SINGLETON: Optional[Any] = None
@@ -838,7 +1003,7 @@ def extract_chinese_project_requirements(
     """
     If the project's tender PDFs are Chinese documents, run the end-to-end local
     `AutoTenderAnnotator` (`segment_tender_pdf` -> `BinaryRequirementFilter` ->
-    8-class `roberta_wwm_ext`/`tfidf_svm` classifier), persist `auto_annotations.json`,
+    8-class `roberta_wwm_ext` classifier), persist `auto_annotations.json`,
     and populate the `requirements` table. Returns `None` if documents are English demo PDFs.
     """
     tenders = store.list_documents(project_id, "tender", selected_only=True)
@@ -974,8 +1139,15 @@ def evaluate_chinese_project_clauses(
             }
         )
 
+    _ensure_env_loaded()
+    ref_date = _infer_project_reference_date(project_id, reqs, parent_map)
     global_ctx = build_global_context_with_full_bid_scan(cases, parent_map, doc_sources)
-    deepseek_extractor = DeepSeekSlotExtractor(cache_only=False)
+    proj_cache_path = store.project_dir(project_id) / "deepseek_extraction_cache.json"
+    deepseek_extractor = DeepSeekSlotExtractor(
+        cache_path=proj_cache_path,
+        cache_only=False,
+        review_reference_date=ref_date,
+    )
     rule_engine = ComplianceRuleEngine()
 
     total = len(reqs)
@@ -985,12 +1157,22 @@ def evaluate_chinese_project_clauses(
         cid = str(r.get("clause_no") or f"T{rid:04d}")
         r_text = str(r.get("text") or "")
         r_cat = str(r.get("category") or "Document")
-        if progress and (idx == 1 or idx % 20 == 0 or idx == total):
+        if progress and (idx == 1 or idx % 5 == 0 or idx == total):
             progress(f"正在检索投标证据并执行符号规则核验 {cid} ({idx}/{total})", idx, total)
 
         local_passages = [dict(p) for p in passages_by_req_id.get(rid, [])]
         ev_str = json.dumps(local_passages, ensure_ascii=False)
-        ext = deepseek_extractor.extract(cid, r_text, r_cat, ev_str)
+        try:
+            ext = deepseek_extractor.extract(
+                cid,
+                r_text,
+                r_cat,
+                ev_str,
+                review_reference_date=ref_date,
+            )
+        except Exception:
+            ext = _offline_chinese_slot_fallback(cid, r_text, r_cat, ev_str, ref_date)
+
         ext, hydrated_str = hydrate_with_global_context(ext, ev_str, global_ctx, normalizer=deepseek_extractor)
         final_passages = json.loads(hydrated_str) if hydrated_str else local_passages
 
@@ -1100,7 +1282,7 @@ def _register_external_pdf(
 def create_s604_project(progress: Optional[Callable[[str, int, int], None]] = None) -> int:
     """Create the S604 full 359-clause real engineering project and run Round 1 with the real backend engine."""
     existing = next(
-        (p for p in store.list_projects() if "S604" in (p.get("name") or "")),
+        (p for p in store.list_projects() if is_s604_project(p)),
         None,
     )
     if existing and store.list_rounds(existing["id"]):

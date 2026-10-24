@@ -1,28 +1,21 @@
 """
-Unified Command-Line Entrypoint for TenderCheck Requirement Classifier.
+Unified Command-Line Entrypoint for TenderCheck 8-Class Requirement Classifier (`Chinese-RoBERTa-wwm-ext`).
 
 Supports:
 1. `split_only`: Load annotations and preview/export group-based Train/Val/Test splits
    without starting model training.
-2. `train`: Train and evaluate either the TF-IDF baseline (`--model tfidf`),
-   the fine-tuned Chinese RoBERTa model (`--model roberta`), or both (`--model all`).
+2. `train`: Fine-tune and evaluate the Chinese RoBERTa model (`hfl/chinese-roberta-wwm-ext`).
 3. `predict`: Run interactive/single-clause inference using a saved model checkpoint.
 
 Usage Examples (from `SystemCode/` directory):
     # 1. Preview dataset group split only (no training)
     python train_classifier.py --mode split_only
 
-    # 2. Train lightweight TF-IDF + SVM baseline
-    python train_classifier.py --mode train --model tfidf
+    # 2. Fine-tune Chinese RoBERTa-wwm-ext
+    python train_classifier.py --mode train --epochs 5 --batch_size 32
 
-    # 3. Fine-tune Chinese RoBERTa-wwm-ext
-    python train_classifier.py --mode train --model roberta --epochs 5 --batch_size 32
-
-    # 4. Run full dual-model comparison (Baseline + RoBERTa)
-    python train_classifier.py --mode train --model all
-
-    # 5. Predict on a single requirement clause
-    python train_classifier.py --mode predict --model_dir models/tfidf_svm \\
+    # 3. Predict on a single requirement clause
+    python train_classifier.py --mode predict --model_dir models/roberta_wwm_ext \\
         --section "第三章 评标办法" --text "施工组织设计满分15分，缺项得0分。"
 """
 
@@ -36,7 +29,6 @@ from typing import Dict, List
 from src.classification import (
     DEFAULT_PRETRAINED_MODEL,
     BertRequirementClassifier,
-    TfidfRequirementClassifier,
     load_classifier,
 )
 from src.data import (
@@ -69,19 +61,13 @@ BASE_DIR = Path(__file__).resolve().parent
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="TenderCheck 8-Class Requirement Classifier Pipeline"
+        description="TenderCheck 8-Class Requirement Classifier Pipeline (Chinese-RoBERTa-wwm-ext)"
     )
     parser.add_argument(
         "--mode",
         choices=["split_only", "train", "predict"],
         default="train",
         help="Pipeline execution mode (default: train).",
-    )
-    parser.add_argument(
-        "--model",
-        choices=["tfidf", "roberta", "all"],
-        default="all",
-        help="Model architecture to train when --mode=train (default: all).",
     )
     parser.add_argument(
         "--annotations_dir",
@@ -131,20 +117,6 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=42,
         help="Random seed for reproducible splitting and training.",
-    )
-
-    # TF-IDF Baseline hyperparameters
-    parser.add_argument(
-        "--tfidf_clf",
-        choices=["svm", "logreg"],
-        default="svm",
-        help="Linear classifier type for TF-IDF baseline (default: svm).",
-    )
-    parser.add_argument(
-        "--tfidf_c",
-        type=float,
-        default=1.0,
-        help="Regularization parameter C for TF-IDF classifier (default: 1.0).",
     )
 
     # RoBERTa hyperparameters
@@ -222,43 +194,6 @@ def print_split_summary(summary: Dict[str, Dict[str, object]]) -> None:
     print("=" * 86 + "\n")
 
 
-def run_tfidf_experiment(
-    splits: Dict[str, List[RequirementSample]],
-    args: argparse.Namespace,
-) -> Dict[str, object]:
-    """Train, evaluate, and persist the TF-IDF baseline classifier."""
-    use_section = not args.no_section_context
-    model_tag = f"tfidf_{args.tfidf_clf}"
-
-    clf = TfidfRequirementClassifier(
-        use_section_context=use_section,
-        classifier_type=args.tfidf_clf,
-        c_value=args.tfidf_c,
-        random_state=args.seed,
-    )
-    clf.fit(splits["train"], splits["val"])
-
-    # Evaluate on Validation and Test sets
-    reports: Dict[str, object] = {}
-    for split_name in ("val", "test"):
-        preds = clf.predict_ids(splits[split_name])
-        trues = [s.label_id for s in splits[split_name]]
-        rep = evaluate_predictions(
-            y_true=trues,
-            y_pred=preds,
-            split_name=split_name,
-            model_name=model_tag,
-        )
-        print("\n" + format_metrics_table(rep))
-        save_evaluation_report(
-            rep, args.reports_dir / f"{model_tag}_{split_name}_metrics.json"
-        )
-        reports[split_name] = rep
-
-    clf.save(args.models_dir / model_tag)
-    return reports
-
-
 def run_roberta_experiment(
     splits: Dict[str, List[RequirementSample]],
     args: argparse.Namespace,
@@ -326,11 +261,7 @@ def main() -> None:
     if args.mode == "split_only":
         return
 
-    if args.model in ("tfidf", "all"):
-        run_tfidf_experiment(splits, args)
-
-    if args.model in ("roberta", "all"):
-        run_roberta_experiment(splits, args)
+    run_roberta_experiment(splits, args)
 
 
 if __name__ == "__main__":

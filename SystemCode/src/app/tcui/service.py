@@ -39,15 +39,24 @@ def add_document(project_id: int, category: str, filename: str, data: bytes,
     label = {"tender": f"Tender v{version}", "addendum": f"Addendum {version}", "bid": f"Bid v{version}"}[category]
     folder = store.project_dir(project_id) / "documents"
     folder.mkdir(parents=True, exist_ok=True)
-    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", filename)
+    safe = re.sub(r"[^A-Za-z0-9._\-一-鿿??()]+", "_", filename)
     path = folder / f"{category}_v{version}_{safe}"
     path.write_bytes(data)
 
+    proj = store.get_project(project_id)
+    is_demo = bool(proj and proj.get("is_demo"))
     supersedes = None
     if category in ("bid", "tender") and same:
-        supersedes = same[-1]["id"]
-        # Only one version of the bid (and of the tender) takes part in a review round.
-        store.execute("UPDATE documents SET selected=0 WHERE project_id=? AND category=?", (project_id, category))
+        same_name_docs = [d for d in same if d.get("filename") == filename]
+        if is_demo:
+            supersedes = same[-1]["id"]
+            store.execute("UPDATE documents SET selected=0 WHERE project_id=? AND category=?", (project_id, category))
+        elif same_name_docs:
+            supersedes = same_name_docs[-1]["id"]
+            store.execute(
+                "UPDATE documents SET selected=0 WHERE project_id=? AND category=? AND filename=?",
+                (project_id, category, filename),
+            )
     doc_id = store.insert("documents", {
         "project_id": project_id,
         "category": category,
@@ -93,7 +102,8 @@ def _parse_job(progress, doc_id: int) -> Dict[str, Any]:
 
 def set_document_selected(doc_id: int, selected: bool) -> None:
     doc = store.get_document(doc_id)
-    if selected and doc["category"] in ("bid", "tender"):
+    proj = store.get_project(doc["project_id"])
+    if selected and doc["category"] in ("bid", "tender") and bool(proj and proj.get("is_demo")):
         store.execute("UPDATE documents SET selected=0 WHERE project_id=? AND category=?",
                       (doc["project_id"], doc["category"]))
     store.update("documents", doc_id, {"selected": int(selected)})

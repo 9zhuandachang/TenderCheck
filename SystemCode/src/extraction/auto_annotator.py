@@ -12,7 +12,7 @@ Pipeline:
    Normalizes `【表头】` prefixes, checkbox markers (`☑`), and form fill-in lines into
    clean, self-contained Chinese requirement sentences while preserving `raw_text`
    for exact PDF page highlighting.
-4. 8-Class Requirement Classification (`BertRequirementClassifier` / `TfidfRequirementClassifier`):
+4. 8-Class Requirement Classification (`BertRequirementClassifier`):
    Assigns each retained requirement to one of the 8 standard categories
    (`Qualification`, `Document`, `Technical`, `Commercial`, `Schedule`,
    `Consistency`, `Integrity`, `Scoring`) with confidence scores, and outputs
@@ -188,8 +188,7 @@ def _segment_single_pdf_with_ocr_fallback(
 class AutoTenderAnnotator:
     """
     End-to-end automated tender requirement extractor and 8-class classifier.
-    Loads local `BinaryRequirementFilter` and 8-class classifier (`roberta_wwm_ext`
-    or `tfidf_svm`) and processes raw tender PDFs into standard v1.3 annotations.
+    Loads local `BinaryRequirementFilter` and 8-class classifier (`roberta_wwm_ext`) and processes raw tender PDFs into standard v1.3 annotations.
     """
 
     def __init__(

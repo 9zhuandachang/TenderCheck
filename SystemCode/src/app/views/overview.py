@@ -255,7 +255,8 @@ with st.container(border=True, key="overview_step2_pipeline"):
         else:
             try:
                 with st.status("Running TenderCheck automated extraction & compliance review...", expanded=True) as status_box:
-                    for _ in range(300):
+                    live_msg = st.empty()
+                    for _ in range(6000):
                         if not store.active_jobs(pid, "parse"):
                             break
                         time.sleep(0.1)
@@ -263,8 +264,13 @@ with st.container(border=True, key="overview_step2_pipeline"):
                     if not reqs:
                         st.write("1/3 · Segmenting tender PDF, running Binary Requirement Filter & 8-Class Classifier...")
                         service.extract_requirements(pid)
-                        for _ in range(600):
+                        for _ in range(18000):
+                            j = store.latest_job(pid, "extract")
+                            if j and j.get("message"):
+                                live_msg.caption(f"⏳ {j['message']}")
                             if not store.active_jobs(pid, "extract"):
+                                if j and j.get("status") == "failed":
+                                    raise ServiceError(f"Extraction failed: {j.get('error')}")
                                 break
                             time.sleep(0.1)
                     for r in store.pending_amendments(pid):
@@ -275,10 +281,16 @@ with st.container(border=True, key="overview_step2_pipeline"):
                     st.write(f"2/3 · Building Bid RAG Index & Global Context across {len(bid_docs)} bid file(s)...")
                     st.write(f"3/3 · Executing Slot Grounding & ComplianceRuleEngine on **{len(reqs_now)} clauses**...")
                     service.start_review(pid, ui.actor(), ui.role())
-                    for _ in range(600):
+                    for _ in range(36000):
+                        j = store.latest_job(pid, "review")
+                        if j and j.get("message"):
+                            live_msg.caption(f"⏳ {j['message']}")
                         if not store.active_jobs(pid, "review"):
+                            if j and j.get("status") == "failed":
+                                raise ServiceError(f"Review failed: {j.get('error')}")
                             break
                         time.sleep(0.1)
+                    live_msg.empty()
                     status_box.update(
                         label=f"Pipeline complete! All {len(reqs_now)} clauses extracted, retrieved, and evaluated.",
                         state="complete",
@@ -290,6 +302,7 @@ with st.container(border=True, key="overview_step2_pipeline"):
                 st.error(str(e))
 
     ui.job_progress(pid, "extract")
+    ui.job_error(pid, "extract")
     ui.job_progress(pid, "review")
     ui.job_error(pid, "review")
 

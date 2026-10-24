@@ -2,7 +2,8 @@
 Chinese Bid PDF Parsing, RAG Retrieval & Full-Bid Global Context Builder.
 
 Connects:
-1. Multi-stream Chinese Bid PDF chunking (`parse_bid_pdfs_for_rag`).
+1. Multi-stream Chinese Bid PDF chunking (`parse_bid_pdfs_for_rag`) with automatic
+   OCR & red-seal fallback (`LocalHeuristicOCRBackend`) for scanned certificate/contract pages.
 2. Category-aware BM25 / Parent-Child Retriever (`FastChineseBidRetriever`).
 3. Project-wide `ProjectGlobalContext` discovery (`build_global_context_with_full_bid_scan`),
    feeding directly into `DeepSeekSlotExtractor`, `ground_extraction`,
@@ -11,8 +12,10 @@ Connects:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -28,7 +31,7 @@ from ..rag.parser import (
     _split_text_into_spans,
 )
 from ..rag.passages import category_search_policy
-from ..rag.vision import infer_doc_category_from_text
+from ..rag.vision import LocalHeuristicOCRBackend, infer_doc_category_from_text
 from .global_context import ProjectGlobalContext, build_project_global_context
 
 logger = logging.getLogger(__name__)
@@ -40,12 +43,13 @@ def parse_bid_pdfs_for_rag(
 ) -> Tuple[List[BidChunk], Dict[str, BidChunk], Dict[str, Dict[str, Any]]]:
     """
     Parse one or more uploaded bid PDFs into Parent and Child `BidChunk` objects
-    (preserving both narrative text and PyMuPDF structured tables) and build a
-    `doc_sources` map compatible with `real_backend.format_backend_result`.
+    (preserving narrative text, PyMuPDF structured tables, and OCR/seal fallback on
+    scanned pages) and build a `doc_sources` map compatible with `real_backend.format_backend_result`.
     """
     parent_chunks: List[BidChunk] = []
     child_chunks: List[BidChunk] = []
     doc_sources: Dict[str, Dict[str, Any]] = {}
+    ocr_backend: Optional[LocalHeuristicOCRBackend] = None
 
     total_docs = len(bid_docs)
     for d_idx, doc_meta in enumerate(bid_docs, start=1):
@@ -57,17 +61,22 @@ def parse_bid_pdfs_for_rag(
 
         pdf = fitz.open(str(pdf_path))
         num_pages = len(pdf)
+        stat = pdf_path.stat()
+        file_sha = str(
+            doc_meta.get("sha256")
+            or hashlib.sha256(f"{pdf_path.name}:{stat.st_size}".encode("utf-8")).hexdigest()
+        )
         doc_sources[doc_id] = {
             "path": str(pdf_path),
             "label": label,
             "filename": pdf_path.name,
             "pages": num_pages,
+            "sha256": file_sha,
             "exists": True,
         }
 
         current_volume = "商务与资信标"
         current_section = label
-        table_pages_extracted = 0
         for p_idx in range(num_pages):
             pno = p_idx + 1
             if progress and (pno == 1 or pno % 50 == 0 or pno == num_pages):
@@ -79,8 +88,34 @@ def parse_bid_pdfs_for_rag(
 
             page = pdf[p_idx]
             raw_text = (page.get_text("text") or "").strip()
+            has_seal = False
+            seal_company: Optional[str] = None
+            has_sig = False
+
+            if len(compact(raw_text)) < 20:
+                try:
+                    if ocr_backend is None:
+                        ocr_backend = LocalHeuristicOCRBackend(dpi=160)
+                    vis_res = ocr_backend.analyze_page(
+                        pdf, pno, existing_text=raw_text, heading_hint=current_section
+                    )
+                    raw_text = (vis_res.ocr_text or raw_text or "").strip()
+                    has_seal = bool(vis_res.has_official_seal)
+                    seal_company = vis_res.seal_company_name
+                    has_sig = bool(vis_res.has_signature)
+                except Exception as exc:
+                    logger.debug("OCR fallback on %s page %d skipped: %s", pdf_path.name, pno, exc)
+
             if not raw_text:
                 continue
+
+            if not has_seal and re.search(r"盖(?:单位)?(?:电子)?(?:公|印)?章", raw_text):
+                has_seal = True
+            if not has_sig and re.search(
+                r"(?:法定代表人|授权委托人|委托代理人|项目经理)\s*[：:]\s*\S+|签字|盖电子印章",
+                raw_text,
+            ):
+                has_sig = True
 
             compact_head = compact(raw_text[:250])
             if "施工组织设计" in compact_head or "技术文件" in compact_head:
@@ -101,24 +136,24 @@ def parse_bid_pdfs_for_rag(
             md_tables: List[str] = []
             row_statements: List[str] = []
             if (
-                table_pages_extracted < 35
-                and any(
+                any(
                     k in raw_text
                     for k in (
                         "基本情况表",
                         "人员组成表",
+                        "汇总表",
                         "简历表",
                         "信誉情况表",
                         "投标报价汇总表",
+                        "工程量清单表",
                         "类似项目情况表",
                         "拟委任",
+                        "财务状况",
                     )
                 )
                 and "单价分析" not in raw_text
             ):
                 md_tables, row_statements = _extract_tables_as_markdown_and_rows(page, pno, current_section)
-                if md_tables:
-                    table_pages_extracted += 1
 
             combined_parent_text = raw_text
             if md_tables:
@@ -140,6 +175,9 @@ def parse_bid_pdfs_for_rag(
                 printed_page_end=pno,
                 text=combined_parent_text,
                 embedding_text=f"[{doc_cat} | {current_section}] {combined_parent_text}",
+                has_official_seal=has_seal,
+                seal_company_name=seal_company,
+                has_signature=has_sig,
             )
             parent_chunks.append(p_chunk)
 
@@ -162,6 +200,9 @@ def parse_bid_pdfs_for_rag(
                         printed_page_end=pno,
                         text=sp,
                         embedding_text=f"[{doc_cat} | {current_section}] {sp}",
+                        has_official_seal=has_seal,
+                        seal_company_name=seal_company,
+                        has_signature=has_sig,
                     )
                 )
 
@@ -183,6 +224,9 @@ def parse_bid_pdfs_for_rag(
                         printed_page_end=pno,
                         text=r_stmt,
                         embedding_text=r_stmt,
+                        has_official_seal=has_seal,
+                        seal_company_name=seal_company,
+                        has_signature=has_sig,
                     )
                 )
 
@@ -265,6 +309,7 @@ class FastChineseBidRetriever:
                 existing_p = page_to_passage[page_key]
                 if parent.text and parent.text not in existing_p["text"]:
                     existing_p["text"] = existing_p["text"] + "\n" + parent.text
+                    existing_p["parent_text"] = existing_p["text"]
                 continue
             src_info = self.doc_sources.get(parent.document_id, {})
             eid = f"E{len(passages) + 1}"
@@ -275,7 +320,7 @@ class FastChineseBidRetriever:
                 "score": round(float(scores[idx]), 4),
                 "document_id": parent.document_id,
                 "source": src_info.get("path", ""),
-                "source_sha256": "",
+                "source_sha256": src_info.get("sha256", ""),
                 "chunk_id": child.chunk_id,
                 "parent_id": parent.chunk_id,
                 "page_start": parent.page_start,
@@ -283,7 +328,11 @@ class FastChineseBidRetriever:
                 "doc_category": parent.doc_category,
                 "section_path": parent.section_path,
                 "text": parent.text,
+                "parent_text": parent.text,
                 "child_text": child.text,
+                "has_official_seal": bool(parent.has_official_seal),
+                "seal_company_name": parent.seal_company_name,
+                "has_signature": bool(parent.has_signature),
             }
             page_to_passage[page_key] = p_entry
             passages.append(p_entry)
@@ -342,12 +391,16 @@ def build_global_context_with_full_bid_scan(
                     "evidence_id": f"G_{p_chunk.chunk_id}",
                     "document_id": p_chunk.document_id,
                     "source": src_info.get("path", ""),
-                    "source_sha256": "",
+                    "source_sha256": src_info.get("sha256", ""),
                     "page_start": p_chunk.page_start,
                     "page_end": p_chunk.page_end,
                     "doc_category": p_chunk.doc_category,
                     "section_path": p_chunk.section_path,
                     "text": txt,
+                    "parent_text": txt,
+                    "has_official_seal": bool(p_chunk.has_official_seal),
+                    "seal_company_name": p_chunk.seal_company_name,
+                    "has_signature": bool(p_chunk.has_signature),
                 }
             )
 
