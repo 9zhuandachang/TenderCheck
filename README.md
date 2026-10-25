@@ -212,9 +212,8 @@ TenderCheck/
 │   └── tests/                         # Automated unit & integration test suites
 ├── ProjectReport/                     # Project Report & Installation/User Guide documentation
 ├── Video/                             # System Modelling & Use Case Demo video
-└── Miscellaneous/                     # Supplementary specifications, annotation guidelines & experiment reports
+└── Miscellaneous/                     # Architecture diagram & requirement annotation schema
     ├── system_architecture.jpg        # System architecture diagram
-    ├── TenderCheck_Annotation/        # 8-category annotation guideline, schema & gold examples
-    └── docs/                          # Detailed rule contracts, RAG & extraction specs, and experiment reports
+    └── TenderCheck_Annotation/        # 8-category annotation guideline, schema & gold examples
 ```
 
