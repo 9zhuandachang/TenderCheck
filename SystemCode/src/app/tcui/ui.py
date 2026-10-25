@@ -78,6 +78,8 @@ def project_id() -> Optional[int]:
     pid = st.session_state.get("project_id")
     if pid is not None and store.get_project(pid):
         return pid
+    if st.session_state.get("_show_project_start", False):
+        return None
     projects = store.list_projects()
     st.session_state["project_id"] = projects[0]["id"] if projects else None
     return st.session_state["project_id"]
@@ -91,7 +93,7 @@ def current_project() -> Optional[Dict[str, Any]]:
 def require_project() -> Dict[str, Any]:
     project = current_project()
     if not project:
-        st.info("No project yet. Create one or load the demo project on the Overview page.")
+        st.info("No project selected. Create a new project or select an existing project from the left sidebar.")
         st.page_link(PAGES["overview"], label="Go to Overview", icon=":material/dashboard:")
         st.stop()
     return project
@@ -114,6 +116,8 @@ def actor() -> str:
 
 
 def sidebar(current_page: str = "") -> None:
+    if "project_id" not in st.session_state and "_show_project_start" not in st.session_state:
+        st.session_state["_show_project_start"] = True
     with st.sidebar:
         st.caption("Projects")
         if st.button("New project", icon=":material/add:", key="nav_new_project", type="secondary",

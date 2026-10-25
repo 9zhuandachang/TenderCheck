@@ -1,59 +1,26 @@
-# TenderCheck — Neuro-Symbolic Intelligent Bid Compliance Review System
+---
 
-**TenderCheck** is an end-to-end **Neuro-Symbolic Machine Reasoning System** for automated compliance verification of Chinese engineering tender (招标文件) and bid (投标文件) packages.
+## SECTION 1 : PROJECT TITLE
+## TenderCheck — Neuro-Symbolic Intelligent Bid Compliance Review System
 
-Instead of relying on unconstrained end-to-end LLM judgment—which suffers from numerical hallucination, cross-table entity confusion, and unverifiable citations in hundreds-of-pages engineering bids—**TenderCheck** decouples **neural perception & structured slot extraction** from **deterministic symbolic rule execution**:
-
-1. **Neural Perception & Retrieval (Steps 1–4)**: Segments raw PDFs, filters out non-requirement boilerplate, classifies clauses into 8 compliance categories (`chinese-roberta-wwm-ext`), retrieves multi-volume bid evidence via Parent-Child Hybrid RAG (`BGE-M3` + `BM25` + `BGE-Reranker-v2-m3`), and extracts typed constraint/evidence slots (`DeepSeek-V3` under the `passage-facts-v11-arch` contract).
-2. **Anti-Hallucination Grounding & Global Context Hydration (Step 5)**: Verifies every extracted number, unit, entity binding, and conflict pair against verbatim PDF substrings (`ground_extraction`) and hydrates cross-chapter project anchors (`ProjectGlobalContext`).
-3. **Symbolic Compliance Rule Engine (Step 6)**: Executes 9 deterministic, auditable compliance rules (`R01`–`R09`) to output three-valued verdicts (`COMPLIANT`, `NON_COMPLIANT`, `ABSTAIN`) with full reasoning traces and page-level PDF highlights.
+<p align="center">
+  <img src="Miscellaneous/system_architecture.jpg" alt="TenderCheck System Architecture" width="760"/>
+</p>
 
 ---
 
-## 1. System Architecture (Six-Stage Pipeline)
+## SECTION 2 : EXECUTIVE SUMMARY / PAPER ABSTRACT
 
-```mermaid
-flowchart TD
-    subgraph Input["Input PDF Package"]
-        T["Tender & Addendum PDFs<br/>(招标文件 / 答疑补遗)"]
-        B["Multi-Volume Bid PDFs<br/>(商务标 / 技术标 / 报价标 / 证书附件)"]
-    end
+In large-scale Chinese engineering procurement, tender documents (招标文件) and multi-volume bid packages (投标文件) routinely span hundreds to thousands of pages across commercial, legal, technical, and Bill-of-Quantities (BoQ) volumes. A single overlooked mandatory requirement—such as an expired safety production license, an unsealed bid appendix, a mismatched uppercase/lowercase RMB bid price, or a subtle cross-chapter contradiction—can result in immediate bid disqualification (废标) and severe financial loss. Traditional manual review is slow, error-prone, and difficult to audit under tight submission deadlines, while end-to-end Large Language Models (LLMs) suffer from numerical hallucinations, cross-table entity confusion, and unverifiable citations when applied directly to long engineering PDFs.
 
-    subgraph Stage12["Steps 1–2: Tender Requirement Extraction"]
-        S1["Step 1: Layout-Aware Clause Segmenter &<br/>Binary Requirement Filter (24-dim + Chapter Priors)"]
-        S2["Step 2: 8-Class Fine-Tuned Classifier<br/>(hfl/chinese-roberta-wwm-ext)"]
-        T --> S1 --> S2
-    end
+To address these challenges, our team developed **TenderCheck**, an end-to-end **Neuro-Symbolic Intelligent Bid Compliance Review System** that decouples **neural perception & structured slot extraction** from **deterministic symbolic rule execution**:
+1. **Neural Perception & Retrieval (Steps 1–4)**: Segments raw tender PDFs while preserving table layouts, filters out non-requirement boilerplate via a 24-feature `BinaryRequirementFilter` (`LogisticRegression`), classifies actionable clauses into 8 domain categories using a fine-tuned `chinese-roberta-wwm-ext` model, retrieves traceable multi-volume bid evidence via a **Parent-Child Hybrid RAG Pipeline** (`BGE-M3` dense embeddings + domain `BM25` + `BGE-Reranker-v2-m3` with category-guided routing), and extracts typed constraint and evidence slots using `DeepSeek-V3` under the `passage-facts-v11-arch` schema contract.
+2. **Anti-Hallucination Grounding & Global Context Hydration (Step 5)**: Verifies every extracted number, unit, entity binding, and conflict pair against verbatim PDF substrings (`ground_extraction`) and hydrates cross-chapter project anchors (`ProjectGlobalContext`), eliminating unsupported LLM inferences before rule reasoning.
+3. **Symbolic Compliance Rule Engine & Interactive Workspace (Step 6)**: Executes 9 deterministic, auditable compliance rules (`R01`–`R09`) to produce three-valued verdicts (`COMPLIANT`, `NON_COMPLIANT`, `ABSTAIN`) with step-by-step reasoning chains and page-level PDF highlights inside an interactive **Streamlit Review Workspace** supporting human-in-the-loop verification, bid text remediation with automatic re-evaluation, and two-sheet Excel Compliance Matrix export.
 
-    subgraph Stage3["Step 3: Multi-Document Bid Indexing & Retrieval"]
-        P["Table-Aware PDF Parser +<br/>Scanned Page OCR / Red-Seal Detector"]
-        H["Parent-Child Hybrid RAG<br/>(BGE-M3 Dense + BM25 Lexical + RRF + BGE-Reranker-v2-m3)"]
-        B --> P --> H
-    end
+### Stage-by-Stage Benchmark Performance Summary
 
-    subgraph Stage45["Steps 4–5: Structured Slot Extraction & Grounding"]
-        G["ProjectGlobalContext<br/>(Bid Letter, BoQ Summary, Personnel & Cert Anchors)"]
-        L["Step 4: DeepSeek-V3 Slot Extractor<br/>(Contract: passage-facts-v11-arch)"]
-        V["Step 5: Verbatim Quote Grounding &<br/>Global Context Hydration"]
-        S2 --> L
-        H --> L
-        P --> G
-        L --> V
-        G --> V
-    end
-
-    subgraph Stage6["Step 6: Symbolic Rule Engine & Interactive Workspace"]
-        R["ComplianceRuleEngine (Rules R01–R09)<br/>Deterministic 3-Valued Logic: COMPLIANT / NON_COMPLIANT / ABSTAIN"]
-        UI["Streamlit Review Workspace<br/>(Dual-PDF Highlighting, Remediation Loop & Excel/PDF Export)"]
-        V --> R --> UI
-    end
-```
-
----
-
-## 2. Core Modules, Models & Benchmark Performance
-
-Every stage of the pipeline is independently evaluated on real Chinese engineering tender/bid datasets (71 annotated tender projects for Steps 1–2, and the full 359-clause **S604 Wannan Traffic-Tourism Highway Project** with 22 bid & attachment PDFs for Steps 3–6):
+Every module is independently evaluated on real Chinese engineering tender/bid datasets (71 annotated tender projects for Steps 1–2, and the full 359-clause **S604 Wannan Traffic-Tourism Highway Project** with 22 bid & attachment PDFs for Steps 3–6):
 
 | Stage | Module | Model / Algorithm | Dataset / Benchmark | Key Metrics |
 | :--- | :--- | :--- | :--- | :--- |
@@ -77,38 +44,34 @@ Every stage of the pipeline is independently evaluated on real Chinese engineeri
 
 ---
 
-## 3. Repository Structure
+## SECTION 3 : CREDITS / PROJECT CONTRIBUTION
 
-```text
-TenderCheck/
-├── README.md                          # Project overview, architecture & quickstart guide
-├── requirements.txt                   # Root Python dependencies
-├── docs/                              # Architecture & evaluation documentation
-│   ├── evidence_reasoning.md          # End-to-end neuro-symbolic reasoning & S604 replay summary
-│   ├── rule_inventory_and_contracts.md# Formal specification of Rules R01–R09 & slot contracts
-│   ├── rag_reproduction.md            # Hybrid RAG indexing & evaluation guide
-│   ├── extraction_rules_plan.md       # Step 4–5 slot extraction & grounding design
-│   └── TenderCheck_Frontend_Design.md # Streamlit Review Workspace UI architecture
-└── SystemCode/                        # Core implementation, models, benchmarks & Streamlit app
-    ├── train_binary_filter.py         # Step 1: Train & evaluate BinaryRequirementFilter
-    ├── train_classifier.py            # Step 2: Train & evaluate 8-class RoBERTa classifier
-    ├── run_rag_pipeline.py            # Step 3: Build & query Parent-Child Hybrid Bid RAG
-    ├── evaluate_evidence_rag.py       # Step 3: Evaluate RAG retrieval metrics (Hit@K, MRR)
-    ├── evaluate_extraction.py         # Steps 4–5: Evaluate LLM slot extraction & grounding on 50-clause benchmark
-    ├── evaluate_rule_engine.py        # Step 6: Run 88-case symbolic rule engine evaluation suite
-    ├── replay_compliance_responses.py # Steps 4–6: Full 359-clause S604 replay & audit report generator
-    ├── data/                          # Annotated datasets, benchmarks, caches & RAG indices
-    ├── models/                        # Saved model checkpoints (roberta_wwm_ext, binary_filter)
-    ├── reports/                       # JSON/Markdown evaluation reports for Steps 1–6
-    ├── src/                           # Source packages (parsing, classification, retrieval, extraction, rules, app)
-    └── tests/                         # Automated unit & integration test suites
-```
+| Official Full Name | Student ID (MTech Applicable) | Work Items (Who Did What) | Email (Optional) |
+| :--- | :---: | :--- | :--- |
+| **GUO ZICHUN** | A0355497L | **Parent-Child Hybrid Bid RAG Module**: Responsible for PDF text/table parsing, child-to-parent document chunking, index construction, and hybrid evidence retrieval combining `BM25`, `BGE-M3` semantic retrieval, and neural reranking with category-guided prioritization; constructed and verified the required-evidence-group retrieval evaluation benchmark with full document/page traceability. | guozichun@u.nus.edu |
+| **TANG XIONGJIE** | A0353668N | **Streamlit Review Workspace Frontend & Requirement Annotation**: Completed tender requirement dataset annotation with source text and page verification; designed and implemented the end-to-end Streamlit web interface covering document upload, requirement browsing, side-by-side tender/bid PDF evidence inspection, human verification status routing, remediation workflow, and compliance matrix export. | xiongjietang@u.nus.edu |
+| **WANG ZHENGYUAN** | A0351196B | **Symbolic Compliance Rule Engine (`R01`–`R09`) & Requirement Annotation**: Participated in tender requirement annotation; designed and implemented deterministic compliance rules covering completion periods, bid prices, and qualification levels; built unit test suites for typical cases, boundary values, and missing evidence; implemented explainable reasoning traces and human-review abstention routing. | zhengyuan.wang@u.nus.edu |
+| **QI JUNNAN** | A0354719U | **LLM Structured Slot Extraction, Grounding & Requirement Annotation**: Participated in tender requirement annotation; developed the LLM-based structured slot extraction pipeline (`DeepSeek-V3`) to extract constraint and evidence fields (completion periods, prices, qualifications) with strict source citations and verbatim grounding for downstream symbolic rule verification. | junnan.qi@u.nus.edu |
+| **LI JIANXIANG** | A0351244M | **Tender Clause Segmentation & Classification Models**: Responsible for the Step 1 24-feature `BinaryRequirementFilter` (`LogisticRegression`) and Step 2 8-category requirement classification model (`chinese-roberta-wwm-ext` fine-tuning), training data preparation, hyperparameter optimization, and in-domain/holdout classification evaluation. | lijianxiang@u.nus.edu |
 
 ---
 
-## 4. Quickstart Guide
+## SECTION 4 : VIDEO OF SYSTEM MODELLING & USE CASE DEMO
 
-### 4.1 Environment Setup & Model Weights (Google Drive)
+`Refer to system modelling and use case demo video at Github Folder: Video`
+
+- **Folder Location**: [`Video/`](Video/)
+- The presentation and system demonstration cover:
+  1. **System Modelling & Technical Architecture**: How TenderCheck combines neural clause classification, Parent-Child Hybrid RAG, anti-hallucination slot grounding, and the `R01`–`R09` symbolic rule engine.
+  2. **End-to-End Live Use Case Demo**: Creating a review project, uploading tender and bid PDFs, running automated neuro-symbolic compliance verification, inspecting side-by-side PDF evidence, remediating non-compliant clauses with live re-evaluation, and exporting the Excel Compliance Matrix.
+
+---
+
+## SECTION 5 : USER GUIDE
+
+`Refer to appendix <Installation & User Guide> in project report at Github Folder: ProjectReport`
+
+### 5.1 Environment Setup & Model Weights (Google Drive)
 
 ```bash
 # 1. Create and activate Python 3.10+ environment
@@ -122,24 +85,30 @@ pip install -r requirements.txt
 #### Downloading Pre-Trained & Fine-Tuned Model Checkpoints
 Because full neural network weights (`model.safetensors`, ~400 MB) exceed GitHub's 100 MB file limit, the trained model checkpoints are hosted on **Google Drive**:
 
-- **Google Drive Download Link**: *(Paste Google Drive shared folder link here before final submission)*
+- **Model Weights (Google Drive)**: [https://drive.google.com/drive/folders/1cz9LNph8wSEhkGyagAS3LvDgFOKYCfOd?usp=drive_link](https://drive.google.com/drive/folders/1cz9LNph8wSEhkGyagAS3LvDgFOKYCfOd?usp=drive_link)
 - After downloading, place the model folders under `SystemCode/models/` as follows:
   ```text
   SystemCode/models/
   ├── binary_filter/
   │   ├── config.json
   │   └── binary_filter_pipeline.joblib      # Step 1: Trained 24-feature binary filter
-  └── roberta_wwm_ext/
-      ├── classifier_meta.json
-      ├── config.json
-      ├── tokenizer.json
-      ├── tokenizer_config.json
-      └── model.safetensors                  # Step 2: Fine-tuned 8-class RoBERTa weights
+  ├── roberta_wwm_ext/
+  │   ├── classifier_meta.json
+  │   ├── config.json
+  │   ├── tokenizer.json
+  │   ├── tokenizer_config.json
+  │   └── model.safetensors                  # Step 2: Fine-tuned 8-class RoBERTa weights
+  └── pretrained/                            # Step 3: Local dense embedding & reranker weights
+      ├── bge-m3/
+      └── bge-reranker-v2-m3/
   ```
-  *(Note: Even if the Google Drive weights are not yet downloaded locally, the S604 359-clause workspace and all Step 4–6 evaluations run out-of-the-box using the committed caches and built-in structural fallback.)*
 
-#### Configuring DeepSeek API Key (for Live PDF Uploads)
-To run live LLM slot extraction on newly uploaded projects, configure your DeepSeek API key (either as an environment variable or in `SystemCode/.env`):
+#### S604 Real-World Tender & Bid Dataset (Google Drive)
+- **S604 Project Package (Google Drive)**: [https://drive.google.com/file/d/1mqYmapAIKs0HrO5bH-0CABvPrrAW6Ccs/view?usp=drive_link](https://drive.google.com/file/d/1mqYmapAIKs0HrO5bH-0CABvPrrAW6Ccs/view?usp=drive_link)
+- **Access Note**: Because the S604 package comes from a proprietary corporate/personal engineering bidding project, access is protected on Google Drive and will be granted upon submitting an access request through the link above. Once downloaded and extracted, you can create a new project in the web workspace and upload the S604 tender, addendum, and bid PDFs directly to inspect the full review workflow.
+
+#### Configuring DeepSeek API Key
+To run LLM slot extraction (`DeepSeek-V3`) and generate remediation suggestions, configure your DeepSeek API key (either as an environment variable or in `.env` in the repository root):
 
 ```bash
 # Linux / macOS
@@ -148,26 +117,24 @@ export DEEPSEEK_API_KEY="sk-..."
 # Windows PowerShell
 $env:DEEPSEEK_API_KEY="sk-..."
 ```
-*(Note: Replaying the 359-clause S604 project or running the 50-clause extraction benchmark uses the committed extraction cache and works completely offline without an API key.)*
 
----
-
-### 4.2 Launching the Streamlit Review Workspace
+### 5.2 Launching the Streamlit Review Workspace
 
 ```bash
-streamlit run SystemCode/src/app/main.py
+streamlit run SystemCode/src/app/main.py --server.maxUploadSize 1024
 ```
 
-The workspace supports two primary workflows:
-1. **One-Click S604 Real Project (359 Clauses, 22 PDFs)**:
-   - Click **"Load S604 Real Project"** on the welcome screen to inspect all 359 clauses, including real detected bid non-compliances (e.g., `T0056` 1095-day schedule violation vs. 360-day limit, `T0010`/`T0045` proposed Project Manager ongoing-project conflict, `T0096` missing joint-venture power of attorney) and financial formula verification (`T0192` Safety Production Fee calculation).
-2. **New Project — Upload Custom Tender & Bid PDFs**:
-   - Create a new project on the welcome screen, upload your Chinese **Tender PDF(s)** and **Bid PDF(s)** in **Step 1**, and click **"Confirm documents & start review pipeline"** in **Step 2** to execute automated clause segmentation, binary filtering, 8-class RoBERTa classification, bid RAG indexing, global context hydration, DeepSeek slot extraction, and `R01`–`R09` rule verification.
-   - Open **Step 3 · Review Workspace** to inspect side-by-side tender/bid PDF page highlights, send defects to **Remediation**, and export **Excel Compliance Matrices** or **PDF Audit Reports**.
+Workflow in the web interface (`http://localhost:8501`):
+1. **Create a Review Project (`New project`)**:
+   - Enter a project name on the home screen and click **Create project** to initialize a new workspace.
+2. **Upload & Confirm Documents (`Overview · Step 1`)**:
+   - Upload your **Tender PDF(s)**, **Addendum / Clarification PDF(s)**, and **Bid PDF(s)** (such as the S604 tender and bid PDFs downloaded from the Google Drive folder above), and verify their parsing status in the document table.
+3. **Run the Automated Compliance Pipeline (`Overview · Step 2 & Step 3`)**:
+   - Click **Confirm documents & start review pipeline** to execute clause segmentation, binary filtering, 8-class RoBERTa classification, Parent-Child Hybrid RAG indexing & retrieval, global context hydration, DeepSeek slot extraction, and `R01`–`R09` symbolic rule evaluation.
+4. **Inspect Evidence, Remediate & Export (`Review Workspace` / `Remediation` / `Report & Export`)**:
+   - Click **Open Review Workspace** to inspect side-by-side tender and bid PDF highlights, review structured `Field / Bid response / Result` comparisons, edit non-passing bid pages with automatic re-evaluation in **Remediation**, and export the two-sheet **Excel Compliance Matrix** in **Report & Export**.
 
----
-
-## 5. Reproducing Step 1–6 Evaluations
+### 5.3 Reproducing Step 1–6 Evaluations
 
 All commands below are run from the `SystemCode/` directory (`cd SystemCode`):
 
@@ -195,4 +162,69 @@ python replay_compliance_responses.py \
 python -m unittest tests/test_compliance_rules.py tests/test_compliance_reference.py tests/test_rule_contracts_and_suite.py tests/test_extraction_benchmark_and_eval.py
 ```
 
-For detailed module designs and evaluation reports, see the technical documents in [`docs/`](docs/).
+---
+
+## SECTION 6 : PROJECT REPORT / PAPER
+
+`Refer to project report at Github Folder: ProjectReport`
+
+**Sections in Project Report / Paper ([`ProjectReport/`](ProjectReport/)):**
+- Executive Summary / Abstract
+- Business Problem Background & Market Research
+- Project Objectives & Neuro-Symbolic System Architecture
+- System Implementation:
+  - Step 1: Tender PDF Parsing, Clause Segmentation & 24-Feature Binary Requirement Filtering
+  - Step 2: 8-Category Fine-Tuned `chinese-roberta-wwm-ext` Classification
+  - Step 3: Parent-Child Hybrid Bid RAG (`BGE-M3` + `BM25` + `BGE-Reranker-v2-m3`)
+  - Step 4 & Step 5: Structured LLM Slot Extraction (`DeepSeek-V3`), Anti-Hallucination Verbatim Grounding & Global Context Hydration
+  - Step 6: Deterministic Symbolic Compliance Rule Engine (`R01`–`R09`) & Interactive Streamlit Review Workspace
+- System Performance, Ablation Studies & S604 End-to-End Validation
+- Conclusions, Limitations & Future Improvements
+- Appendices:
+  - Project Proposal
+  - Mapped System Functionalities against Machine Reasoning (MR) Knowledge, Techniques & Skills
+  - Installation & User Guide (`TenderCheck_Installation_and_User_Guide_EN.docx`)
+  - Individual Project Reflections
+
+---
+
+## SECTION 7 : MISCELLANEOUS
+
+`Refer to Github Folder: Miscellaneous`
+
+### Repository Structure Overview
+
+```text
+TenderCheck/
+├── README.md                          # Official IRS-PM submission README (Sections 1–7)
+├── requirements.txt                   # Python dependencies
+├── SystemCode/                        # Core implementation, models, benchmarks & Streamlit app
+│   ├── train_binary_filter.py         # Step 1: Train & evaluate BinaryRequirementFilter
+│   ├── train_classifier.py            # Step 2: Train & evaluate 8-class RoBERTa classifier
+│   ├── run_rag_pipeline.py            # Step 3: Build & query Parent-Child Hybrid Bid RAG
+│   ├── evaluate_evidence_rag.py       # Step 3: Evaluate RAG retrieval metrics (Hit@K, MRR)
+│   ├── evaluate_extraction.py         # Steps 4–5: Evaluate LLM slot extraction & grounding
+│   ├── evaluate_rule_engine.py        # Step 6: Run 88-case symbolic rule engine evaluation suite
+│   ├── replay_compliance_responses.py # Steps 4–6: Full 359-clause S604 replay & audit report
+│   ├── data/                          # Annotated datasets, benchmarks & evaluation annotations
+│   ├── reports/                       # JSON/Markdown evaluation reports for Steps 1–6
+│   ├── src/                           # Source packages (parsing, classification, retrieval, extraction, rules, app)
+│   └── tests/                         # Automated unit & integration test suites
+├── ProjectReport/                     # Project Report & Installation/User Guide documentation
+├── Video/                             # System Modelling & Use Case Demo video
+└── Miscellaneous/                     # Supplementary specifications, annotation guidelines & experiment reports
+    ├── system_architecture.jpg        # System architecture diagram
+    ├── TenderCheck_Annotation/        # 8-category annotation guideline, schema & gold examples
+    └── docs/                          # Detailed rule contracts, RAG & extraction specs, and experiment reports
+```
+
+---
+
+**This [Machine Reasoning (MR)](https://www.iss.nus.edu.sg/executive-education/course/detail/machine-reasoning "Machine Reasoning") course is part of the Analytics and Intelligent Systems and [Graduate Certificate in Intelligent Reasoning Systems (IRS)](https://www.iss.nus.edu.sg/stackable-certificate-programmes/intelligent-systems "Intelligent Reasoning Systems") series offered by [NUS-ISS](https://www.iss.nus.edu.sg "Institute of Systems Science, National University of Singapore").**
+
+**Lecturer: [GU Zhan (Sam)](https://www.iss.nus.edu.sg/about-us/staff/detail/201/GU%20Zhan "GU Zhan (Sam)")**
+
+**[![alt text](https://www.iss.nus.edu.sg/images/default-source/About-Us/7.6.1-teaching-staff/sam-website.tmb-.png "Let's check out Sam's homepage")](https://www.iss.nus.edu.sg/about-us/staff/detail/201/GU%20Zhan)**
+
+**<a><img>https://www.iss.nus.edu.sg/images/default-source/About-Us/7.6.1-teaching-staff/sam-website.tmb-.png</img></a>**
+---

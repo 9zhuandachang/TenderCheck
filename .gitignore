@@ -90,3 +90,9 @@ scratch/
 
 # Review workspace runtime data (uploaded project files, SQLite database)
 /SystemCode/data/app/
+
+# Local environment secrets (API keys) & root runtime config
+.env
+.env.*
+SystemCode/.env
+/.streamlit/

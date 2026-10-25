@@ -1,7 +1,7 @@
 import time
 import streamlit as st
 
-from tcui import config, demo, real_backend, service, store, ui
+from tcui import config, real_backend, service, store, ui
 from tcui.service import ServiceError
 
 project = ui.current_project()
@@ -18,38 +18,15 @@ if not project or st.session_state.get("_show_project_start", False):
             ui.select_project(project["id"])
             st.rerun()
 
-    c1, c2 = st.columns(2, gap="medium", wrap=True)
-    with c1.container(border=True, height="stretch", key="welcome_s604"):
-        st.subheader("S604 Real Project (359 Clauses)")
-        st.markdown(
-            "Load the full 359-clause S604 highway engineering project with 22 tender, bid, "
-            "and supporting attachment PDFs."
-        )
-        st.caption(
-            "Includes: Tender + Addendum + Consolidated Bid + Technical Bid + 18 Supporting Attachment PDFs."
-        )
-        st.space("stretch")
-        if st.button(
-            "Load S604 Real Project",
-            type="primary",
-            icon=":material/fact_check:",
-            width="stretch",
-            wrap=True,
-        ):
-            with st.spinner("Loading S604 project documents and review workspace..."):
-                ui.select_project(real_backend.create_s604_project())
-            st.rerun()
-
-    with c2.container(border=True, height="stretch", key="welcome_new_project"):
+    with st.container(border=True, key="welcome_new_project"):
         st.subheader("New project")
         st.markdown("Start a new project and upload your own tender, addendum, and bid PDF files.")
-        with st.form("new_project", border=False, height="stretch"):
+        with st.form("new_project", border=False):
             name = st.text_input("Project name", placeholder="e.g. Contract C-2026-014 Highway Section")
             validation = st.empty()
-            st.space("stretch")
             if st.form_submit_button(
                 "Create project",
-                type="secondary",
+                type="primary",
                 icon=":material/add:",
                 width="stretch",
                 wrap=True,
@@ -59,12 +36,6 @@ if not project or st.session_state.get("_show_project_start", False):
                     st.rerun()
                 else:
                     validation.error("Enter a project name.")
-
-    with st.expander("Sample project for quick sandbox testing"):
-        if st.button("Load English sample drainage project", icon=":material/play_circle:"):
-            with st.spinner("Building sample documents..."):
-                ui.select_project(demo.create_demo_project())
-            st.rerun()
     st.stop()
 
 pid = project["id"]
