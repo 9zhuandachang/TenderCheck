@@ -97,6 +97,7 @@ class DeepSeekSlotExtractor:
     def __init__(self, api_key=None, base_url='https://api.deepseek.com', model='deepseek-chat',
                  cache_path=None, timeout=45, cache_only=False, response_hook=None, max_retries=3,
                  review_reference_date=''):
+        import threading
         self.api_key = (api_key or os.environ.get('DEEPSEEK_API_KEY') or '').strip()
         self.base_url, self.model, self.timeout = base_url.rstrip('/'), model, timeout
         self.cache_only = cache_only
@@ -107,6 +108,7 @@ class DeepSeekSlotExtractor:
             raise ValueError('max_retries must be positive')
         self.cache_path = Path(cache_path) if cache_path else Path(__file__).resolve().parents[2]/'data/extraction_cache/passage_v3.json'
         self._cache = json.loads(self.cache_path.read_text(encoding='utf-8')) if self.cache_path.exists() else {}
+        self._cache_lock = threading.Lock()
 
     def _compute_cache_key(self, clause_id, requirement_text, category, evidence_context, model=None):
         payload = [CONTRACT_VERSION, SYSTEM_EXTRACTION_PROMPT, self.base_url, model or self.model,
@@ -114,17 +116,18 @@ class DeepSeekSlotExtractor:
         return hashlib.sha256(json.dumps(payload,ensure_ascii=False).encode()).hexdigest()
 
     def _save_cache(self):
-        self.cache_path.parent.mkdir(parents=True,exist_ok=True)
-        temporary=self.cache_path.with_suffix('.tmp')
-        temporary.write_text(json.dumps(self._cache,ensure_ascii=False,indent=2),encoding='utf-8')
-        for attempt in range(5):
-            try:
-                temporary.replace(self.cache_path)
-                break
-            except PermissionError:
-                if attempt == 4:
-                    raise
-                time.sleep(0.1)
+        with self._cache_lock:
+            self.cache_path.parent.mkdir(parents=True,exist_ok=True)
+            temporary=self.cache_path.with_suffix('.tmp')
+            temporary.write_text(json.dumps(self._cache,ensure_ascii=False,indent=2),encoding='utf-8')
+            for attempt in range(5):
+                try:
+                    temporary.replace(self.cache_path)
+                    break
+                except PermissionError:
+                    if attempt == 4:
+                        raise
+                    time.sleep(0.1)
 
     def _call_chat_completion(
         self,
@@ -572,7 +575,7 @@ class DeepSeekSlotExtractor:
             b.evidence_found = False
         return result
 
-    def extract(self, clause_id, requirement_text, category, evidence_context, use_cache=True, review_reference_date=''):
+    def extract(self, clause_id, requirement_text, category, evidence_context, use_cache=True, review_reference_date='', auto_save=True):
         passages = json.loads(evidence_context)
         if not isinstance(passages,list):
             raise ValueError('Expected a JSON array of cited passages')
@@ -581,8 +584,10 @@ class DeepSeekSlotExtractor:
                 TenderConstraintSlots(), BidEvidenceSlots(), extractor_backend='no_evidence')
             return self._inject_reference_date(res, review_reference_date)
         key=self._compute_cache_key(clause_id,requirement_text,category,evidence_context)
-        if use_cache and key in self._cache:
-            result=StructuredExtractionResult.from_dict(self._cache[key])
+        with self._cache_lock:
+            cached_entry = self._cache.get(key) if use_cache else None
+        if cached_entry is not None:
+            result=StructuredExtractionResult.from_dict(cached_entry)
             result=self._inject_reference_date(result, review_reference_date)
             result=self._normalize_llm_extraction(result, passages)
             return ground_extraction(result,evidence_context)
@@ -602,7 +607,10 @@ class DeepSeekSlotExtractor:
         result=self._normalize_llm_extraction(result, passages)
         result=ground_extraction(result,evidence_context)
         if use_cache:
-            self._cache[key]=result.to_dict();self._save_cache()
+            with self._cache_lock:
+                self._cache[key]=result.to_dict()
+            if auto_save:
+                self._save_cache()
         return result
 
 

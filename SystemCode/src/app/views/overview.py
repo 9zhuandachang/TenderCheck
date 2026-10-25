@@ -265,14 +265,19 @@ with st.container(border=True, key="overview_step2_pipeline"):
                         st.write("1/3 · Segmenting tender PDF, running Binary Requirement Filter & 8-Class Classifier...")
                         service.extract_requirements(pid)
                         for _ in range(18000):
-                            j = store.latest_job(pid, "extract")
-                            if j and j.get("message"):
-                                live_msg.caption(f"⏳ {j['message']}")
+                            j = store.last_job(pid, "extract")
+                            if j:
+                                stage_txt = j.get("stage") or j.get("message") or ""
+                                prog_txt = f" ({j['done']}/{j['total']})" if j.get("total") else ""
+                                if stage_txt:
+                                    live_msg.caption(f"⏳ {stage_txt}{prog_txt}")
                             if not store.active_jobs(pid, "extract"):
                                 if j and j.get("status") == "failed":
                                     raise ServiceError(f"Extraction failed: {j.get('error')}")
                                 break
                             time.sleep(0.1)
+                    else:
+                        st.write(f"1/3 · Loaded **{len(reqs)}** extracted tender requirements.")
                     for r in store.pending_amendments(pid):
                         service.decide_amendment(r["id"], True, ui.actor(), ui.role())
                     if not store.get_project(pid)["req_confirmed_at"]:
@@ -282,9 +287,12 @@ with st.container(border=True, key="overview_step2_pipeline"):
                     st.write(f"3/3 · Executing Slot Grounding & ComplianceRuleEngine on **{len(reqs_now)} clauses**...")
                     service.start_review(pid, ui.actor(), ui.role())
                     for _ in range(36000):
-                        j = store.latest_job(pid, "review")
-                        if j and j.get("message"):
-                            live_msg.caption(f"⏳ {j['message']}")
+                        j = store.last_job(pid, "review")
+                        if j:
+                            stage_txt = j.get("stage") or j.get("message") or ""
+                            prog_txt = f" ({j['done']}/{j['total']})" if j.get("total") else ""
+                            if stage_txt:
+                                live_msg.caption(f"⏳ {stage_txt}{prog_txt}")
                         if not store.active_jobs(pid, "review"):
                             if j and j.get("status") == "failed":
                                 raise ServiceError(f"Review failed: {j.get('error')}")

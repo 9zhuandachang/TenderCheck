@@ -128,46 +128,54 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
     for p in unique_passages:
         txt = p["text"]
 
-        # 2a. Commercial Bid Letter (不含报价的商务投标函)
+        # 2a. Commercial Bid Letter (不含报价的商务投标函或通用工程分包投标函)
         if (
             ctx.commercial_bid_letter is None
             and "投标函" in txt
-            and "已仔细研究" in txt
-            and "按合同约定实施" in txt
+            and ("已仔细研究" in txt or "完全响应招标文件" in txt or "严格按施工合同" in txt)
+            and ("按合同约定实施" in txt or "完成全部工程施工任务" in txt)
             and "工期" in txt
-            and not re.search(r"愿意以人民币.*¥\s*\d", txt)
         ):
             quotes = {"full_text": txt}
             for k, pat in (
-                ("general_acceptance", r"我方已仔细研究[^。]+按合同约定实施和完成承包工程[^。]*。"),
-                ("bid_validity", r"我方承诺在招标文件规定的投标有效期内不撤销投标文件。"),
-                ("quality", r"工程质量\s*[:：][^。\n]+。"),
-                ("duration", r"工期\s*[:：]\s*\d+\s*日历天"),
+                ("general_acceptance", r"(?:我方已仔细研究[^。]+按合同约定实施和完成承包工程[^。]*。|在研究了[^\n。]+全部内容后[^\n。]*。|我方已完全响应招标文件的所有条款[^。]*。)"),
+                ("bid_validity", r"(?:我方承诺在招标文件规定的投标有效期内不撤销投标文件。|本投标自开标日起有效期为\s*\d+\s*个?日历天[^。]*。)"),
+                ("quality", r"工程质量[^\n。]*[。；]"),
+                ("duration", r"(?:工期\s*[:：]\s*\d+\s*日历天|保证按\s*\d+\s*天的工期)"),
                 ("deposit_commitment", r"我方将与本投标函一起提交投标保证金[^。]*。"),
-                ("performance_bond", r"按照招标文件要求提交履约保证金"),
-                ("contract_obligation", r"在合同约定的期限内完成合同规定的全部义务"),
+                ("performance_bond", r"(?:按照招标文件要求提交履约保证金|按要求递交银行保函或現金作为履约保证金)"),
+                ("contract_obligation", r"(?:在合同约定的期限内完成合同规定的全部义务|严格按施工合同条件及技术规范要求施工)"),
             ):
                 sp = _verified_span(txt, pat)
                 if sp:
                     quotes[k] = sp
             ctx.commercial_bid_letter = GlobalPassageAnchor(passage=p, quotes=quotes)
 
-        # 2b. Price Bid Letter (报价文件投标函)
+        # 2b. Price Bid Letter (报价文件投标函 / 含税报价投标函)
         if (
             ctx.price_bid_letter is None
             and "投标函" in txt
-            and "愿意以人民币" in txt
-            and "投标总价" in txt
+            and (
+                ("愿意以人民币" in txt and "投标总价" in txt)
+                or ("含税（大写）" in txt and "含税小写" in txt)
+                or ("投标总价" in txt and re.search(r"[\d,]+(?:\.\d+)?\s*元", txt))
+            )
         ):
-            m_price = re.search(r"[¥￥]\s*([\d,]+(?:\.\d+)?)\s*(元)", txt)
-            m_upper = re.search(r"人民币\s*[（(]大写[）)]\s*([^\s（(¥￥]+)", txt)
+            m_price = re.search(
+                r"(?:[¥￥]\s*|含税小写\s*|小写\s*[:：]?\s*)([\d,]+(?:\.\d+)?)\s*(元)",
+                txt,
+            )
+            m_upper = re.search(
+                r"(?:人民币\s*[（(]大写[）)]|含税\s*[（(]大写[）)]|[（(]大写[）)])\s*([^\s（(¥￥）)]+)",
+                txt,
+            )
             if m_price:
                 quotes = {"full_text": txt}
                 for k, pat in (
-                    ("price_span", r"愿意以人民币[^。]+投标总价[^。]*"),
-                    ("unit_span", r"[¥￥]\s*[\d,]+(?:\.\d+)?\s*元"),
+                    ("price_span", r"(?:愿意以人民币[^。]+投标总价[^。]*|愿意以含税[^。]+的总价款[^。]*)"),
+                    ("unit_span", r"(?:[¥￥]\s*|含税小写\s*)[\d,]+(?:\.\d+)?\s*元"),
                     ("numeric_only_span", r"[\d,]+(?:\.\d+)?"),
-                    ("upper_span", r"人民币\s*[（(]大写[）)]\s*[^\s（(¥￥]+"),
+                    ("upper_span", r"(?:人民币\s*[（(]大写[）)]|含税\s*[（(]大写[）)])\s*[^\s（(¥￥）)]+"),
                     ("cost_review", r"我方已按招标文件要求详细审核并确认全部招标文件及有关附件[^。]*。"),
                 ):
                     sp = _verified_span(txt, pat)
@@ -188,13 +196,22 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
                     },
                 )
 
-        # 2b-2. Priced BOQ Summary Table (投标报价汇总表)
-        if ctx.priced_boq_summary is None and "投标报价汇总表" in txt and "投标报价" in txt:
-            m_boq = re.search(r"投标报价\s*(?:\|\s*\|\s*|\n\s*)([\d,]+(?:\.\d+)?)", txt)
+        # 2b-2. Priced BOQ Summary Table (投标报价汇总表 / 工程量清单预估金额表)
+        if ctx.priced_boq_summary is None and (
+            ("投标报价汇总表" in txt and "投标报价" in txt)
+            or ("工程量清单" in txt and "预估金额" in txt)
+        ):
+            m_boq = re.search(
+                r"(?:投标报价\s*(?:\|\s*\|\s*|\n\s*)|预估金额\s*[:：]\s*)([\d,]+(?:\.\d+)?)",
+                txt,
+            )
             m_c100_700 = re.search(r"第100章至第700章合计\s*(?:\|\s*\|\s*|\n\s*)([\d,]+(?:\.\d+)?)", txt)
             if m_boq:
                 raw_boq_str = m_boq.group(1).replace(",", "")
-                sp_boq = _verified_span(txt, r"投标报价\s*(?:\|\s*\|\s*|\n\s*)" + re.escape(m_boq.group(1)))
+                sp_boq = _verified_span(
+                    txt,
+                    r"(?:投标报价\s*(?:\|\s*\|\s*|\n\s*)|预估金额\s*[:：]\s*)" + re.escape(m_boq.group(1)),
+                )
                 meta_boq: Dict[str, Any] = {
                     "boq_total_value": _num_val(m_boq.group(1)),
                     "boq_total_str": raw_boq_str,
@@ -230,14 +247,18 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
         if ctx.priced_boq_instructions is None and "工程量清单总说明" in txt and "公路工程预算定额" in txt:
             ctx.priced_boq_instructions = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
 
-        # 2c. Integrity Commitment Letter & Basic Account Header (投标诚信承诺书)
-        if ctx.integrity_commitment_letter is None and "投标诚信承诺书" in txt and "郑重承诺" in txt:
+        # 2c. Integrity Commitment Letter & Basic Account Header (投标诚信承诺书 / 投标人承诺书)
+        if ctx.integrity_commitment_letter is None and (
+            ("投标诚信承诺书" in txt and "郑重承诺" in txt)
+            or ("投标人承诺" in txt and "不转包" in txt)
+            or ("承诺书" in txt and ("诚信守法" in txt or "完全响应招标文件的所有条款" in txt))
+        ):
             quotes = {"full_text": txt}
             for k, pat in (
-                ("commitment_span", r"我单位在参加组织的[\s\S]+?组织实施[;；。]"),
+                ("commitment_span", r"(?:我单位在参加组织的[\s\S]+?组织实施[;；。]|我方已完全响应招标文件的所有条款[^\n。]*。|本单位近三年内[^\n。]*。)"),
                 ("basic_account", r"投标人基本账户开户名[\s\S]+?开户行\s*[:：]\s*[^\n]+"),
-                ("clause_1_true", r"我方申报的所有资料都是真实、准确、完整的[;；。]"),
-                ("clause_2_no_collusion", r"我方无资质挂靠或参与串标、围标情形"),
+                ("clause_1_true", r"(?:我方申报的所有资料都是真实、准确、完整的[;；。]|近三年内无行贿犯罪记录[^\n。]*。)"),
+                ("clause_2_no_collusion", r"(?:我方无资质挂靠或参与串标、围标情形|中标后不转包，不违法分包[^\n。]*。)"),
             ):
                 sp = _verified_span(txt, pat)
                 if sp:

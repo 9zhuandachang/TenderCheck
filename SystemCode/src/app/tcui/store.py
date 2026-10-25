@@ -464,6 +464,13 @@ def failed_jobs_since(project_id: int, kind_prefix: str, since_id: int = 0):
 
 
 def last_job(project_id: int, kind: str):
-    return query_one(
+    row = query_one(
         "SELECT * FROM jobs WHERE project_id=? AND kind=? ORDER BY id DESC LIMIT 1", (project_id, kind)
     )
+    if row is not None and "message" not in row:
+        row["message"] = row.get("stage") or ""
+    return row
+
+
+def latest_job(project_id: int, kind: str):
+    return last_job(project_id, kind)
