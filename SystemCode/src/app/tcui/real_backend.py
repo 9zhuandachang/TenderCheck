@@ -1080,10 +1080,25 @@ def _offline_chinese_slot_fallback(
                 p1, p2 = valid_passages[0], valid_passages[1]
                 pt1, pt2 = str(p1.get("text") or ""), str(p2.get("text") or "")
                 cand_entity = ""
-                for ent in ("江苏浩腾照明集团有限公司", "中铁上海工程局集团浩腾建设有限公司", "司马庄路大桥", "成宽荣"):
-                    if ent in pt1 and ent in pt2 and p1.get("page_start") != p2.get("page_start"):
-                        cand_entity = ent
-                        break
+                if p1.get("page_start") != p2.get("page_start"):
+                    cand_pool = [
+                        m.group(0).strip()
+                        for m in re.finditer(
+                            r"[\u4e00-\u9fff（）()]{4,30}(?:有限公司|有限责任公司|股份有限公司|集团|工程局|设计院|建设局|交通局)",
+                            pt1,
+                        )
+                    ]
+                    cand_pool.extend(
+                        m.group(1).strip()
+                        for m in re.finditer(
+                            r"(?:投标人|项目负责人|项目经理|法定代表人)\s*[:：]\s*([\u4e00-\u9fff（）()]{2,30})",
+                            pt1,
+                        )
+                    )
+                    for ent in cand_pool:
+                        if len(ent) >= 2 and ent in pt1 and ent in pt2:
+                            cand_entity = ent
+                            break
                 if cand_entity:
                     b.evidence_found = True
                     b.entity_primary = cand_entity
@@ -1108,11 +1123,31 @@ def _offline_chinese_slot_fallback(
                 pt = str(p_perf.get("text") or "")
                 if q_perf and any(k in pt for k in ("业绩", "合同", "工程", "大桥", "中标")):
                     b.evidence_found = True
+                    m_pdate = re.search(
+                        r"(?:完工|交工|竣工|合同签订|签订)(?:时间|日期)?\s*[:：\n]?\s*(20\d{2})\s*[-./年]\s*(\d{1,2})\s*[-./月]\s*(\d{1,2})",
+                        pt,
+                    ) or re.search(r"(20\d{2})\s*[-./年]\s*(\d{1,2})\s*[-./月]\s*(\d{1,2})", pt)
+                    comp_date = (
+                        f"{m_pdate.group(1)}-{int(m_pdate.group(2)):02d}-{int(m_pdate.group(3)):02d}"
+                        if m_pdate
+                        else (ref_date or "")
+                    )
+                    m_pamt = re.search(
+                        r"(?:合同总价|合同价|合同金额|中标价|中标金额|造价|小写)\s*[:：¥￥\n]?\s*([\d,]+(?:\.\d+)?)\s*(万元|元)?",
+                        pt,
+                    )
+                    amt_wy = None
+                    if m_pamt:
+                        raw_val = float(m_pamt.group(1).replace(",", ""))
+                        unit_s = m_pamt.group(2) or ("元" if raw_val >= 100000 else "万元")
+                        amt_wy = round(raw_val / 10000.0, 4) if unit_s == "元" else raw_val
+                    m_pname = re.search(r"项目名称\s*[:：\n]?\s*([^\n|]{4,40})", pt)
+                    proj_name = m_pname.group(1).strip() if m_pname else "类似工程施工业绩"
                     b.performance_records = [
                         {
-                            "project_name": "类似工程施工业绩",
-                            "completion_date": "2024-05-27",
-                            "contract_amount_wanyuan": 579.61,
+                            "project_name": proj_name,
+                            "completion_date": comp_date,
+                            "contract_amount_wanyuan": amt_wy,
                             "amount_unit": "万元",
                         }
                     ]
@@ -1149,12 +1184,22 @@ def _offline_chinese_slot_fallback(
                 pt = str(p_staff.get("text") or "")
                 if q_st and (raw_role in pt or role_cn in pt or "管理机构" in pt):
                     b.evidence_found = True
-                    # Extract actual qualification listed in the staffing table if present
+                    # Extract actual qualification and person name listed in the staffing table if present
                     act_qual = "工程师"
-                    if "建造师" in pt:
+                    if "一级注册建造师" in pt or "壹级建造师" in pt:
+                        act_qual = "一级注册建造师"
+                    elif "建造师" in pt:
                         act_qual = "二级注册建造师"
+                    m_pname = re.search(r"姓\s*名\s*[:：|\s]\s*([\u4e00-\u9fff]{2,4})", pt) or re.search(
+                        r"([\u4e00-\u9fff]{2,4})\s+\d{2}\s*岁", pt
+                    )
+                    staff_name = m_pname.group(1).strip() if m_pname else ""
                     b.personnel_records = [
-                        {"role": role_cn, "name": "成宽荣" if "成宽荣" in pt else f"{role_cn}_{i+1}", "qualification_text": act_qual}
+                        {
+                            "role": role_cn,
+                            "name": staff_name if (staff_name and i == 0) else f"{role_cn}_{i+1}",
+                            "qualification_text": act_qual,
+                        }
                         for i in range(cnt)
                     ]
                     b.evidence_references = [
@@ -1891,13 +1936,15 @@ def generate_remediation_suggestion(
         t_span = "2、我方无资质挂靠或参与串标、围标情形，拟派项目经理无在建工程；"
         if t_span not in clean_orig:
             t_span = "拟派项目经理无在建工程"
+        m_other_proj = re.search(r"在([^\s，。；、“”\"']{4,30}(?:工程|项目))任职", other_ev_ctx + "\n" + clean_exp)
+        proj_desc = f"在{m_other_proj.group(1)}任职" if m_other_proj else "有其他在建工程任职"
         r_span = (
-            "2、我方无资质挂靠或参与串标、围标情形，拟派项目经理虽在G345来安至釜山段一级公路改建三期工程任职，"
+            f"2、我方无资质挂靠或参与串标、围标情形，拟派项目经理虽{proj_desc}，"
             "但承诺本项目中标后、合同签订前能够变更至本项目全面履约；"
         )
         rev = clean_orig.replace(t_span, r_span, 1) if t_span in clean_orig else (clean_orig + "\n" + r_span)
         return {
-            "diagnosis": "消除《投标诚信承诺书》（第5页）“拟派项目经理无在建工程”与《投标函》（第4页）“在G345项目任职”的前后矛盾，统一修正为中标后合同签订前变更至本项目全面履约。",
+            "diagnosis": "消除《投标诚信承诺书》“拟派项目经理无在建工程”与《投标函》在建项目声明的前后矛盾，统一修正为中标后合同签订前变更至本项目全面履约。",
             "target_span": t_span,
             "replacement_span": r_span,
             "revised_text": rev,
@@ -2075,7 +2122,7 @@ def reevaluate_clause_with_modified_bid(
             new_quote = clean_mod.splitlines()[0].strip() if clean_mod.splitlines() else clean_mod[:180]
             for line in clean_mod.splitlines():
                 line_s = line.strip()
-                if ("项目经理" in line_s and ("变更" in line_s or "履约" in line_s or "G345" in line_s)) or "承诺" in line_s:
+                if ("项目经理" in line_s and ("变更" in line_s or "履约" in line_s or "在建" in line_s)) or "承诺" in line_s:
                     new_quote = line_s
                     break
 

@@ -374,7 +374,8 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
             m_emp = re.search(r"企业名称\s*[:：]\s*([^\n\s]+)", txt)
             m_name = re.search(r"姓\s*名\s*[:：]\s*([\u4e00-\u9fff]{2,4})", txt)
             sp_emp = _verified_span(txt, r"企业名称\s*[:：]\s*[^\n\s]+")
-            if m_emp and m_name and "王文年" not in m_name.group(1):
+            pm_cert_name = ctx.pm_constructor_cert.meta.get("name", "") if ctx.pm_constructor_cert else ""
+            if m_emp and m_name and (not pm_cert_name or pm_cert_name not in m_name.group(1)):
                 ctx.chief_engineer_cert = GlobalPassageAnchor(
                     passage=p,
                     quotes={"full_text": txt, "emp_span": sp_emp or txt},
@@ -437,11 +438,12 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
                 }
 
         # 2j. Project Manager Title Certificate Scan (项目经理职称资格证书扫描件)
+        pm_cert_name = ctx.pm_constructor_cert.meta.get("name", "") if ctx.pm_constructor_cert else ""
         if (
             ctx.pm_title_cert is None
             and "资格名称" in txt
             and "高级工程师" in txt
-            and ("工程技术人员" in txt or "王文年" in txt)
+            and ("工程技术人员" in txt or (pm_cert_name and pm_cert_name in txt))
         ):
             ctx.pm_title_cert = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
 
