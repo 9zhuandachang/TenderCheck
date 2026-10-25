@@ -1,7 +1,5 @@
----
-
 ## SECTION 1 : PROJECT TITLE
-
+## TenderCheck — Neuro-Symbolic Intelligent Bid Compliance Review System
 
 <p align="center">
   <img src="Miscellaneous/system_architecture.jpg" alt="TenderCheck System Architecture" width="760"/>
@@ -183,7 +181,7 @@ python -m unittest tests/test_compliance_rules.py tests/test_compliance_referenc
 - Appendices:
   - Project Proposal
   - Mapped System Functionalities against Machine Reasoning (MR) Knowledge, Techniques & Skills
-  - Installation & User Guide (`TenderCheck_Installation_and_User_Guide_EN.docx`)
+  - Installation & User Guide
   - Individual Project Reflections
 
 ---
@@ -216,4 +214,3 @@ TenderCheck/
     ├── system_architecture.jpg        # System architecture diagram
     └── TenderCheck_Annotation/        # 8-category annotation guideline, schema & gold examples
 ```
-
