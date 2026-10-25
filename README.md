@@ -1,7 +1,7 @@
 ---
 
 ## SECTION 1 : PROJECT TITLE
-## TenderCheck — Neuro-Symbolic Intelligent Bid Compliance Review System
+
 
 <p align="center">
   <img src="Miscellaneous/system_architecture.jpg" alt="TenderCheck System Architecture" width="760"/>
