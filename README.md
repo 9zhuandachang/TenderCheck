@@ -1,5 +1,4 @@
-## SECTION 1 : PROJECT TITLE
-## TenderCheck
+## SECTION 1 : TenderCheck
 
 <p align="center">
   <img src="Miscellaneous/system_architecture.jpg" alt="TenderCheck System Architecture" width="760"/>
