@@ -210,12 +210,13 @@ with st.container(border=True, key="overview_step2_pipeline"):
                     f"4/4 · Executing `ComplianceRuleEngine` (`{config.RULE_VERSION}`) across "
                     f"**{len(evaluated)} clauses**..."
                 )
-                if rnd:
-                    service.start_review(pid, ui.actor(), ui.role())
-                    for _ in range(40):
-                        if not store.active_jobs(pid, "review"):
-                            break
-                        time.sleep(0.1)
+                if not store.get_project(pid)["req_confirmed_at"]:
+                    service.confirm_requirements(pid, ui.actor(), ui.role())
+                service.start_review(pid, ui.actor(), ui.role())
+                for _ in range(40):
+                    if not store.active_jobs(pid, "review"):
+                        break
+                    time.sleep(0.1)
                 status_box.update(
                     label="Pipeline complete! All 359 clauses extracted, grounded, and evaluated.",
                     state="complete",

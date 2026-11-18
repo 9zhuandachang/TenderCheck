@@ -96,3 +96,7 @@ scratch/
 .env.*
 SystemCode/.env
 /.streamlit/
+
+# Intermediate run dumps & local scratch directories
+/SystemCode/scratch/
+/SystemCode/reports/runs/

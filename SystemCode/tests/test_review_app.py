@@ -56,7 +56,11 @@ class ReviewFlowTest(unittest.TestCase):
             service.send_to_remediation(results[clause]["id"], "", "Ann", "Reviewer")
         service.mark_not_applicable(results["DWG C-104"]["id"], "Clarification requested from the Employer",
                                     "Ann", "Reviewer")
-        self.assertEqual(service.signoff_blockers(r1), [])
+        # Under zero-false-pass governance (ADR-002), open Non-compliant / Insufficient / Remediation items block sign-off
+        r1_blockers = service.signoff_blockers(r1)
+        self.assertTrue(any("Non-compliant" in b for b in r1_blockers))
+        self.assertTrue(any("Insufficient evidence" in b for b in r1_blockers))
+        self.assertTrue(any("remediation" in b for b in r1_blockers))
 
         # Revised bid moves remediation items to re-inspection.
         data = demo.revised_bid_path(pid).read_bytes()
@@ -77,7 +81,7 @@ class ReviewFlowTest(unittest.TestCase):
         rem = {i["clause_no"]: i["status"] for i in store.list_remediations(pid)}
         self.assertEqual(rem["3.1"], TO_REINSPECT)
         self.assertEqual(rem["5.4"], TO_REMEDIATE)
-        res2 = {r["clause_no"]: r for r in store.list_results(r2)}
+        res2 = {r["clause_no"]: r["clause_no"] and r for r in store.list_results(r2)}
         self.assertEqual(res2["1.2"]["human_status"], config.CONFIRMED)  # carried forward, verdict unchanged
         for r in res2.values():
             if r["human_status"] == config.UNREVIEWED:
@@ -85,11 +89,22 @@ class ReviewFlowTest(unittest.TestCase):
         self.assertTrue(any("awaiting confirmation" in b for b in service.signoff_blockers(r2)))
         for clause in ("3.1", "4.2", "5.1", "5.3", "DWG C-102", "DWG C-105"):
             self.assertEqual(service.confirm_result(res2[clause]["id"], "Ann", "Reviewer"), CLOSED)
+
+        # Persisting Non-compliant clause 5.4 still blocks sign-off until Manager explicitly approves manual pass with written basis
+        self.assertTrue(any("Non-compliant" in b for b in service.signoff_blockers(r2)))
+        with self.assertRaises(service.ServiceError):
+            service.approve_manual_pass(res2["5.4"]["id"], "Reviewer tries to force pass", "Ann", "Reviewer")
+        service.approve_manual_pass(
+            res2["5.4"]["id"],
+            "5.4 traffic plan waiver confirmed in Employer clarification #2",
+            "Ben",
+            "Manager",
+        )
         self.assertEqual(service.signoff_blockers(r2), [])
 
         with self.assertRaises(service.ServiceError):
             service.sign_round(r2, "Ann", "", "Reviewer")
-        service.sign_round(r2, "Ben", "5.4 disclosed as open risk", "Manager")
+        service.sign_round(r2, "Ben", "5.4 disclosed and approved by Manager", "Manager")
         with self.assertRaises(service.ServiceError):
             service.confirm_result(res2["5.4"]["id"], "Ann", "Reviewer")  # signed rounds are read-only
 

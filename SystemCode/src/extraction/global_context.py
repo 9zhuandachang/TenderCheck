@@ -515,6 +515,7 @@ def hydrate_with_global_context(
     b = result.bid_slots
     req = str(result.requirement_text or "")
     ctype = t.constraint_type
+    needs_reground = False
 
     # 0a. Distinguish objective chapter-presence requirements ("须编制...") from subjective scoring ("优良/一般/差/分")
     if (
@@ -530,7 +531,8 @@ def hydrate_with_global_context(
         t.source_quotes = {"expected_text": req}
         result.extraction_issues = []
         ctype = t.constraint_type
-    elif t.requires_human_review or ctype == "UNSUPPORTED":
+        needs_reground = True
+    elif t.requires_human_review:
         result.extraction_issues = []
 
     # 0b. Normalize registration-unit consistency ("项目经理建造师须在投标单位注册") & scan-presence ("须提供项目经理职称资格证书扫描件")
@@ -542,6 +544,7 @@ def hydrate_with_global_context(
             t.source_quotes = {"expected_text": req}
             result.extraction_issues = []
             ctype = t.constraint_type
+            needs_reground = True
         elif (
             result.category == "Document"
             and re.search(r"^须提供项目经理职称资格证书扫描件[。]?$", req)
@@ -553,6 +556,7 @@ def hydrate_with_global_context(
             t.source_quotes = {"expected_text": req}
             result.extraction_issues = []
             ctype = t.constraint_type
+            needs_reground = True
 
     # Do not touch clauses routed to human review or having verified conflicts
     if t.requires_human_review or (b.conflict_detected and b.conflict_pairs):
@@ -1007,8 +1011,8 @@ def hydrate_with_global_context(
             result.extraction_issues = []
             modified_bid = True
 
-    # Re-verify through ground_extraction whenever bid passages/references were hydrated
-    if modified_bid:
+    # Re-verify through ground_extraction whenever bid passages/references or constraint types were modified
+    if modified_bid or needs_reground:
         evidence_context_str = json.dumps(passages, ensure_ascii=False)
         if normalizer is not None:
             result = normalizer._normalize_llm_extraction(result, passages)
@@ -1019,11 +1023,19 @@ def hydrate_with_global_context(
         result = ground_extraction(result, evidence_context_str)
 
     # ------------------------------------------------------------------
-    # 5. NUMERIC_BOUND: Post-grounding cross-clause tender parameter & Bid Letter commitment hydration
+    # 5. NUMERIC_BOUND: Grounded cross-clause tender parameter & explicit Bid Letter numeric hydration
     # ------------------------------------------------------------------
     if ctype == "NUMERIC_BOUND":
         # 5a. Cross-clause maximum bid control price (最高投标限价 / 最高限价 / 招标控制价)
-        if t.expected_numeric is None and re.search(r"最高(?:投标)?限价|招标控制价", req) and global_ctx.control_price:
+        has_explicit_cap_cue = bool(
+            re.search(r"超过.*(?:废标|无效|否决)|不得超过|不得高于|不超过|不高于|≤|<=", req)
+        )
+        if (
+            t.expected_numeric is None
+            and re.search(r"最高(?:投标)?限价|招标控制价", req)
+            and has_explicit_cap_cue
+            and global_ctx.control_price
+        ):
             if b.actual_numeric is None and global_ctx.price_bid_letter:
                 p_anchor = global_ctx.price_bid_letter
                 eid = _append_global_passage(passages, p_anchor.passage)
@@ -1036,13 +1048,14 @@ def hydrate_with_global_context(
                     {"field": "actual_numeric", "evidence_id": eid, "quote": q_num},
                     {"field": "actual_unit", "evidence_id": eid, "quote": q_unit},
                 ]
-                evidence_context_str = json.dumps(passages, ensure_ascii=False)
-                result = ground_extraction(result, evidence_context_str)
-            t.expected_numeric, t.expected_unit = global_ctx.control_price
-            if not t.operator:
-                t.operator = "<="
+            evidence_context_str = json.dumps(passages, ensure_ascii=False)
+            result = ground_extraction(result, evidence_context_str)
+            if not result.extraction_issues:
+                t.expected_numeric, t.expected_unit = global_ctx.control_price
+                if not t.operator:
+                    t.operator = "<="
 
-        # 5b. Bid validity period (投标有效期 90日) committed via Commercial Bid Letter
+        # 5b. Bid validity period (投标有效期): ONLY hydrate if Commercial Bid Letter explicitly states a numeric duration
         elif (
             "投标有效期" in req
             and t.expected_numeric is not None
@@ -1051,30 +1064,25 @@ def hydrate_with_global_context(
             and global_ctx.commercial_bid_letter is not None
         ):
             c_anchor = global_ctx.commercial_bid_letter
-            q_val = c_anchor.quotes.get("bid_validity") or c_anchor.quotes.get("general_acceptance")
+            q_val = c_anchor.quotes.get("bid_validity")
             if q_val:
-                eid = _append_global_passage(passages, c_anchor.passage)
-                p_meta = next(p for p in passages if p["evidence_id"] == eid)
-                span = original_quote_span(p_meta["text"], q_val)
-                if span:
-                    b.evidence_found = True
-                    b.actual_numeric = t.expected_numeric
-                    b.actual_unit = t.expected_unit
-                    b.evidence_references = [
-                        {
-                            "field": "actual_numeric",
-                            "evidence_id": eid,
-                            "quote": span,
-                            "document_id": p_meta["document_id"],
-                            "source_sha256": p_meta["source_sha256"],
-                            "page_start": p_meta["page_start"],
-                            "page_end": p_meta["page_end"],
-                        }
-                    ]
-                    b.evidence_pages = sorted({page for r in b.evidence_references for page in range(r["page_start"], r["page_end"] + 1)})
-                    evidence_context_str = json.dumps(passages, ensure_ascii=False)
+                m_val = re.search(r"有效期(?:为)?\s*(\d+(?:\.\d+)?)\s*个?(日历天|天|日)", q_val)
+                if m_val:
+                    eid = _append_global_passage(passages, c_anchor.passage)
+                    p_meta = next(p for p in passages if p["evidence_id"] == eid)
+                    span = original_quote_span(p_meta["text"], q_val)
+                    if span:
+                        b.evidence_found = True
+                        b.actual_numeric = _num_val(m_val.group(1))
+                        b.actual_unit = m_val.group(2)
+                        b.evidence_references = [
+                            {"field": "actual_numeric", "evidence_id": eid, "quote": span},
+                            {"field": "actual_unit", "evidence_id": eid, "quote": span},
+                        ]
+                        evidence_context_str = json.dumps(passages, ensure_ascii=False)
+                        result = ground_extraction(result, evidence_context_str)
 
-        # 5c. Performance bond ratio (履约保证金 / 履约担保 10%) committed via Commercial Bid Letter
+        # 5c. Performance bond ratio (履约保证金 / 履约担保): ONLY hydrate if Commercial Bid Letter explicitly states a numeric amount/rate
         elif (
             re.search(r"履约(?:保证金|担保)", req)
             and t.expected_numeric is not None
@@ -1083,27 +1091,22 @@ def hydrate_with_global_context(
             and global_ctx.commercial_bid_letter is not None
         ):
             c_anchor = global_ctx.commercial_bid_letter
-            q_bond = c_anchor.quotes.get("performance_bond") or c_anchor.quotes.get("general_acceptance")
+            q_bond = c_anchor.quotes.get("performance_bond")
             if q_bond:
-                eid = _append_global_passage(passages, c_anchor.passage)
-                p_meta = next(p for p in passages if p["evidence_id"] == eid)
-                span = original_quote_span(p_meta["text"], q_bond)
-                if span:
-                    b.evidence_found = True
-                    b.actual_numeric = t.expected_numeric
-                    b.actual_unit = t.expected_unit
-                    b.evidence_references = [
-                        {
-                            "field": "actual_numeric",
-                            "evidence_id": eid,
-                            "quote": span,
-                            "document_id": p_meta["document_id"],
-                            "source_sha256": p_meta["source_sha256"],
-                            "page_start": p_meta["page_start"],
-                            "page_end": p_meta["page_end"],
-                        }
-                    ]
-                    b.evidence_pages = sorted({page for r in b.evidence_references for page in range(r["page_start"], r["page_end"] + 1)})
-                    evidence_context_str = json.dumps(passages, ensure_ascii=False)
+                m_bond = re.search(r"履约(?:保证金|担保)[^0-9\n]{0,20}?(\d[\d,]*(?:\.\d+)?)\s*(万元|元|%)", q_bond)
+                if m_bond:
+                    eid = _append_global_passage(passages, c_anchor.passage)
+                    p_meta = next(p for p in passages if p["evidence_id"] == eid)
+                    span = original_quote_span(p_meta["text"], q_bond)
+                    if span:
+                        b.evidence_found = True
+                        b.actual_numeric = _num_val(m_bond.group(1))
+                        b.actual_unit = m_bond.group(2)
+                        b.evidence_references = [
+                            {"field": "actual_numeric", "evidence_id": eid, "quote": span},
+                            {"field": "actual_unit", "evidence_id": eid, "quote": span},
+                        ]
+                        evidence_context_str = json.dumps(passages, ensure_ascii=False)
+                        result = ground_extraction(result, evidence_context_str)
 
     return result, evidence_context_str

@@ -149,14 +149,14 @@ with cols[0]:
             )
     pos = ids.index(current_id) if current_id in ids else -1
     prev_target = next(
-        (r["id"] for r in reversed(shown[:pos]) if r["applicable"] and r["human_status"] != CONFIRMED),
+        (r["id"] for r in reversed(shown[:pos]) if r["applicable"] and r["human_status"] not in (CONFIRMED, config.CLOSED)),
         None,
     ) if pos > 0 else None
     next_target = next(
-        (r["id"] for r in shown[pos + 1:] if r["applicable"] and r["human_status"] != CONFIRMED),
+        (r["id"] for r in shown[pos + 1:] if r["applicable"] and r["human_status"] not in (CONFIRMED, config.CLOSED)),
         None,
     ) if pos >= 0 else next(
-        (r["id"] for r in shown if r["applicable"] and r["human_status"] != CONFIRMED),
+        (r["id"] for r in shown if r["applicable"] and r["human_status"] not in (CONFIRMED, config.CLOSED)),
         None,
     )
     n1, n2 = st.columns(2)
@@ -320,6 +320,7 @@ with st.container(border=True):
         saved_page_edit = real_backend.get_bid_page_edit(
             sel_ev.get("doc_path") or (bid_doc["path"] if bid_doc else ""),
             int(sel_ev.get("page") or 1),
+            project_id=pid,
         )
         rag_body = (
             (saved_page_edit.get("modified_text") if saved_page_edit else None)
@@ -404,23 +405,19 @@ with st.container(border=True):
         st.caption("Retrieval scores describe search relevance only; they are not a compliance confidence.")
 
     # ------------------------------------------------------------- actions
-    note = ""
+    note = st.text_input(
+        "Review note (optional)",
+        value=res.get("note") or "",
+        key=f"ws_note_{current_id}",
+        placeholder="记录复核备注（Confirm Finding 仅确认当前机器结论，不会将违规/待核验改为合规）",
+        disabled=signed or not res["applicable"],
+    )
     a1, a2 = st.columns(2)
 
-    def _run(fn, *args, success=""):
-        try:
-            fn(*args)
-            if success:
-                ui.flash(success)
-        except ServiceError as e:
-            ui.flash(str(e), "error")
-
-    def _confirm():
-        _run(lambda: service.confirm_result(current_id, ui.actor(), ui.role(), note, ui.take_elapsed()),
-             success=f"Clause {res['clause_no']} confirmed.")
+    def _advance_next() -> None:
         if current_id in ids:
             curr_idx = ids.index(current_id)
-            ordered = shown[curr_idx + 1:] + shown[:curr_idx]
+            ordered = shown[curr_idx + 1 :] + shown[:curr_idx]
             next_non_passing = next(
                 (r["id"] for r in ordered if r["applicable"] and r["verdict"] != COMPLIANT and r["human_status"] == UNREVIEWED),
                 None,
@@ -430,16 +427,87 @@ with st.container(border=True):
             elif curr_idx < len(ids) - 1:
                 st.session_state["ws_result"] = ids[curr_idx + 1]
 
-    a1.button("Confirm", type="primary", icon=":material/check:", width="stretch", on_click=_confirm,
-              disabled=signed or not res["applicable"])
+    def _run(fn, *args, success=""):
+        try:
+            fn(*args)
+            if success:
+                ui.flash(success)
+            return True
+        except ServiceError as e:
+            ui.flash(str(e), "error")
+            return False
 
-    if a2.button("To remediation", icon=":material/build:", width="stretch",
-                 disabled=signed or res["verdict"] == COMPLIANT or not res["applicable"]):
+    def _confirm():
+        msg = (
+            f"Clause {res['clause_no']} confirmed as Compliant."
+            if res["verdict"] == COMPLIANT
+            else f"Clause {res['clause_no']} finding ({res['verdict']}) confirmed — verdict kept unchanged."
+        )
+        if _run(lambda: service.confirm_result(current_id, ui.actor(), ui.role(), note, ui.take_elapsed()), success=msg):
+            _advance_next()
+
+    confirm_label = "Confirm Compliant" if res["verdict"] == COMPLIANT else f"Confirm Finding ({res['verdict']})"
+    a1.button(
+        confirm_label,
+        type="primary" if res["verdict"] == COMPLIANT else "secondary",
+        icon=":material/check:",
+        width="stretch",
+        on_click=_confirm,
+        disabled=signed or not res["applicable"],
+    )
+
+    if a2.button(
+        "To remediation",
+        type="primary" if res["verdict"] != COMPLIANT else "secondary",
+        icon=":material/build:",
+        width="stretch",
+        disabled=signed or res["verdict"] == COMPLIANT or not res["applicable"],
+    ):
         try:
             rem_id = service.send_to_remediation(current_id, note, ui.actor(), ui.role(), ui.take_elapsed())
             ui.go("remediation", rem_focus_id=rem_id, rem_focus_req=res["requirement_id"])
         except ServiceError as e:
             st.error(str(e))
+
+    if res["applicable"] and res["verdict"] != COMPLIANT:
+        with st.expander("Manual Verification / Override Pass (人工核验放行 — 严控假放行，必须填写依据)", icon=":material/verified_user:"):
+            if res["verdict"] == NON_COMPLIANT:
+                st.warning(
+                    "当前条款为确定性违规或前后矛盾（Non-compliant）。建议点击 **To remediation** 修改投标书原文重审；"
+                    "若确属特殊情形需人工特批放行，必须由 **Manager** 角色填写核验依据。",
+                    icon=":material/warning:",
+                )
+            else:
+                st.caption(
+                    "仅当您已人工核实原件（如目视确认PDF印章/手写签字齐全、或已在外部政务网站核查无失信记录）时，填写具体核验依据后放行。"
+                )
+            manual_reason = st.text_input(
+                "Mandatory verification basis (必填核验依据)",
+                key=f"ws_manual_pass_reason_{current_id}",
+                placeholder="例如：已目视核对第12页公章清晰且法定代表人签字齐全 / 已查信用中国无失信记录",
+                disabled=signed,
+            )
+            role_blocked = res["verdict"] == NON_COMPLIANT and ui.role() != "Manager"
+            if st.button(
+                "Verify & Pass as Compliant (人工核验通过)",
+                key=f"ws_manual_pass_btn_{current_id}",
+                icon=":material/task_alt:",
+                disabled=signed or role_blocked,
+                help="Manager role required to override Non-compliant findings" if role_blocked else None,
+            ):
+                try:
+                    service.approve_manual_pass(
+                        current_id,
+                        manual_reason,
+                        ui.actor(),
+                        ui.role(),
+                        ui.take_elapsed(),
+                    )
+                    ui.flash(f"Clause {res['clause_no']} manually verified as Compliant (audit trail recorded).")
+                    _advance_next()
+                    st.rerun()
+                except ServiceError as e:
+                    st.error(str(e))
 
     history = store.list_actions(pid, res["requirement_id"])
     if history:

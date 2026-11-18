@@ -67,7 +67,11 @@ def _ensure_env_loaded() -> None:
                 pass
 
 # Canonical paths for the S604 full-359 dataset and index
-S604_ANNOTATIONS_PATH = SYSTEMCODE_ROOT / "data" / "annotation" / "2022" / "11.11annotations.json"
+S604_ANNOTATIONS_PATH = (
+    SYSTEMCODE_ROOT / "data" / "annotations" / "2022" / "11.11annotations.json"
+    if (SYSTEMCODE_ROOT / "data" / "annotations").exists()
+    else SYSTEMCODE_ROOT / "data" / "annotation" / "2022" / "11.11annotations.json"
+)
 S604_CASES_PATH = SYSTEMCODE_ROOT / "reports" / "rag_experiments" / "s604_full359_reasoning_inputs" / "cases.json"
 S604_RAW_DIR = SYSTEMCODE_ROOT / "reports" / "rag_experiments" / "s604_full359_reasoning_deepseek"
 S604_REPLAY_V3_DIR = SYSTEMCODE_ROOT / "reports" / "rag_experiments" / "s604_full359_replay_v3"
@@ -214,16 +218,20 @@ def classify_sub_verdict(raw_verdict: str, tender_slots: Dict[str, Any], req_tex
         or re.search(r"盖章|公章|签字|签名|签章|手写|宋体|暗标|页眉|页脚|字迹清晰", req_text)
     ):
         return "SEAL_SIGNATURE_CHECK"
-    if ctype == "HISTORICAL_PERFORMANCE" or re.search(r"业绩|交工验收", req_text):
+    if ctype in ("PERFORMANCE_CHAIN_AND_SCORING", "HISTORICAL_PERFORMANCE") or re.search(r"业绩|交工验收", req_text):
         return "PERFORMANCE_LINKAGE"
     return "ATTACHMENT_OR_FORMULA"
 
 
 def map_ui_verdict(raw_verdict: str) -> str:
-    """Map 6 backend verdicts to the 3 top-level UI verdicts while preserving positive rate (263/359)."""
+    """Map 6 backend verdicts to the 3 top-level UI verdicts with zero false passes.
+
+    Proven two-sided contradictions (`CONFLICTING_EVIDENCE`) are mapped to `NON_COMPLIANT`
+    so internal bid contradictions are never softened into mere 'Insufficient evidence'.
+    """
     if raw_verdict in ("COMPLIANT", "SCORED"):
         return config.COMPLIANT
-    if raw_verdict == "NON_COMPLIANT":
+    if raw_verdict in ("NON_COMPLIANT", "CONFLICTING_EVIDENCE"):
         return config.NON_COMPLIANT
     return config.INSUFFICIENT
 
@@ -327,25 +335,26 @@ def _build_fields_comparison(
                 "result": ui_verdict,
             }
         )
-    elif ctype == "HISTORICAL_PERFORMANCE":
+    elif ctype in ("PERFORMANCE_CHAIN_AND_SCORING", "HISTORICAL_PERFORMANCE"):
         req_desc = f"业绩数量 ≥ {t.get('min_project_count') or 1}项"
-        if t.get("required_project_type"):
-            req_desc += f" · 类型: {t['required_project_type']}"
-        if t.get("expected_numeric"):
-            val = t.get("expected_numeric")
-            req_desc += f" · 规模 ≥ {val:g}{t.get('expected_unit') or ''}"
+        if t.get("required_highway_grade") or t.get("required_project_type"):
+            req_desc += f" · 等级/类型: {t.get('required_highway_grade') or t.get('required_project_type')}"
+        if t.get("min_amount_wanyuan"):
+            req_desc += f" · 合同额 ≥ {t['min_amount_wanyuan']:g}万元"
+        if t.get("min_length_km"):
+            req_desc += f" · 里程 ≥ {t['min_length_km']:g}公里"
         projs = b.get("performance_records") or []
         if projs:
             p_desc = "；".join(
-                f"{p.get('project_name', '项目')} (合同额:{p.get('contract_amount') or '—'}, "
-                f"里程:{p.get('mileage_km') or '—'}km, 角色:{p.get('manager_name') or p.get('subject_role') or '投标人'})"
+                f"{p.get('project_name', '项目')} (合同额:{p.get('contract_amount_wanyuan') or p.get('contract_amount') or '—'}万元, "
+                f"里程:{p.get('length_km') or p.get('mileage_km') or '—'}km, 角色:{p.get('person_name') or p.get('performed_role') or '投标人'})"
                 for p in projs
             )
         else:
             p_desc = "未检出符合全部证明链要求的历史业绩"
         rows.append(
             {
-                "field": f"历史业绩核验 ({t.get('subject_role') or 'bidder'})",
+                "field": f"历史业绩核验 ({t.get('required_role') or t.get('subject_role') or 'bidder'})",
                 "required": req_desc,
                 "actual": p_desc,
                 "result": ui_verdict,
@@ -422,17 +431,29 @@ def _build_fields_comparison(
                 "result": ui_verdict,
             }
         )
-    elif ctype == "OBJECTIVE_SCORING":
+    elif ctype == "FORMULA_BOUND":
+        rate_pct = f"{float(t['formula_rate']) * 100:g}%" if t.get("formula_rate") is not None else "—"
+        comp = b.get("component_amounts") or {}
+        comp_str = "，".join(f"{k}={v:g}" if isinstance(v, (int, float)) else f"{k}={v}" for k, v in comp.items())
+        rows.append(
+            {
+                "field": f"金额比例公式核验 ({t.get('target_field') or 'Formula Bound'})",
+                "required": f"{t.get('operator') or '>='} 基数({t.get('base_field') or '—'}) × {rate_pct}",
+                "actual": comp_str if comp_str else "未检出完整工程量清单分项基数",
+                "result": ui_verdict,
+            }
+        )
+    elif ctype in ("QUALITATIVE_OR_SCORING", "OBJECTIVE_SCORING"):
         score_str = (
             f"得分: {rule_dict['awarded_score']:g} 分"
             if rule_dict.get("awarded_score") is not None
-            else "待核对计分条件"
+            else "待人工核对计分/定性条件"
         )
         rows.append(
             {
-                "field": "客观量化计分 (Objective Scoring)",
-                "required": f"最高 {t.get('max_score') or '—'} 分",
-                "actual": f"{score_str} ({rule_dict.get('symbolic_trace') or ''})",
+                "field": "定性目标或量化计分",
+                "required": f"最高 {t.get('scoring_max_points') or t.get('max_score') or '—'} 分",
+                "actual": f"{score_str} ({rule_dict.get('symbolic_trace') or rule_dict.get('explanation') or ''})",
                 "result": ui_verdict,
             }
         )
@@ -441,9 +462,9 @@ def _build_fields_comparison(
         q_preview = refs[0].get("quote", "").replace("\n", " ").strip() if refs else (b.get("actual_text") or "")
         rows.append(
             {
-                "field": "施工组织设计/技术响应",
-                "required": "按评审细则编制对应技术标方案章节",
-                "actual": f"已编制对应章节：{q_preview}" if q_preview else "已定位技术标施工组织设计相关章节",
+                "field": "条款人工复核项",
+                "required": "需人工对照招标文件要求逐项核实",
+                "actual": f"候选原文摘录：{q_preview}" if q_preview else "系统未自动确认合规，待人工复核原件",
                 "result": ui_verdict,
             }
         )
@@ -807,10 +828,41 @@ def rereview_real_backend_result(
             ext.tender_slots.target_field = c["field"]
 
     if actual_value is not None or actual_unit is not None:
-        ext.bid_slots.evidence_found = True
+        from src.extraction.evidence import numeric_in_quote, unit_in_quote
+
         ext.bid_slots.actual_numeric = actual_value
         if actual_unit is not None:
             ext.bid_slots.actual_unit = actual_unit
+        eff_unit = ext.bid_slots.actual_unit or ext.tender_slots.expected_unit or ""
+        matched_p = None
+        if actual_value is not None:
+            for p in passages:
+                pt = str(p.get("text") or "")
+                if numeric_in_quote(actual_value, pt) and (not eff_unit or unit_in_quote(eff_unit, pt)):
+                    matched_p = p
+                    break
+        if matched_p is not None:
+            ext.bid_slots.evidence_found = True
+            ext.extractor_backend = f"{ext.extractor_backend}+verified_numeric_correction"
+            # Remove stale missing-numeric-citation issues only when the new numeric value is verbatim in `matched_p`
+            ext.extraction_issues = [
+                iss
+                for iss in (ext.extraction_issues or [])
+                if not any(
+                    k in iss
+                    for k in (
+                        "Missing source citation: actual_numeric",
+                        "Missing source citation: actual_unit",
+                        "Numeric value and unit lack a linked source quotation",
+                        "Numeric fact is not stated in cited text: actual_numeric",
+                    )
+                )
+            ]
+        else:
+            ext.bid_slots.evidence_found = False
+            msg = "人工修正数值或单位未在已关联的投标证据原文中逐字检出，严禁无原文支撑直接放行"
+            if msg not in ext.extraction_issues:
+                ext.extraction_issues.append(msg)
 
     rule_engine = ComplianceRuleEngine()
     rule_res = rule_engine.evaluate(ext)
@@ -870,436 +922,29 @@ def _infer_project_reference_date(
     return datetime.date.today().isoformat()
 
 
-def _pick_verbatim_passage_quote(p_text: str, r_text: str, min_len: int = 18, max_len: int = 140) -> str:
-    """
-    Pick a verbatim substring from `p_text` that shares keywords with `r_text` (or is a
-    substantive sentence from `p_text`) so `ground_extraction` verifies `quote in p_text`
-    and `has_document_body(quote)`.
-    """
-    raw = str(p_text or "")
-    if not raw.strip():
-        return ""
-    tokens = [w for w in re.findall(r"[\u4e00-\u9fff]{2,6}", r_text or "") if w not in ("投标人", "招标人", "招标文件", "投标文件")]
-    best_line = ""
-    best_score = -1
-    for line in re.split(r"(?<=[。；\n])", raw):
-        s = line.strip()
-        if len(s) < min_len:
-            continue
-        score = sum(2 for tok in tokens if tok in s) + (1 if len(s) >= 25 else 0)
-        if score > best_score:
-            best_score = score
-            best_line = s
-    if best_line:
-        q = best_line[:max_len]
-        if q in raw:
-            return q
-    # Fallback: take a contiguous slice of `raw` starting at the first CJK character
-    m_cjk = re.search(r"[\u4e00-\u9fff]", raw)
-    start_idx = m_cjk.start() if m_cjk else 0
-    q = raw[start_idx : start_idx + max_len].strip()
-    return q if q in raw else raw[:max_len]
-
-
-def _offline_chinese_slot_fallback(
+def _strict_conservative_fallback(
     cid: str,
     r_text: str,
     r_cat: str,
     ev_str: str,
     ref_date: str,
+    reason: str = "",
 ) -> StructuredExtractionResult:
     """
-    Deterministic Chinese slot-extraction fallback that grounds both tender slots
-    (`t.source_quotes`: Dict[str, str]) and bid slots (`b.evidence_references`: List[Dict])
-    using the exact `TenderConstraintSlots` / `BidEvidenceSlots` schema in `src/extraction/schema.py`.
-    """
-    from src.extraction.semantics import explicit_numeric_operator, has_document_body
+    Zero-false-pass conservative offline fallback.
 
+    Uses ONLY `HeuristicSlotExtractor` (which strictly checks explicit same-field
+    numeric bounds with verbatim `ground_extraction` verification). All non-numeric,
+    qualification, staffing, performance, formula, consistency, commitment, and seal
+    clauses abstain safely (`INSUFFICIENT_EVIDENCE`) — never fabricating passing slots.
+    """
     heur = HeuristicSlotExtractor(review_reference_date=ref_date)
     ext = heur.extract(cid, r_text, r_cat, ev_str, review_reference_date=ref_date)
-    t = ext.tender_slots
-    b = ext.bid_slots
-    # Keep `HeuristicSlotExtractor` output if it already extracted a clean, grounded constraint without issues
-    if t.target_field and not ext.extraction_issues and b.evidence_found:
-        return ext
-
-    # Reset to a clean state before deterministic Chinese rule mapping
-    t = TenderConstraintSlots(review_reference_date=ref_date)
-    b = BidEvidenceSlots()
-    ext.tender_slots = t
-    ext.bid_slots = b
-    ext.extraction_issues = []
-
-    passages = json.loads(ev_str) if ev_str else []
-    valid_passages = [p for p in passages if str(p.get("text") or "").strip()]
-    first_p = valid_passages[0] if valid_passages else None
-    t_quote = r_text.strip()[:80]
-
-    def _set_t_quote(field_name: str, quote_str: str) -> None:
-        q = quote_str if (quote_str and quote_str in r_text) else t_quote
-        if q:
-            t.source_quotes[field_name] = q
-
-    def _find_best_passage(keywords: List[str]) -> Optional[Dict[str, Any]]:
-        if not valid_passages:
-            return None
-        best = valid_passages[0]
-        best_hits = -1
-        for p in valid_passages:
-            pt = str(p.get("text") or "")
-            hits = sum(1 for kw in keywords if kw and kw in pt)
-            if hits > best_hits:
-                best_hits = hits
-                best = p
-        return best
-
-    def _find_body_quote(p_dict: Optional[Dict[str, Any]]) -> str:
-        if not p_dict:
-            return ""
-        pt = str(p_dict.get("text") or "")
-        # Try candidate slices that satisfy `has_document_body(q, r_text)`
-        q = _pick_verbatim_passage_quote(pt, r_text, min_len=20, max_len=140)
-        if q and has_document_body(q, r_text):
-            return q
-        for line in re.split(r"(?<=[。；\n])", pt):
-            s = line.strip()[:140]
-            if len(s) >= 20 and s in pt and has_document_body(s, r_text):
-                return s
-        # Fallback: take a longer contiguous slice of `pt`
-        if len(pt.strip()) >= 25:
-            slice_q = pt.strip()[:160]
-            if slice_q in pt and has_document_body(slice_q, r_text):
-                return slice_q
-        return ""
-
-    # 1. R09 Formula Bound (安全生产费 / 费率公式核算)
-    if "安全生产费" in r_text and re.search(r"\d+(?:\.\d+)?\s*%", r_text):
-        m_pct = re.search(r"(\d+(?:\.\d+)?)\s*%", r_text)
-        t.constraint_type = "FORMULA_BOUND"
-        t.operator = ">="
-        t.target_field = "safety_fee"
-        t.base_field = "chapter_100_700_total"
-        t.formula_type = "GROSS_RATIO"
-        t.formula_rate = float(m_pct.group(1)) / 100.0 if m_pct else 0.015
-        t.expected_unit = "元"
-        if "元" in r_text:
-            _set_t_quote("expected_unit", t_quote)
-        p_match = _find_best_passage(["安全生产费", "清单", "报价", "预估金额"])
-        if p_match:
-            pt = str(p_match.get("text") or "")
-            m_sf = re.search(r"安全生产费[^\d\n]{0,20}([\d,]+(?:\.\d+)?)", pt)
-            if m_sf:
-                val = float(m_sf.group(1).replace(",", ""))
-                q_sf = m_sf.group(0)
-                b.evidence_found = True
-                b.actual_unit = "元"
-                b.component_amounts = {"safety_fee": val, "chapter_100_700_total": val / max(t.formula_rate, 0.01)}
-                b.evidence_references = [
-                    {"field": "actual_unit", "evidence_id": p_match["evidence_id"], "quote": q_sf if "元" in q_sf else pt[:80]},
-                    {"field": "component_amounts", "evidence_id": p_match["evidence_id"], "quote": q_sf},
-                ]
-        return ground_extraction(ext, ev_str)
-
-    # 2. R01 Numeric Bound (工期 / 投标有效期 / 最高限价 / 采购控制价 / 预估金额 / 保证金)
-    m_num_req = re.search(
-        r"(工期|日历天|投标有效期|最高(?:投标)?限价|(?:招标|采购|预算)控制价|预估金额|投标保证金|履约(?:保证金|担保))"
-        r"[^0-9\n]{0,35}?(\d[\d,]*(?:\.\d+)?)\s*(日历天|天|日|个月|年|万元|元|%)",
-        r_text,
-    )
-    if m_num_req:
-        kw, num_s, unit_s = m_num_req.group(1), m_num_req.group(2), m_num_req.group(3)
-        exp_val = float(num_s.replace(",", ""))
-        exp_op = explicit_numeric_operator(r_text, exp_val)
-        if exp_op is not None and unit_s in r_text:
-            t.constraint_type = "NUMERIC_BOUND"
-            t.operator = exp_op
-            t.target_field = (
-                "duration_days"
-                if ("工期" in kw or unit_s in ("天", "日", "日历天"))
-                else ("bid_validity_days" if "有效期" in kw else "bid_price_yuan")
-            )
-            t.expected_numeric = exp_val
-            t.expected_unit = unit_s
-            _set_t_quote("expected_numeric", m_num_req.group(0))
-            _set_t_quote("expected_unit", m_num_req.group(0))
-            for p in valid_passages:
-                pt = str(p.get("text") or "")
-                if t.target_field == "duration_days":
-                    m_b = re.search(r"(?:工期|总工期|保证按)[^0-9\n]{0,15}?(\d+)\s*(日历天|天|日)", pt)
-                elif t.target_field == "bid_validity_days":
-                    m_b = re.search(r"(?:有效期)[^0-9\n]{0,15}?(\d+)\s*(日历天|天|日)", pt)
-                else:
-                    m_b = re.search(r"(?:含税小写|小写|投标总价|总报价)[^0-9\n]{0,15}?([\d,]+(?:\.\d+)?)\s*(万元|元|%)", pt)
-                    if not m_b:
-                        m_b = re.search(r"(?:总价|报价|金额)[^0-9\n]{0,15}?([\d,]+(?:\.\d+)?)\s*(万元|元|%)", pt)
-                if m_b:
-                    b_val = float(m_b.group(1).replace(",", ""))
-                    b_unit = m_b.group(2)
-                    q_b = m_b.group(0)
-                    b.evidence_found = True
-                    b.actual_numeric = b_val
-                    b.actual_unit = b_unit
-                    b.evidence_references = [
-                        {"field": "actual_numeric", "evidence_id": p["evidence_id"], "quote": q_b},
-                        {"field": "actual_unit", "evidence_id": p["evidence_id"], "quote": q_b},
-                    ]
-                    break
-            return ground_extraction(ext, ev_str)
-
-    # 3. R03 Entity Consistency (大小写一致 / 报价一致 / 单位名称一致)
-    if r_cat == "Consistency" or any(k in r_text for k in ("大小写", "大写", "一致", "相符", "同一人")):
-        t.constraint_type = "ENTITY_CONSISTENCY"
-        t.operator = "CONSISTENT"
-        if "大写" in r_text or "总价" in r_text or "报价" in r_text:
-            t.target_field = "rmb_upper_consistency"
-        else:
-            t.target_field = "entity_consistency"
-        p_match = _find_best_passage(["含税（大写）", "人民币（大写）", "投标函", "投标人"])
-        if p_match:
-            pt = str(p_match.get("text") or "")
-            m_up = re.search(r"含税（大写）([^（(]+?)\s*（含税小写\s*([\d,]+(?:\.\d+)?)\s*元）", pt)
-            if m_up and t.target_field == "rmb_upper_consistency":
-                q_up_part = f"含税（大写）{m_up.group(1)}"
-                q_low_part = f"（含税小写{m_up.group(2)}元）"
-                if q_low_part not in pt:
-                    q_low_part = m_up.group(0)
-                upper_clean = re.sub(r"\s+", "", m_up.group(1))
-                num_str = m_up.group(2).replace(",", "")
-                b.evidence_found = True
-                b.upper_amount_text = upper_clean
-                b.actual_numeric = float(num_str)
-                b.entity_primary = num_str
-                b.entity_secondary = num_str
-                b.evidence_references = [
-                    {"field": "upper_amount_text", "evidence_id": p_match["evidence_id"], "quote": q_up_part},
-                    {"field": "actual_numeric", "evidence_id": p_match["evidence_id"], "quote": m_up.group(0)},
-                    {"field": "entity_primary", "evidence_id": p_match["evidence_id"], "quote": m_up.group(0)},
-                    {"field": "entity_secondary", "evidence_id": p_match["evidence_id"], "quote": q_low_part},
-                ]
-            elif len(valid_passages) >= 2:
-                p1, p2 = valid_passages[0], valid_passages[1]
-                pt1, pt2 = str(p1.get("text") or ""), str(p2.get("text") or "")
-                cand_entity = ""
-                if p1.get("page_start") != p2.get("page_start"):
-                    cand_pool = [
-                        m.group(0).strip()
-                        for m in re.finditer(
-                            r"[\u4e00-\u9fff（）()]{4,30}(?:有限公司|有限责任公司|股份有限公司|集团|工程局|设计院|建设局|交通局)",
-                            pt1,
-                        )
-                    ]
-                    cand_pool.extend(
-                        m.group(1).strip()
-                        for m in re.finditer(
-                            r"(?:投标人|项目负责人|项目经理|法定代表人)\s*[:：]\s*([\u4e00-\u9fff（）()]{2,30})",
-                            pt1,
-                        )
-                    )
-                    for ent in cand_pool:
-                        if len(ent) >= 2 and ent in pt1 and ent in pt2:
-                            cand_entity = ent
-                            break
-                if cand_entity:
-                    b.evidence_found = True
-                    b.entity_primary = cand_entity
-                    b.entity_secondary = cand_entity
-                    b.evidence_references = [
-                        {"field": "entity_primary", "evidence_id": p1["evidence_id"], "quote": cand_entity},
-                        {"field": "entity_secondary", "evidence_id": p2["evidence_id"], "quote": cand_entity},
-                    ]
-        return ground_extraction(ext, ev_str)
-
-    # 4. Qualification Category -> R08 Performance / R07 Staffing / R02 Qualification Level
-    if r_cat == "Qualification":
-        if "业绩" in r_text or "类似工程" in r_text or "施工业绩" in r_text:
-            t.constraint_type = "PERFORMANCE_CHAIN_AND_SCORING"
-            t.operator = "=="
-            t.target_field = "past_performance"
-            t.review_reference_date = ref_date
-            t.min_project_count = 1
-            p_perf = _find_best_passage(["类似业绩", "业绩", "合同", "中标通知书", "竣工", "交工"])
-            if p_perf:
-                q_perf = _find_body_quote(p_perf)
-                pt = str(p_perf.get("text") or "")
-                if q_perf and any(k in pt for k in ("业绩", "合同", "工程", "大桥", "中标")):
-                    b.evidence_found = True
-                    m_pdate = re.search(
-                        r"(?:完工|交工|竣工|合同签订|签订)(?:时间|日期)?\s*[:：\n]?\s*(20\d{2})\s*[-./年]\s*(\d{1,2})\s*[-./月]\s*(\d{1,2})",
-                        pt,
-                    ) or re.search(r"(20\d{2})\s*[-./年]\s*(\d{1,2})\s*[-./月]\s*(\d{1,2})", pt)
-                    comp_date = (
-                        f"{m_pdate.group(1)}-{int(m_pdate.group(2)):02d}-{int(m_pdate.group(3)):02d}"
-                        if m_pdate
-                        else (ref_date or "")
-                    )
-                    m_pamt = re.search(
-                        r"(?:合同总价|合同价|合同金额|中标价|中标金额|造价|小写)\s*[:：¥￥\n]?\s*([\d,]+(?:\.\d+)?)\s*(万元|元)?",
-                        pt,
-                    )
-                    amt_wy = None
-                    if m_pamt:
-                        raw_val = float(m_pamt.group(1).replace(",", ""))
-                        unit_s = m_pamt.group(2) or ("元" if raw_val >= 100000 else "万元")
-                        amt_wy = round(raw_val / 10000.0, 4) if unit_s == "元" else raw_val
-                    m_pname = re.search(r"项目名称\s*[:：\n]?\s*([^\n|]{4,40})", pt)
-                    proj_name = m_pname.group(1).strip() if m_pname else "类似工程施工业绩"
-                    b.performance_records = [
-                        {
-                            "project_name": proj_name,
-                            "completion_date": comp_date,
-                            "contract_amount_wanyuan": amt_wy,
-                            "amount_unit": "万元",
-                        }
-                    ]
-                    b.evidence_references = [
-                        {"field": "performance_records", "evidence_id": p_perf["evidence_id"], "quote": q_perf}
-                    ]
-            return ground_extraction(ext, ev_str)
-
-        m_staff = re.search(
-            r"(项目负责人|项目经理|项目技术负责人|技术负责人|项目总工|总工程师|专职安全员|安全员|施工员|质检员|质量员|材料员|造价员)\s*(\d+)\s*[人名]"
-            r"(?:[（(]([^）)]+)[）)])?",
-            r_text,
-        )
-        if m_staff:
-            raw_role = m_staff.group(1)
-            role_cn = "项目经理" if raw_role == "项目负责人" else ("项目总工" if "技术负责人" in raw_role else raw_role)
-            cnt = int(m_staff.group(2))
-            qual_req = (m_staff.group(3) or "").strip()
-            t.constraint_type = "STAFFING_COUNT_AND_QUALIFICATION"
-            t.operator = "LEVEL_GE"
-            t.target_field = "staffing_table"
-            t.review_reference_date = ref_date
-            t.required_role = role_cn
-            t.required_count = cnt
-            if "二级及以上注册建造师" in qual_req or "建造师" in qual_req:
-                t.expected_text = "二级及以上注册建造师" if "二级及以上注册建造师" in r_text else "注册建造师"
-                _set_t_quote("expected_text", t.expected_text)
-            else:
-                t.expected_text = raw_role
-                _set_t_quote("expected_text", raw_role)
-            p_staff = _find_best_passage(["拟投入项目管理机构组成表", raw_role, role_cn, "项目管理机构", "简历"])
-            if p_staff:
-                q_st = _find_body_quote(p_staff)
-                pt = str(p_staff.get("text") or "")
-                if q_st and (raw_role in pt or role_cn in pt or "管理机构" in pt):
-                    b.evidence_found = True
-                    # Extract actual qualification and person name listed in the staffing table if present
-                    act_qual = "工程师"
-                    if "一级注册建造师" in pt or "壹级建造师" in pt:
-                        act_qual = "一级注册建造师"
-                    elif "建造师" in pt:
-                        act_qual = "二级注册建造师"
-                    m_pname = re.search(r"姓\s*名\s*[:：|\s]\s*([\u4e00-\u9fff]{2,4})", pt) or re.search(
-                        r"([\u4e00-\u9fff]{2,4})\s+\d{2}\s*岁", pt
-                    )
-                    staff_name = m_pname.group(1).strip() if m_pname else ""
-                    b.personnel_records = [
-                        {
-                            "role": role_cn,
-                            "name": staff_name if (staff_name and i == 0) else f"{role_cn}_{i+1}",
-                            "qualification_text": act_qual,
-                        }
-                        for i in range(cnt)
-                    ]
-                    b.evidence_references = [
-                        {"field": "personnel_records", "evidence_id": p_staff["evidence_id"], "quote": q_st}
-                    ]
-            return ground_extraction(ext, ev_str)
-
-        # Qualification clause where tender specifies a recognized qualification/license keyword
-        for qual_kw in ("营业执照", "独立法人", "安全生产许可证", "资质证书", "建造师", "总承包", "专业承包", "工程师"):
-            if qual_kw in r_text:
-                # Route to R05 Prohibition & Commitment or R04 Document Presence when full subject_bindings aren't in passage
-                t.constraint_type = "PROHIBITION_AND_COMMITMENT"
-                t.operator = "NOT_VIOLATED"
-                t.target_field = "qualification_compliance"
-                t.expected_text = qual_kw
-                _set_t_quote("expected_text", qual_kw)
-                p_qual = _find_best_passage([qual_kw, "投标人一般情况表", "资质", "营业执照", "承诺"])
-                if p_qual:
-                    q_q = _find_body_quote(p_qual)
-                    pt = str(p_qual.get("text") or "")
-                    if q_q and any(k in pt for k in (qual_kw, "营业执照", "安全生产许可证", "资质", "一般情况表", "建造师", "承诺")):
-                        b.evidence_found = True
-                        b.prohibition_violated = False
-                        b.commitment_fulfilled = True
-                        b.evidence_references = [
-                            {"field": "prohibition_violated", "evidence_id": p_qual["evidence_id"], "quote": q_q},
-                            {"field": "commitment_fulfilled", "evidence_id": p_qual["evidence_id"], "quote": q_q},
-                        ]
-                return ground_extraction(ext, ev_str)
-
-    # 5. Integrity / Commercial / Schedule / Technical Commitment -> R05 Prohibition & Commitment
-    if r_cat in ("Integrity", "Commercial", "Schedule") or any(
-        k in r_text for k in ("转包", "违法分包", "串通投标", "弄虚作假", "行贿", "失信", "承诺", "响应", "不得", "严禁")
-    ):
-        t.constraint_type = "PROHIBITION_AND_COMMITMENT"
-        t.operator = "NOT_VIOLATED"
-        t.target_field = "integrity_or_commercial_commitment"
-        if any(k in r_text for k in ("行贿", "失信被执行人", "黑名单", "行政处罚", "诉讼")):
-            t.requires_external_verification = True
-        p_int = _find_best_passage(["承诺", "完全响应", "不转包", "诚信", "投标函", "报价"])
-        if p_int:
-            q_int = _find_body_quote(p_int)
-            pt = str(p_int.get("text") or "")
-            if q_int and any(k in pt for k in ("承诺", "响应", "投标函", "不转包", "诚信", "合同", "工程")):
-                b.evidence_found = True
-                b.prohibition_violated = False
-                b.commitment_fulfilled = True
-                if t.requires_external_verification:
-                    b.evidence_source_type = "COMMITMENT_LETTER"
-                b.evidence_references = [
-                    {"field": "prohibition_violated", "evidence_id": p_int["evidence_id"], "quote": q_int},
-                    {"field": "commitment_fulfilled", "evidence_id": p_int["evidence_id"], "quote": q_int},
-                ]
-        return ground_extraction(ext, ev_str)
-
-    # 6. Scoring Category -> R06 Qualitative or Scoring
-    if r_cat == "Scoring":
-        t.constraint_type = "QUALITATIVE_OR_SCORING"
-        t.operator = "=="
-        t.target_field = "scoring_item"
-        t.requires_human_review = True
-        if first_p:
-            q_sc = _find_body_quote(first_p)
-            if q_sc:
-                b.evidence_found = True
-                b.qualitative_match = True
-                b.evidence_references = [
-                    {"field": "qualitative_match", "evidence_id": first_p["evidence_id"], "quote": q_sc}
-                ]
-        return ground_extraction(ext, ev_str)
-
-    # 7. Default Document / Technical -> R04 Document Presence & Seal
-    t.constraint_type = "DOCUMENT_PRESENCE_AND_SEAL"
-    t.operator = "PRESENT"
-    t.target_field = "document_presence"
-    if "盖章" in r_text or "公章" in r_text:
-        m_seal = re.search(r"[^\n。；]*(?:盖章|公章)[^\n。；]*", r_text)
-        t.requires_official_seal = True
-        _set_t_quote("requires_official_seal", m_seal.group(0) if m_seal else t_quote)
-    if "签字" in r_text or "签名" in r_text:
-        m_sig = re.search(r"[^\n。；]*(?:签字|签名)[^\n。；]*", r_text)
-        t.requires_signature = True
-        _set_t_quote("requires_signature", m_sig.group(0) if m_sig else t_quote)
-
-    if first_p:
-        pt = str(first_p.get("text") or "")
-        q_doc = _find_body_quote(first_p)
-        clause_kws = [
-            w
-            for w in re.findall(r"[\u4e00-\u9fff]{2,4}", r_text)
-            if w not in ("投标人", "招标人", "投标文件", "招标文件", "应当", "必须", "不得", "规定", "要求")
-        ]
-        overlap = any(kw in pt for kw in clause_kws) if clause_kws else True
-        if q_doc and overlap:
-            b.evidence_found = True
-            b.document_present = True
-            b.evidence_references = [
-                {"field": "document_present", "evidence_id": first_p["evidence_id"], "quote": q_doc}
-            ]
-    return ground_extraction(ext, ev_str)
+    if ext.tender_slots.constraint_type == "UNSUPPORTED" or not ext.bid_slots.evidence_found:
+        msg = reason or "离线保守模式：非显式同字段数值条款不作启发式猜测，已安全转人工复核（严禁假放行）"
+        if msg not in ext.extraction_issues:
+            ext.extraction_issues.append(msg)
+    return ext
 
 
 _AUTO_ANNOTATOR_SINGLETON: Optional[Any] = None
@@ -1539,13 +1184,26 @@ def evaluate_chinese_project_clauses(
                 review_reference_date=ref_date,
                 auto_save=False,
             )
-            # If the LLM returned an ungrounded or empty extraction while deterministic fallback finds grounded evidence, supplement it
-            if ext_res.extraction_issues or not ext_res.bid_slots.evidence_found:
-                fb = _offline_chinese_slot_fallback(cid, r_text, r_cat, ev_str, ref_date)
-                if fb.bid_slots.evidence_found and not fb.extraction_issues:
-                    ext_res = fb
-        except Exception:
-            ext_res = _offline_chinese_slot_fallback(cid, r_text, r_cat, ev_str, ref_date)
+        except Exception as exc:
+            if has_api_key:
+                ext_res = StructuredExtractionResult(
+                    clause_id=cid,
+                    requirement_text=r_text,
+                    category=r_cat,
+                    tender_slots=TenderConstraintSlots(review_reference_date=ref_date),
+                    bid_slots=BidEvidenceSlots(evidence_found=False),
+                    extraction_issues=[f"DeepSeek 槽位抽取异常，已安全转人工复核（严禁假放行）: {exc}"],
+                    extractor_backend="api_error_abstain",
+                )
+            else:
+                ext_res = _strict_conservative_fallback(
+                    cid,
+                    r_text,
+                    r_cat,
+                    ev_str,
+                    ref_date,
+                    reason="未配置 DEEPSEEK_API_KEY 且无缓存记录：非显式数值条款已安全转人工复核（严禁启发式假放行）",
+                )
         return rid, cid, ext_res
 
     completed_count = 0
@@ -1598,7 +1256,7 @@ def evaluate_chinese_project_clauses(
 S604_KNOWN_ISSUES = [
     {
         "clause_no": "T0056",
-        "expected": config.INSUFFICIENT,
+        "expected": config.NON_COMPLIANT,
         "note": "标书内部真实自相矛盾：P0404《投标诚信承诺书》承诺项目经理无在建 vs P0380《投标函》声明王文年在G345任项目经理",
     },
     {
@@ -1964,12 +1622,13 @@ def generate_remediation_suggestion(
 BID_PAGE_EDITS_PATH = config.DATA_DIR / "bid_page_edits.json"
 
 
-def _normalize_edit_key(pdf_path: str, page_no: int) -> str:
+def _normalize_edit_key(pdf_path: str, page_no: int, project_id: Optional[int] = None) -> str:
     try:
         resolved = str(Path(pdf_path).resolve())
     except Exception:
         resolved = str(pdf_path)
-    return f"{resolved}::{int(page_no)}"
+    base = f"{resolved}::{int(page_no)}"
+    return f"proj_{int(project_id)}::{base}" if project_id is not None else base
 
 
 def load_all_bid_page_edits() -> Dict[str, Dict[str, Any]]:
@@ -1981,21 +1640,32 @@ def load_all_bid_page_edits() -> Dict[str, Dict[str, Any]]:
         return {}
 
 
-def get_bid_page_edit(pdf_path: str, page_no: int) -> Optional[Dict[str, Any]]:
+def get_bid_page_edit(pdf_path: str, page_no: int, project_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
     if not pdf_path:
         return None
     edits = load_all_bid_page_edits()
-    return edits.get(_normalize_edit_key(pdf_path, page_no))
+    if project_id is not None:
+        scoped = edits.get(_normalize_edit_key(pdf_path, page_no, project_id=project_id))
+        if scoped is not None:
+            return scoped
+    return edits.get(_normalize_edit_key(pdf_path, page_no, project_id=None))
 
 
-def save_bid_page_edit(pdf_path: str, page_no: int, modified_text: str, original_text: str = "") -> None:
+def save_bid_page_edit(
+    pdf_path: str,
+    page_no: int,
+    modified_text: str,
+    original_text: str = "",
+    project_id: Optional[int] = None,
+) -> None:
     if not pdf_path:
         return
     edits = load_all_bid_page_edits()
-    key = _normalize_edit_key(pdf_path, page_no)
-    prev = edits.get(key) or {}
+    key = _normalize_edit_key(pdf_path, page_no, project_id=project_id)
+    prev = edits.get(key) or (edits.get(_normalize_edit_key(pdf_path, page_no, project_id=None)) if project_id is not None else None) or {}
     orig = prev.get("original_text") or original_text
     edits[key] = {
+        "project_id": int(project_id) if project_id is not None else None,
         "pdf_path": str(pdf_path),
         "page_no": int(page_no),
         "original_text": orig,
@@ -2005,7 +1675,11 @@ def save_bid_page_edit(pdf_path: str, page_no: int, modified_text: str, original
     BID_PAGE_EDITS_PATH.write_text(json.dumps(edits, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def read_bid_page_text_with_edits(pdf_path: str, page_no: int) -> Tuple[str, str]:
+def read_bid_page_text_with_edits(
+    pdf_path: str,
+    page_no: int,
+    project_id: Optional[int] = None,
+) -> Tuple[str, str]:
     """Return `(current_text, original_pdf_text)` for `(pdf_path, page_no)`, honoring saved bid edits."""
     p = Path(pdf_path) if pdf_path else None
     orig_text = ""
@@ -2016,7 +1690,7 @@ def read_bid_page_text_with_edits(pdf_path: str, page_no: int) -> Tuple[str, str
                 orig_text = doc[idx].get_text("text").strip()
         except Exception:
             orig_text = ""
-    saved = get_bid_page_edit(pdf_path, page_no)
+    saved = get_bid_page_edit(pdf_path, page_no, project_id=project_id)
     if saved and saved.get("modified_text"):
         return saved["modified_text"], (saved.get("original_text") or orig_text)
     return orig_text, orig_text
@@ -2030,181 +1704,173 @@ def reevaluate_clause_with_modified_bid(
     modified_text: str,
 ) -> Dict[str, Any]:
     """
-    Update the Bid page text in `evidence_context`, re-extract / re-ground the clause slots,
-    and re-run `ComplianceRuleEngine` to produce a freshly evaluated result.
+    Update the Bid page text in `evidence_context` (preserving all other retrieved/conflict passages),
+    re-run real slot extraction (`DeepSeekSlotExtractor` + `ground_extraction` + `verify_conflict_pairs`),
+    and evaluate via `ComplianceRuleEngine` with ZERO fabricated compliance shortcuts.
     """
     chain = existing_result.get("chain") or {}
     backend_state = chain.get("backend_state") or {}
     ext_dict = dict(backend_state.get("extraction") or {})
-    passages = [dict(p) for p in (backend_state.get("evidence_context") or [])]
+    raw_passages = [dict(p) for p in (backend_state.get("evidence_context") or [])]
     doc_sources = _load_doc_sources()
     proj_id = req.get("project_id")
-    if proj_id:
-        for d in store.list_documents(int(proj_id)):
+    proj_int = int(proj_id) if proj_id is not None else None
+    if proj_int is not None:
+        for d in store.list_documents(proj_int):
             entry = {
                 "filename": d["filename"],
-                "label": f"{Path(d['filename']).stem} ({d['filename']})",
+                "label": d.get("label") or f"{Path(d['filename']).stem} ({d['filename']})",
                 "path": d["path"],
                 "sha256": d.get("sha256") or "",
+                "pages": int(d.get("pages") or 1),
                 "page_count": int(d.get("pages") or 0),
+                "exists": Path(d["path"]).exists() if d.get("path") else False,
             }
             doc_sources[f"D_BID_{d['id']}"] = entry
+            doc_sources[f"bid_doc_{d['id']}"] = entry
             doc_sources[str(d["id"])] = entry
 
-    # Resolve document_id matching pdf_path if possible
     matched_doc_id = ""
+    matched_sha256 = ""
     for did, src in doc_sources.items():
         if src.get("path") and pdf_path and Path(src["path"]).resolve() == Path(pdf_path).resolve():
             matched_doc_id = did
+            matched_sha256 = str(src.get("sha256") or "")
             break
 
     clean_mod = modified_text.strip()
+    passages: List[Dict[str, Any]] = []
     updated_any = False
-    target_eid = "E1"
-    for p in passages:
-        p_page = int(p.get("page_start") or 0)
-        p_doc = p.get("document_id") or ""
-        if p_page == int(page_no) and (not matched_doc_id or not p_doc or p_doc == matched_doc_id):
-            p["text"] = clean_mod
-            target_eid = p.get("evidence_id") or target_eid
+    for idx, p in enumerate(raw_passages, start=1):
+        p_copy = dict(p)
+        p_copy.setdefault("evidence_id", f"E{idx}")
+        p_copy.setdefault("document_id", matched_doc_id or "bid")
+        p_copy.setdefault("source_sha256", matched_sha256)
+        p_start = int(p_copy.get("page_start") or 1)
+        p_end = int(p_copy.get("page_end") or p_start)
+        p_copy["page_start"] = p_start
+        p_copy["page_end"] = p_end
+        p_doc = str(p_copy.get("document_id") or "")
+
+        # Apply saved edits on other pages in this project if present
+        p_src_path = (doc_sources.get(p_doc) or {}).get("path") or ""
+        if p_src_path and p_start == p_end:
+            saved_other = get_bid_page_edit(p_src_path, p_start, project_id=proj_int)
+            if saved_other and saved_other.get("modified_text"):
+                p_copy["text"] = saved_other["modified_text"]
+
+        if p_start <= int(page_no) <= p_end and (not matched_doc_id or not p_doc or p_doc == matched_doc_id):
+            p_copy["text"] = clean_mod
             updated_any = True
+        passages.append(p_copy)
 
     if not updated_any:
-        if passages:
-            passages[0]["text"] = clean_mod
-            passages[0]["page_start"] = int(page_no)
-            target_eid = passages[0].get("evidence_id") or "E1"
-        else:
-            passages.append(
-                {
-                    "evidence_id": "E1",
-                    "document_id": matched_doc_id or "bid",
-                    "page_start": int(page_no),
-                    "text": clean_mod,
-                    "retrieval_score": 1.0,
-                }
-            )
-
-    ext = StructuredExtractionResult.from_dict(ext_dict) if ext_dict else StructuredExtractionResult(
-        clause_id=req["clause_no"],
-        requirement_text=req["text"],
-        category=req["category"],
-        tender_slots=TenderConstraintSlots(),
-        bid_slots=BidEvidenceSlots(),
-    )
-
-    # Compare against original unmodified PDF page text to verify the user actually made a substantive edit
-    _saved_mod, orig_page_txt = read_bid_page_text_with_edits(pdf_path, page_no)
-    norm_mod = re.sub(r"\s+", "", clean_mod)
-    norm_orig = re.sub(r"\s+", "", orig_page_txt or "")
-    text_was_modified = bool(norm_mod and norm_mod != norm_orig)
-
-    # Check if the internal contradiction ("拟派项目经理无在建工程" without qualification) is resolved
-    still_has_raw_conflict = (
-        "拟派项目经理无在建工程；" in clean_mod
-        and "变更" not in clean_mod
-        and "撤离" not in clean_mod
-        and "虽在" not in clean_mod
-        and "脱岗" not in clean_mod
-    )
-
-    if text_was_modified and not still_has_raw_conflict:
-        # Extract the updated sentence from modified_text as the new grounded quote
-        orig_lines_set = {ln.strip() for ln in (orig_page_txt or "").splitlines() if ln.strip()}
-        changed_lines = [
-            ln.strip()
-            for ln in clean_mod.splitlines()
-            if ln.strip() and ln.strip() not in orig_lines_set and len(ln.strip()) >= 8
-        ]
-        if changed_lines:
-            new_quote = changed_lines[0]
-        else:
-            new_quote = clean_mod.splitlines()[0].strip() if clean_mod.splitlines() else clean_mod[:180]
-            for line in clean_mod.splitlines():
-                line_s = line.strip()
-                if ("项目经理" in line_s and ("变更" in line_s or "履约" in line_s or "在建" in line_s)) or "承诺" in line_s:
-                    new_quote = line_s
-                    break
-
-        ext.extraction_issues = []
-        ext.tender_slots.requires_human_review = False
-        ext.tender_slots.requires_external_verification = False
-        ext.bid_slots.conflict_detected = False
-        ext.bid_slots.conflict_pairs = []
-        ext.bid_slots.evidence_found = True
-        ext.bid_slots.document_present = True
-        ext.bid_slots.commitment_fulfilled = True
-        ext.bid_slots.prohibition_violated = False
-        ext.bid_slots.qualitative_match = True
-        ext.bid_slots.has_official_seal = True
-        ext.bid_slots.has_signature = True
-        ext.bid_slots.actual_text = new_quote
-
-        # Also update structured rule slots if the clause uses R03 / R07 / R08
-        if ext.tender_slots.constraint_type == "ENTITY_CONSISTENCY":
-            m_up_mod = re.search(r"含税（大写）([^（(]+?)\s*（含税小写\s*([\d,]+(?:\.\d+)?)\s*元）", clean_mod)
-            if m_up_mod:
-                ext.bid_slots.upper_amount_text = re.sub(r"\s+", "", m_up_mod.group(1))
-                ext.bid_slots.actual_numeric = float(m_up_mod.group(2).replace(",", ""))
-                num_s = m_up_mod.group(2).replace(",", "")
-                ext.bid_slots.entity_primary = num_s
-                ext.bid_slots.entity_secondary = num_s
-            else:
-                ext.bid_slots.entity_primary = new_quote[:30]
-                ext.bid_slots.entity_secondary = new_quote[:30]
-                if ext.bid_slots.actual_numeric is not None:
-                    from src.rules.rule_engine import number_to_rmb_upper
-                    ext.bid_slots.upper_amount_text = number_to_rmb_upper(ext.bid_slots.actual_numeric)
-        elif ext.tender_slots.constraint_type == "STAFFING_COUNT_AND_QUALIFICATION":
-            req_role = ext.tender_slots.required_role or "项目经理"
-            req_cnt = ext.tender_slots.required_count or 1
-            qual_txt = ext.tender_slots.expected_text or "二级注册建造师"
-            ext.bid_slots.personnel_records = [
-                {
-                    "role": req_role,
-                    "name": f"已核验人员_{i+1}",
-                    "qualification_text": qual_txt,
-                    "domain": ext.tender_slots.required_domain or "公路工程",
-                    "valid_to": "2028-12-31",
-                    "certificate_valid": True,
-                    "employer_matches_bidder": True,
-                }
-                for i in range(req_cnt)
-            ]
-        elif ext.tender_slots.constraint_type == "PERFORMANCE_CHAIN_AND_SCORING":
-            ext.bid_slots.performance_records = [
-                {
-                    "project_name": new_quote[:40],
-                    "completion_date": ext.tender_slots.review_reference_date or "2024-06-01",
-                    "contract_amount_wanyuan": float(ext.tender_slots.min_amount_wanyuan or 1500.0),
-                    "amount_unit": "万元",
-                    "length_km": float(ext.tender_slots.min_length_km or 20.0),
-                    "length_unit": "公里",
-                    "highway_grade": ext.tender_slots.required_highway_grade or "一级公路",
-                    "construction_type": (ext.tender_slots.allowed_construction_types or ["新建"])[0],
-                    "scopes": list(ext.tender_slots.required_scopes or []),
-                    "proof_docs": list(ext.tender_slots.required_proof_docs or []),
-                    "seal_parties": list(ext.tender_slots.required_seal_parties or []),
-                    "performed_role": ext.tender_slots.required_role or "project_manager",
-                    "person_name": ext.bid_slots.proposed_person_name or "拟派项目经理",
-                }
-            ]
-
-        ext.bid_slots.evidence_references = [
+        # Append the edited page as a new passage rather than overwriting existing evidence/conflict pages
+        new_eid = f"E{len(passages) + 1}"
+        passages.append(
             {
-                "field": "actual_text",
-                "evidence_id": target_eid,
+                "evidence_id": new_eid,
                 "document_id": matched_doc_id or "bid",
+                "source_sha256": matched_sha256,
                 "page_start": int(page_no),
-                "quote": new_quote,
+                "page_end": int(page_no),
+                "text": clean_mod,
+                "retrieval_score": 1.0,
             }
-        ]
+        )
+
+    prev_ext = (
+        StructuredExtractionResult.from_dict(ext_dict)
+        if ext_dict
+        else StructuredExtractionResult(
+            clause_id=str(req.get("clause_no") or "T0001"),
+            requirement_text=str(req.get("text") or ""),
+            category=str(req.get("category") or "Document"),
+            tender_slots=TenderConstraintSlots(),
+            bid_slots=BidEvidenceSlots(),
+        )
+    )
+    ref_date = str(prev_ext.tender_slots.review_reference_date or "").strip()
+    if not ref_date and proj_int is not None:
+        project_obj = store.get_project(proj_int)
+        if is_s604_project(project_obj):
+            ref_date = S604_REVIEW_DATE
+    if not ref_date:
+        ref_date = datetime.date.today().isoformat()
+
+    clause_no = str(req.get("clause_no") or prev_ext.clause_id or "T0001")
+    req_text = str(req.get("text") or prev_ext.requirement_text or "")
+    req_cat = str(req.get("category") or prev_ext.category or "Document")
+    ev_str = json.dumps(passages, ensure_ascii=False)
+
+    _ensure_env_loaded()
+    has_api_key = bool(os.environ.get("DEEPSEEK_API_KEY", "").strip())
+
+    if has_api_key:
+        try:
+            extractor = DeepSeekSlotExtractor(
+                cache_only=False,
+                timeout=30,
+                max_retries=2,
+                review_reference_date=ref_date,
+            )
+            ext = extractor.extract(
+                clause_no,
+                req_text,
+                req_cat,
+                ev_str,
+                use_cache=False,
+                review_reference_date=ref_date,
+                auto_save=False,
+            )
+            # Preserve verified cross-clause tender control-price benchmark ONLY after bid grounding succeeds
+            if (
+                ext.tender_slots.constraint_type == "NUMERIC_BOUND"
+                and ext.tender_slots.expected_numeric is None
+                and prev_ext.tender_slots.expected_numeric is not None
+                and re.search(r"最高(?:投标)?限价|招标控制价", req_text)
+                and not ext.extraction_issues
+            ):
+                ext.tender_slots.expected_numeric = prev_ext.tender_slots.expected_numeric
+                ext.tender_slots.expected_unit = prev_ext.tender_slots.expected_unit
+                if not ext.tender_slots.operator:
+                    ext.tender_slots.operator = prev_ext.tender_slots.operator or "<="
+        except Exception as exc:
+            ext = _strict_conservative_fallback(
+                clause_no,
+                req_text,
+                req_cat,
+                ev_str,
+                ref_date,
+                reason=f"DeepSeek 重审接口调用失败，已严格阻断离线假放行并转人工复核: {exc}",
+            )
+    else:
+        heur_ext = HeuristicSlotExtractor(review_reference_date=ref_date).extract(
+            clause_no, req_text, req_cat, ev_str, review_reference_date=ref_date
+        )
+        if (
+            heur_ext.tender_slots.constraint_type == "NUMERIC_BOUND"
+            and heur_ext.bid_slots.evidence_found
+            and not heur_ext.extraction_issues
+        ):
+            ext = heur_ext
+        else:
+            ext = StructuredExtractionResult(
+                clause_id=clause_no,
+                requirement_text=req_text,
+                category=req_cat,
+                tender_slots=prev_ext.tender_slots,
+                bid_slots=BidEvidenceSlots(evidence_found=False),
+                extraction_issues=[
+                    "未配置 DEEPSEEK_API_KEY，无法对修订后的非显式数值条款执行大模型槽位重抽与逐字验真；已严格拦截假放行，请配置 API Key 后重审或由人工复核。"
+                ],
+                extractor_backend="offline_blocked_fake_pass",
+            )
 
     rule_engine = ComplianceRuleEngine()
     rule_res = rule_engine.evaluate(ext)
-    out = format_backend_result(req["text"], req["category"], ext, rule_res, passages, doc_sources)
+    out = format_backend_result(req_text, req_cat, ext, rule_res, passages, doc_sources)
 
-    # Ensure the modified page is first or clearly marked in `out["evidence"]`
     ev_list = list(out.get("evidence") or [])
     marked = False
     for ev in ev_list:
@@ -2215,10 +1881,23 @@ def reevaluate_clause_with_modified_bid(
             ev["snippet"] = ext.bid_slots.actual_text or clean_mod[:240]
             ev["role"] = f"✎ 已修改投标书原文 · p.{page_no}"
             marked = True
-    if not marked and ev_list:
-        ev_list[0]["rag_text"] = clean_mod
-        ev_list[0]["role"] = f"✎ 已修改投标书原文 · p.{page_no}"
-    out["evidence"] = ev_list
+    if not marked:
+        src_info = doc_sources.get(matched_doc_id, {})
+        ev_list.insert(
+            0,
+            {
+                "page": int(page_no),
+                "snippet": clean_mod[:240],
+                "rag_text": clean_mod,
+                "role": f"✎ 已修改投标书原文 · p.{page_no}",
+                "evidence_id": f"E_MOD_{int(page_no)}",
+                "document_id": matched_doc_id or "bid",
+                "doc_path": pdf_path or src_info.get("path"),
+                "doc_label": src_info.get("label") or (Path(pdf_path).name if pdf_path else "Bid"),
+                "doc_pages": src_info.get("pages") or 1,
+            },
+        )
+    out["evidence"] = ev_list[:5]
     return out
 
 

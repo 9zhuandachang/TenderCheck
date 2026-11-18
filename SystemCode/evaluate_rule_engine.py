@@ -78,25 +78,32 @@ def format_markdown_report(result: dict) -> str:
     return "\n".join(lines)
 
 
+BASE_DIR = Path(__file__).resolve().parent
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--suite",
         type=Path,
-        default=Path("SystemCode/data/rule_eval/s604_rule_validation_suite.json"),
+        default=BASE_DIR / "data" / "rule_eval" / "s604_rule_validation_suite.json",
         help="Path to standalone rule validation suite JSON.",
     )
     parser.add_argument(
         "--output_json",
+        "--output-json",
+        dest="output_json",
         type=Path,
-        default=Path("SystemCode/data/rule_eval/s604_rule_eval_report.json"),
+        default=BASE_DIR / "data" / "rule_eval" / "s604_rule_eval_report.json",
         help="Path to write JSON evaluation report.",
     )
     parser.add_argument(
         "--output_md",
+        "--output-md",
+        dest="output_md",
         type=Path,
-        default=Path("docs/experiments/s604_rule_engine_validation.md"),
-        help="Optional path to write Markdown evaluation report.",
+        default=None,
+        help="Optional path to write Markdown evaluation report (e.g. under reports/runs/).",
     )
     args = parser.parse_args()
 

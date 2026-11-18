@@ -536,38 +536,99 @@ def _project_of(res: Dict[str, Any]) -> int:
 
 
 def confirm_result(result_id: int, actor: str, role: str, note: str = "", seconds: float = 0) -> str:
+    """Confirm the existing machine verdict without silently converting Non-compliant/Insufficient to Compliant."""
     res = _editable_result(result_id)
     project_id = _project_of(res)
     status = CONFIRMED
+    current_verdict = res["verdict"]
+
+    if current_verdict == COMPLIANT:
+        item = store.open_remediation_for(res["requirement_id"])
+        if item:
+            store.update(
+                "remediations",
+                item["id"],
+                {"status": CLOSED, "closed_round_id": res["round_id"], "updated_at": store.now()},
+            )
+            status = CLOSED
+
+    updates: Dict[str, Any] = {
+        "human_status": status,
+        "note": note.strip() or res["note"],
+    }
+    _touch(res, updates, seconds)
+    store.log_action(
+        project_id,
+        "confirm_result",
+        actor,
+        role,
+        note,
+        {"verdict": current_verdict, "status": status},
+        res["round_id"],
+        res["requirement_id"],
+        result_id,
+    )
+    return status
+
+
+def approve_manual_pass(result_id: int, reason: str, actor: str, role: str, seconds: float = 0) -> str:
+    """Explicitly pass an abstained (`Insufficient evidence`) or Manager-overridden clause with mandatory audit evidence."""
+    clean_reason = (reason or "").strip()
+    if len(clean_reason) < 4:
+        raise ServiceError(
+            "人工核验放行必须填写具体核验依据（至少 4 个字符，如：已目视核验第12页公章与法人签字齐全），严禁无依据放行。"
+        )
+    res = _editable_result(result_id)
+    if res["verdict"] == COMPLIANT:
+        return confirm_result(result_id, actor, role, note=clean_reason, seconds=seconds)
+
+    if res["verdict"] == NON_COMPLIANT and role != "Manager":
+        raise ServiceError(
+            "确定性违规或标书前后矛盾项（Non-compliant）严禁普通审标员直接放行；请前往 Remediation 修改投标书重审，或切换 Manager 角色填写特批依据。"
+        )
+
+    project_id = _project_of(res)
+    before_verdict = res["verdict"]
     item = store.open_remediation_for(res["requirement_id"])
     if item:
-        store.update("remediations", item["id"], {"status": CLOSED, "closed_round_id": res["round_id"],
-                                                  "updated_at": store.now()})
-    was_non_passing = res["verdict"] != COMPLIANT
-    updated_fields = [
-        {**f, "result": COMPLIANT}
-        for f in (res.get("fields") or [])
-    ]
+        store.update(
+            "remediations",
+            item["id"],
+            {"status": CLOSED, "closed_round_id": res["round_id"], "updated_at": store.now()},
+        )
+
+    updated_fields = [{**f, "result": COMPLIANT} for f in (res.get("fields") or [])]
     chain = dict(res.get("chain") or {})
     if chain.get("sub_verdict") and chain.get("sub_verdict") not in ("COMPLIANT", "SCORED"):
         chain.setdefault("original_sub_verdict", chain.get("sub_verdict"))
         chain.setdefault("original_sub_verdict_label", chain.get("sub_verdict_label"))
-        chain["sub_verdict"] = "COMPLIANT"
-        chain["sub_verdict_label"] = "✓ Compliant"
-        chain["sub_verdict_color"] = "green"
+    chain["sub_verdict"] = "COMPLIANT"
+    chain["sub_verdict_label"] = "✓ Manual Verified"
+    chain["sub_verdict_color"] = "blue"
+    chain["manual_pass_reason"] = clean_reason
+    chain["manual_pass_actor"] = f"{actor} ({role})"
+
     updates: Dict[str, Any] = {
         "verdict": COMPLIANT,
-        "human_status": status,
+        "human_status": CONFIRMED,
         "fields": updated_fields,
         "chain": chain,
-        "note": note or res["note"],
+        "corrected": 1,
+        "note": clean_reason,
     }
-    if was_non_passing:
-        updates["corrected"] = 1
     _touch(res, updates, seconds)
-    store.log_action(project_id, "confirm_result", actor, role, note, {"verdict": COMPLIANT, "status": status},
-                     res["round_id"], res["requirement_id"], result_id)
-    return status
+    store.log_action(
+        project_id,
+        "manual_verify_pass",
+        actor,
+        role,
+        clean_reason,
+        {"before_verdict": before_verdict, "after_verdict": COMPLIANT, "status": CONFIRMED},
+        res["round_id"],
+        res["requirement_id"],
+        result_id,
+    )
+    return CONFIRMED
 
 
 def correct_result(result_id: int, constraint: Dict[str, Any], actual_value: Optional[float],
@@ -716,8 +777,16 @@ def apply_remediation_edit(
         target_label = f"{ev.get('doc_label') or 'Bid'} p.{page_no}"
 
     if doc_path:
-        _cur_txt, orig_pdf_txt = real_backend.read_bid_page_text_with_edits(doc_path, page_no)
-        real_backend.save_bid_page_edit(doc_path, page_no, modified_text.strip(), orig_pdf_txt or before_text)
+        _cur_txt, orig_pdf_txt = real_backend.read_bid_page_text_with_edits(
+            doc_path, page_no, project_id=project_id
+        )
+        real_backend.save_bid_page_edit(
+            doc_path,
+            page_no,
+            modified_text.strip(),
+            orig_pdf_txt or before_text,
+            project_id=project_id,
+        )
 
     # Re-run real backend extraction & rule engine on the modified Bid text
     reeval = real_backend.reevaluate_clause_with_modified_bid(
@@ -838,8 +907,20 @@ def signoff_blockers(round_id: int) -> List[str]:
     if latest and latest["id"] != round_id:
         blockers.append(f"A newer round (Round {latest['no']}) exists; sign off the latest round.")
     summary = round_summary(round_id)
+    if summary["non_compliant"]:
+        blockers.append(
+            f"{summary['non_compliant']} applicable clause(s) are Non-compliant (disqualification risk) and must be remediated before sign-off."
+        )
+    if summary["insufficient"]:
+        blockers.append(
+            f"{summary['insufficient']} applicable clause(s) still have Insufficient evidence and require manual verification or remediation before sign-off."
+        )
     if summary["unreviewed"]:
         blockers.append(f"{summary['unreviewed']} applicable clause(s) have no reviewer decision yet.")
+    open_rems = store.list_remediations(rnd["project_id"], open_only=True)
+    if open_rems:
+        rem_clauses = ", ".join(str(r.get("clause_no") or r["requirement_id"]) for r in open_rems[:8])
+        blockers.append(f"{len(open_rems)} remediation item(s) remain unresolved ({rem_clauses}).")
     awaiting = [r["clause_no"] for r in store.list_results(round_id)
                 if r["applicable"] and r["human_status"] == TO_REINSPECT]
     if awaiting:

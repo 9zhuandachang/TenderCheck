@@ -50,13 +50,13 @@ class HomeNavigationTest(unittest.TestCase):
 
     def test_landing_and_demo_entry(self):
         app = self.app()
+        self.assertEqual(app.title[0].value, "TenderCheck")
         subheaders = [item.value for item in app.subheader]
-        self.assertIn("S604 Real Project (359 Clauses)", subheaders)
         self.assertIn("New project", subheaders)
-        self.button(app, "Load English sample drainage project").click().run()
+        next(item for item in app.text_input if item.label == "Project name").set_value("Drainage Workspace")
+        self.button(app, "Create project").click().run()
         self.assertFalse(app.exception)
         self.assertEqual(len(self.store.list_projects()), 1)
-        self.assertEqual(len(self.store.list_documents(app.session_state["project_id"])), 3)
         subheaders_after = [item.value for item in app.subheader]
         self.assertIn("Step 1 · Confirm Project Documents", subheaders_after)
         self.assertIn("Step 2 · Extract Information, Build RAG & Run Review", subheaders_after)
@@ -110,7 +110,11 @@ class HomeNavigationTest(unittest.TestCase):
         pid = self.store.create_project("A long project name for the review workspace and navigation")
         app = self.app()
         expected_pages = [label for pages in ui.NAVIGATION.values() for _, label, _ in pages]
-        self.assertEqual([item.value for item in app.sidebar.page_link], expected_pages)
+        page_links = [
+            getattr(item, "label", getattr(getattr(item, "proto", None), "label", ""))
+            for item in app.get("page_link")
+        ]
+        self.assertEqual(page_links, expected_pages)
         self.assertNotIn("Documents", expected_pages)
         self.assertFalse(any(item.label == "Your name" for item in app.text_input))
         for page in ui.PAGES.values():

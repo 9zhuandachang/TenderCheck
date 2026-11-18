@@ -9,9 +9,28 @@ from unittest.mock import patch
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
-APP_DIR = Path(__file__).resolve().parents[1] / "src" / "app"
-if str(APP_DIR) not in sys.path:
-    sys.path.insert(0, str(APP_DIR))
+SYSTEMCODE_DIR = Path(__file__).resolve().parents[1]
+APP_DIR = SYSTEMCODE_DIR / "src" / "app"
+for p in (str(SYSTEMCODE_DIR), str(APP_DIR)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+
+def _has_s604_replay_artifacts() -> bool:
+    from tcui import real_backend
+
+    return real_backend.S604_CASES_PATH.exists() and real_backend.S604_RAW_DIR.exists()
+
+
+def _has_local_annotator_runtime() -> bool:
+    try:
+        import torch  # noqa: F401
+    except ImportError:
+        return False
+    return (
+        (SYSTEMCODE_DIR / "models" / "binary_filter").exists()
+        and (SYSTEMCODE_DIR / "models" / "roberta_wwm_ext").exists()
+    )
 
 
 class S604FrontendIntegrationTest(unittest.TestCase):
@@ -37,6 +56,10 @@ class S604FrontendIntegrationTest(unittest.TestCase):
         self.addCleanup(st.cache_resource.clear)
         store.init_db()
 
+    @unittest.skipUnless(
+        _has_s604_replay_artifacts(),
+        "Requires local git-ignored S604 full-359 reasoning artifacts under reports/rag_experiments/",
+    )
     def test_s604_full359_real_backend_in_frontend(self):
         pid = self.real_backend.create_s604_project()
         project = self.store.get_project(pid)
@@ -47,15 +70,15 @@ class S604FrontendIntegrationTest(unittest.TestCase):
         checks = self.service.review_readiness(pid)
         self.assertTrue(all(c["ok"] for c in checks), checks)
 
-        # Check round summary matches v3 replay + live ComplianceRuleEngine numbers
+        # Check round summary matches v3 replay + ADR-002 strict conflict mapping
         rnd = self.store.latest_round(pid)
         self.assertIsNotNone(rnd)
         summary = self.service.round_summary(rnd["id"])
         self.assertEqual(summary["total"], 359)
         self.assertEqual(summary["applicable"], 359)
         self.assertEqual(summary["compliant"], 289)
-        self.assertEqual(summary["non_compliant"], 0)
-        self.assertEqual(summary["insufficient"], 70)
+        self.assertEqual(summary["non_compliant"], 1)
+        self.assertEqual(summary["insufficient"], 69)
         self.assertTrue(summary["is_real_backend"])
 
         sub_counts = summary["sub_counts"]
@@ -96,6 +119,35 @@ class S604FrontendIntegrationTest(unittest.TestCase):
         app.switch_page("views/report.py").run()
         self.assertFalse(app.exception)
 
+    def test_chinese_pdf_detection_and_structural_segmentation(self):
+        import pymupdf as fitz
+        from src.extraction.tender_segmenter import segment_tender_pdf
+
+        pid = self.store.create_project("Chinese Structural Segmentation Check", is_demo=False)
+        proj_dir = self.store.project_dir(pid)
+        tender_pdf = proj_dir / "chinese_tender_seg.pdf"
+        tdoc = fitz.open()
+        tpage = tdoc.new_page()
+        tpage.insert_text(
+            (50, 72),
+            "第一章 招标公告\n"
+            "2.8 计划工期：计划工期为360日历天。\n"
+            "3.1 投标人须具有独立法人资格，持有有效的营业执照。\n"
+            "3.2 投标人在信用中国网站不得被列为失信被执行人。\n",
+            fontsize=11,
+            fontname="china-s",
+        )
+        tender_pdf.write_bytes(tdoc.tobytes())
+        tdoc.close()
+
+        self.assertTrue(self.real_backend.is_chinese_pdf(tender_pdf))
+        candidates = segment_tender_pdf(tender_pdf)
+        self.assertGreaterEqual(len(candidates), 3)
+
+    @unittest.skipUnless(
+        _has_local_annotator_runtime(),
+        "Requires torch + local models/binary_filter & models/roberta_wwm_ext checkpoints",
+    )
     def test_unannotated_chinese_project_end_to_end(self):
         import pymupdf as fitz
 

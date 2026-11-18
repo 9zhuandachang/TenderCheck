@@ -37,6 +37,7 @@ from src.data import (
     export_splits_to_jsonl,
     group_split_dataset,
     load_annotations_from_dir,
+    load_splits_from_jsonl,
     summarize_splits,
 )
 from src.evaluation import (
@@ -65,9 +66,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--mode",
-        choices=["split_only", "train", "predict"],
+        choices=["split_only", "train", "eval", "predict"],
         default="train",
         help="Pipeline execution mode (default: train).",
+    )
+    parser.add_argument(
+        "--eval_only",
+        "--eval-only",
+        dest="eval_only",
+        action="store_true",
+        help="Shortcut for --mode=eval: evaluate saved RoBERTa checkpoint on val/test splits without training.",
     )
     parser.add_argument(
         "--annotations_dir",
@@ -235,13 +243,41 @@ def run_roberta_experiment(
 
 def main() -> None:
     args = parse_args()
+    mode = "eval" if getattr(args, "eval_only", False) else args.mode
 
-    if args.mode == "predict":
-        if not args.model_dir or not args.text:
-            raise ValueError("Both --model_dir and --text are required when --mode=predict.")
-        clf = load_classifier(args.model_dir)
+    if mode == "predict":
+        model_dir = args.model_dir or (args.models_dir / "roberta_wwm_ext")
+        if not args.text:
+            raise ValueError("--text is required when --mode=predict.")
+        clf = load_classifier(model_dir)
         result = clf.predict_single(requirement_text=args.text, section_text=args.section)
         print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
+
+    if mode == "eval":
+        model_dir = args.model_dir or (args.models_dir / "roberta_wwm_ext")
+        clf = load_classifier(model_dir)
+        if (args.processed_dir / "requirements_test.jsonl").exists():
+            splits = load_splits_from_jsonl(args.processed_dir)
+        else:
+            samples = load_annotations_from_dir(args.annotations_dir)
+            splits = group_split_dataset(
+                samples,
+                val_ratio=args.val_ratio,
+                test_ratio=args.test_ratio,
+                random_state=args.seed,
+            )
+        print_split_summary(summarize_splits(splits))
+        for split_name in ("val", "test"):
+            preds = clf.predict_ids(splits[split_name])
+            trues = [s.label_id for s in splits[split_name]]
+            rep = evaluate_predictions(
+                y_true=trues,
+                y_pred=preds,
+                split_name=split_name,
+                model_name="roberta_wwm_ext",
+            )
+            print("\n" + format_metrics_table(rep))
         return
 
     # Load and group-split annotations
@@ -258,7 +294,7 @@ def main() -> None:
     saved_paths = export_splits_to_jsonl(splits, args.processed_dir)
     logger.info("Exported train/val/test JSONL splits to %s", saved_paths["summary"].parent)
 
-    if args.mode == "split_only":
+    if mode == "split_only":
         return
 
     run_roberta_experiment(splits, args)

@@ -114,10 +114,17 @@ def replay(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cases', type=Path, required=True)
-    parser.add_argument('--raw_dir', type=Path, required=True)
-    parser.add_argument('--output_dir', type=Path, required=True)
-    parser.add_argument('--reference_labels', type=Path)
-    parser.add_argument('--review_reference_date', default='', help='Optional ISO project review reference date (YYYY-MM-DD)')
+    parser.add_argument('--raw-dir', '--raw_dir', dest='raw_dir', type=Path, required=True)
+    parser.add_argument('--output-dir', '--output_dir', dest='output_dir', type=Path, required=True)
+    parser.add_argument('--reference-labels', '--reference_labels', dest='reference_labels', type=Path)
+    parser.add_argument(
+        '--review-date',
+        '--review-reference-date',
+        '--review_reference_date',
+        dest='review_reference_date',
+        default='',
+        help='Optional ISO project review reference date (YYYY-MM-DD)',
+    )
     return replay(parser.parse_args())
 
 

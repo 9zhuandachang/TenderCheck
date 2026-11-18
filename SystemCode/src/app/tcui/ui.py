@@ -116,8 +116,6 @@ def actor() -> str:
 
 
 def sidebar(current_page: str = "") -> None:
-    if "project_id" not in st.session_state and "_show_project_start" not in st.session_state:
-        st.session_state["_show_project_start"] = True
     with st.sidebar:
         st.caption("Projects")
         if st.button("New project", icon=":material/add:", key="nav_new_project", type="secondary",
@@ -141,6 +139,9 @@ def sidebar(current_page: str = "") -> None:
             st.caption(section)
             for page, label, icon in pages:
                 st.page_link(PAGES[page], label=label, icon=icon, width="stretch")
+        with st.expander("Reviewer & Role", expanded=False):
+            st.selectbox("Role", config.ROLES, key="role")
+            st.text_input("Reviewer name", key="user_name", placeholder="Optional name for audit log")
         with st.expander("Engine details"):
             st.caption(f"Engine: {config.ENGINE_NAME} · Rules: {config.RULE_VERSION}")
 
@@ -219,7 +220,7 @@ def project_next_step(project: Dict[str, Any], checks: List[Dict[str, Any]],
     requirement_checks = {"Addendum changes decided", "Requirement list confirmed"}
     missing_documents = [c["item"] for c in checks if not c["ok"] and c["item"] not in requirement_checks]
     if missing_documents:
-        return "Documents", "Prepare the selected documents: " + "; ".join(missing_documents) + ".", "documents"
+        return "Documents", "Prepare the selected documents: " + "; ".join(missing_documents) + ".", "overview"
     if store.active_jobs(pid, "extract"):
         return "Requirements", "Requirements are being extracted. Open Requirements to follow progress.", "requirements"
     if any(not c["ok"] for c in checks):
@@ -497,6 +498,7 @@ def render_page(
     highlight: str = "",
     mode: str = "tender",
     secondary_highlight: str = "",
+    proj_id: Optional[int] = None,
 ) -> bytes:
     from . import real_backend
 
@@ -505,7 +507,7 @@ def render_page(
         idx = min(max(0, page_no - 1), max(0, len(doc) - 1))
         page = doc[idx]
         if mode == "bid":
-            saved_edit = real_backend.get_bid_page_edit(path, page_no)
+            saved_edit = real_backend.get_bid_page_edit(path, page_no, project_id=proj_id)
             if saved_edit and saved_edit.get("modified_text"):
                 orig_lines = [ln.strip() for ln in (saved_edit.get("original_text") or "").splitlines() if ln.strip()]
                 mod_lines = [ln.strip() for ln in (saved_edit.get("modified_text") or "").splitlines() if ln.strip()]
@@ -603,7 +605,7 @@ def _open_document_modal(
 
     hl = highlight if cur == initial_page else ""
     sec_hl = secondary_highlight if cur == initial_page else ""
-    png = render_page(doc["path"], cur, 2.2, hl, mode=mode, secondary_highlight=sec_hl)
+    png = render_page(doc["path"], cur, 2.2, hl, mode=mode, secondary_highlight=sec_hl, proj_id=project_id())
     b64 = base64.b64encode(png).decode()
     st.markdown(
         f'<div style="max-height:78vh;overflow:auto;border:1px solid #d9dde3;border-radius:6px;background:#fff;">'
@@ -642,7 +644,7 @@ def pdf_pane(
     ):
         _open_document_modal(doc, current, highlight, mode=mode, secondary_highlight=secondary_highlight)
 
-    png = render_page(doc["path"], current, 1.6, highlight, mode=mode, secondary_highlight=secondary_highlight)
+    png = render_page(doc["path"], current, 1.6, highlight, mode=mode, secondary_highlight=secondary_highlight, proj_id=project_id())
     b64 = base64.b64encode(png).decode()
     st.markdown(f'<div class="tc-pdf"><img src="data:image/png;base64,{b64}" style="width:100%"/></div>',
                 unsafe_allow_html=True)

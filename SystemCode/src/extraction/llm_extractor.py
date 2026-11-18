@@ -550,9 +550,18 @@ class DeepSeekSlotExtractor:
             for rec in b.personnel_records:
                 if isinstance(rec, dict) and isinstance(rec.get('qualification_text'), str):
                     qtxt = rec['qualification_text']
-                    if not rec.get('valid_to') and rec.get('certificate_valid') is None:
+                    is_expiring_license = any(
+                        w in qtxt for w in ('建造师', '安全', '考核', 'B证', 'C证', 'A证', '许可证')
+                    )
+                    if not is_expiring_license and not rec.get('valid_to') and rec.get('certificate_valid') is None:
                         for p in passages:
-                            if rec.get('name') and compact(rec['name']) in compact(p['text']) and '批准日期' in p['text'] and '有效期' not in p['text']:
+                            if (
+                                rec.get('name')
+                                and compact(rec['name']) in compact(p['text'])
+                                and '批准日期' in p['text']
+                                and '有效期' not in p['text']
+                                and not any(w in p['text'] for w in ('注册证书', '安全生产考核', '安全生产许可证', '延续注册'))
+                            ):
                                 rec['certificate_valid'] = True
                                 break
                     if ('C证' in qtxt or '安全生产考核' in qtxt) and not any(w in qtxt for w in ('省级', '交通运输厅', '交通厅', '交通运输主管部门')):

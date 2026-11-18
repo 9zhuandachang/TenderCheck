@@ -184,7 +184,7 @@ with cols[1]:
         st.session_state[page_key] = cur_page
 
         raw_bid_page_text, _orig_pdf_text = (
-            real_backend.read_bid_page_text_with_edits(cur_vol["path"], cur_page)
+            real_backend.read_bid_page_text_with_edits(cur_vol["path"], cur_page, project_id=pid)
             if cur_vol["path"]
             else ("", "")
         )

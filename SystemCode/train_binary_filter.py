@@ -48,13 +48,21 @@ logger = logging.getLogger("train_binary_filter")
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_EXTRACTED_DIR = BASE_DIR.parent / "data_extracted"
-ANNOTATIONS_DIR = BASE_DIR / "data" / "annotation"
+ANNOTATIONS_DIR = (
+    BASE_DIR / "data" / "annotations"
+    if (BASE_DIR / "data" / "annotations").exists()
+    else BASE_DIR / "data" / "annotation"
+)
 
 FOLDER_PAIRS: List[Tuple[str, str]] = [
     ("2022年投标项目", "2022"),
     ("2023年投标项目", "2023"),
     ("2024年投标项目", "2024"),
     ("2025年投标项目", "2025"),
+    ("2026年投标项目", "2026_01"),
+    ("2026年投标项目", "2026_02"),
+    ("2026年投标项目", "2026-03"),
+    ("2026年投标项目", "2026_04"),
     ("202601", "2026_01"),
     ("202602", "2026_02"),
     ("202603", "2026-03"),
@@ -70,6 +78,7 @@ HOLDOUT_FILES = {
 
 def discover_aligned_projects(
     max_projects: int = 40,
+    annotations_dir: Path = ANNOTATIONS_DIR,
 ) -> Tuple[List[Dict], List[Dict]]:
     """
     Discover content-verified (annotation_json, tender_pdf) project pairs,
@@ -77,15 +86,16 @@ def discover_aligned_projects(
     """
     non_holdout: List[Dict] = []
     holdout: List[Dict] = []
+    seen_ann_files = set()
 
     for y_dir_name, ann_sub in FOLDER_PAIRS:
         y_dir = DATA_EXTRACTED_DIR / y_dir_name
-        a_dir = ANNOTATIONS_DIR / ann_sub
+        a_dir = annotations_dir / ann_sub
         if not y_dir.exists() or not a_dir.exists():
             continue
 
         projs = sorted([p for p in y_dir.iterdir() if p.is_dir()])
-        anns = sorted([f for f in a_dir.glob("*.json")])
+        anns = [f for f in sorted(a_dir.glob("*.json")) if f.resolve() not in seen_ann_files]
 
         # Pre-index candidate tender PDFs in this year folder
         proj_pdfs: List[Tuple[Path, Path, int]] = []
@@ -145,6 +155,7 @@ def discover_aligned_projects(
                     best_entry = (p_folder, mpdf, doc_len)
 
             if best_entry and best_ratio >= 0.80:
+                seen_ann_files.add(a_file.resolve())
                 info = {
                     "project_id": f"{ann_sub}/{a_file.stem}",
                     "ann_file": a_file,
@@ -258,12 +269,15 @@ def evaluate_end_to_end_gold_recall(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train and evaluate Binary Requirement Filter")
     parser.add_argument("--max_projects", type=int, default=30, help="Number of non-holdout projects to build dataset from")
+    parser.add_argument("--annotations_dir", type=Path, default=ANNOTATIONS_DIR, help="Directory containing JSON annotation folders")
     parser.add_argument("--model_dir", type=Path, default=BASE_DIR / "models" / "binary_filter")
     parser.add_argument("--report_path", type=Path, default=BASE_DIR / "reports" / "binary_filter_evaluation.json")
     args = parser.parse_args()
 
     logger.info("Step 1: Discovering aligned non-holdout and holdout tender PDFs...")
-    non_holdout_projs, holdout_projs = discover_aligned_projects(max_projects=args.max_projects)
+    non_holdout_projs, holdout_projs = discover_aligned_projects(
+        max_projects=args.max_projects, annotations_dir=args.annotations_dir
+    )
     logger.info(
         "Found %d non-holdout projects and %d holdout projects (%s)",
         len(non_holdout_projs),

@@ -22,11 +22,11 @@ Every module is independently evaluated on real Chinese engineering tender/bid d
 | Stage | Module | Model / Algorithm | Dataset / Benchmark | Key Metrics |
 | :--- | :--- | :--- | :--- | :--- |
 | **Step 1** | Tender Clause Segmentation & Binary Filtering | Layout/Table PDF Segmenter + 24-Feature `LogisticRegression` (`BinaryRequirementFilter`) | 71 Tender Projects (`130,507` train / `18,278` val / `37,500` test candidates) | In-Domain Test Acc: **`96.54%`**, ROC-AUC: **`0.9790`**<br/>S604 End-to-End Gold Recall: **`94.13%`** (`61.2%` noise removed) |
-| **Step 2** | 8-Category Requirement Classification | Fine-tuned `hfl/chinese-roberta-wwm-ext` (`MaxLen=256`, `fp16`) | `28,195` annotated clauses across 8 classes + 2 unseen holdout projects | In-Domain Test Acc: **`98.21%`**, Macro-F1: **`0.9728`**<br/>Holdout Projects Acc: **`96.73%`**, Macro-F1: **`0.9435`** |
+| **Step 2** | 8-Category Requirement Classification | Fine-tuned `hfl/chinese-roberta-wwm-ext` (`MaxLen=256`, `fp16`) | `44,668` annotated clauses across 74 grouped files (`33,296` train / `5,616` val / `5,756` test) + 2 unseen holdout projects | In-Domain Test Acc: **`98.21%`**, Macro-F1: **`0.9728`**<br/>Holdout Projects Acc: **`96.73%`**, Macro-F1: **`0.9435`** |
 | **Step 3** | Parent-Child Hybrid Bid RAG | `BAAI/bge-m3` + Domain `BM25` + RRF + `BAAI/bge-reranker-v2-m3` | S604 50-Clause Retrieval Benchmark (`2,262` child chunks, `847` parent sections) | Document Hit@5: **`98.0%`**<br/>Page Hit@5: **`94.0%`**, Page MRR: **`0.8583`** |
 | **Step 4** | Structured Slot Extraction | `DeepSeek-V3` (`deepseek-chat`, `temperature=0.0`) under `passage-facts-v11-arch` | S604 50-Clause Extraction Benchmark (`196` constraint slots, `134` evidence slots) | Raw LLM Constraint Acc: **`82.14%`**, Evidence Acc: **`82.84%`**<br/>Unknown Abstention Rate: **`96.49%`** |
 | **Step 5** | Verbatim Grounding & Global Hydration | `ground_extraction` + `ProjectGlobalContext` (`hydrate_with_global_context`) | S604 50-Clause Extraction Benchmark (Post-Grounding & Hydration) | Constraint & Evidence Slot Acc: **`100.0%`**<br/>Citation Support: **`100.0%`**, Hallucination Rate: **`0.0%`** |
-| **Step 6** | Symbolic Compliance Rule Engine | Deterministic Python Rule Engine (`R01`–`R09`) | 88-Case Positive/Negative Unit Suite + S604 Full 359-Clause Replay | Unit Test Pass Rate: **`100.0%` (`88/88`)**<br/>S604 Full Replay: **`359/359`** (`281` Compliant, `6` Real Defects, `72` Routed Abstentions) |
+| **Step 6** | Symbolic Compliance Rule Engine | Deterministic Python Rule Engine (`R01`–`R09`) | 69-Case Standalone Rule Validation Suite + Unit Suite + S604 Full 359-Clause Replay | Standalone Rule Suite: **`100.0%` (`69/69`)**<br/>S604 Full Replay: **`359/359`** (`281` Compliant, `6` Real Defects, `72` Routed Abstentions) |
 
 ### The 9 Symbolic Compliance Rules (`R01`–`R09`)
 - **`R01_NUMERIC_BOUND`**: Numeric upper/lower/equality bounds, unit normalization (`10k CNY` / `CNY`, `calendar days` / `days`, `%`), and secondary bounds.
@@ -145,18 +145,18 @@ python train_classifier.py --eval_only
 # Steps 4–5: Evaluate LLM Slot Extraction, Verbatim Grounding & Global Context (50-clause benchmark)
 python evaluate_extraction.py --hydrate-global-context
 
-# Step 6: Evaluate Symbolic Rule Engine R01–R09 (88-case positive/negative unit suite + 50-clause benchmark)
+# Step 6: Evaluate Symbolic Rule Engine R01–R09 (69-case standalone rule validation suite)
 python evaluate_rule_engine.py
 
-# End-to-End S604 Full 359-Clause Neuro-Symbolic Replay
+# End-to-End S604 Full 359-Clause Neuro-Symbolic Replay (requires offline replay inputs)
 python replay_compliance_responses.py \
   --cases reports/rag_experiments/s604_full359_reasoning_inputs/cases.json \
   --raw-dir reports/rag_experiments/s604_full359_reasoning_deepseek \
-  --output-dir reports/rag_experiments/s604_full359_replay_v3 \
+  --output-dir reports/runs/s604_full359_replay_v3 \
   --review-date 2022-11-11
 
-# Run automated unit tests
-python -m unittest tests/test_compliance_rules.py tests/test_compliance_reference.py tests/test_rule_contracts_and_suite.py tests/test_extraction_benchmark_and_eval.py
+# Run full automated unit, UI & anti-false-pass test suite
+python -m unittest discover -s tests -p "test_*.py"
 ```
 
 ---
