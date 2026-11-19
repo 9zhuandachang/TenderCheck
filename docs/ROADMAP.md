@@ -23,11 +23,11 @@
   - **`R06` 多年度与单等级信用评分参数化**（`src/rules/rule_engine.py`、`src/domain_profiles/`）：移除写死的 `{2019, 2020, 2021}` 年份与固定赋分表，支持显式年份、相对“近 N 年”（基于 `review_reference_date`）及水利/市政单等级（`AAA/AA/A`）动态计分；
   - **多行业配置包化（Domain Profiles）**：外置 `src/domain_profiles/profiles.json`，覆盖**水利水电、市政公用、房屋建筑、公路工程**四大领域资质偏序（含跨行业资质专业类别错配拦截）、相关专业词表、全国各省交安/建安/水安 `A/B/C` 证、五大员/八大员岗位证及造价师等级；
   - **收紧 `global_context.py` 宽泛承诺兜底 & 联合体安全路由**：仅对通用响应性条款允许《商务投标函》响应回填，杜绝漏检缺失的专项承诺；新增实质性《联合体协议书》识别（排除空白或“无”占位），对禁联合体项目判 `NON_COMPLIANT`，对允许联合体项目的主体归属条款安全转交人工复核（由 `tests/test_domain_generalization.py` 守护）。
-- [ ] **2.2 补齐复合条款“原子化拆分”与切分器边界修复**：
-  - 修复 `tender_segmenter.py` 中 `last_table_col0/col1` 跨表格不重置导致的表头串行污染；
-  - 为 `auto_annotator.py` 主招标文件补充扫描件页 OCR 兜底（避免纯扫描主招标书静默输出 0 条）；
-  - 在 Step 2 后增加复合并列条款（如单句同时要求法人资格 + 施工资质 + 安许证）的原子化拆分机制，解决下游单槽位 `TenderConstraintSlots` 漏检并列子要求的问题。
-- [ ] **打通多模态印章与签字证据链**：
+- [x] **2.2 补齐复合条款“原子化拆分”与切分器边界修复**：
+  - 已修复 `tender_segmenter.py` 中 `last_table_col0/col1` 跨独立表格/跨章节不重置导致的表头串行污染，同时保留合法的跨页同列表格续行继承；
+  - 已为 `auto_annotator.py` 主招标文件与混合扫描 PDF 补充按页检测与缓存 OCR 兜底（不再静默输出 0 条）；
+  - 已新增确定性复合句拆分器 `src/extraction/atomic_decomposer.py` 并接入 `AutoTenderAnnotator`，将多合一并列要求拆解为独立单约束原子条款（严格保留条件句、`OR` 替代选项、评分档位阶梯及单项目复合业绩，并由 `tests/test_segmenter_and_decomposer.py` 守护）。
+- [ ] **2.3 打通多模态印章与签字证据链 & 合并离线/在线 RAG 双轨代码**：
   - 修复 `evidence.py` 序列化时丢弃并清空 `has_official_seal` / `seal_company_name` / `has_signature` 的断路问题，将视觉层（红章像素占比 / VLM 识别）提取的印章元数据作为带置信度的视觉辅助信号传递至 `R04` 与前端审查卡片。
 - [ ] **合并离线（`src/rag/`）与在线（`chinese_pipeline.py`）RAG 双轨代码**：
   - 消除重复的切块与检索封装，统一复用支持跨页表格连续性与本地/HuggingFace 自动权重解析的标准 `src/rag/` 组件。

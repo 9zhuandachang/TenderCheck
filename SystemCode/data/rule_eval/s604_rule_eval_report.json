@@ -908,7 +908,7 @@
       "triggered_rule_id": "R06_QUALITATIVE_AND_SCORING",
       "rule_id_match": true,
       "case_passed": true,
-      "symbolic_trace": "缺少完整年度信用等级记录，已提取年度=[2019, 2020]"
+      "symbolic_trace": "缺少完整年度信用等级记录，要求年度=[2019, 2020, 2021]，已提取年度=[2019, 2020]"
     },
     {
       "case_id": "R06_NEG_01_QUALITY_TARGET",

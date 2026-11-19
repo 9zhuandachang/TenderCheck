@@ -8,10 +8,20 @@ Exposes:
 """
 
 from pathlib import Path
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from .base import BaseRequirementClassifier
-from .bert_classifier import DEFAULT_PRETRAINED_MODEL, BertRequirementClassifier
+
+if TYPE_CHECKING:
+    from .bert_classifier import DEFAULT_PRETRAINED_MODEL, BertRequirementClassifier
+
+
+def __getattr__(name: str) -> Any:
+    if name in {"BertRequirementClassifier", "DEFAULT_PRETRAINED_MODEL"}:
+        from . import bert_classifier
+
+        return getattr(bert_classifier, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def load_classifier(
@@ -23,6 +33,8 @@ def load_classifier(
     """
     model_dir = Path(model_dir)
     if (model_dir / "classifier_meta.json").exists():
+        from .bert_classifier import BertRequirementClassifier
+
         return BertRequirementClassifier.load(model_dir, device=device)
     raise FileNotFoundError(
         f"No recognized classifier checkpoint found in {model_dir}. "

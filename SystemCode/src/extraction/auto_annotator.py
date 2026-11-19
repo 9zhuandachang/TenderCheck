@@ -26,18 +26,21 @@ import logging
 import re
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import pymupdf
 
-from ..classification import BaseRequirementClassifier, load_classifier
 from ..classification.binary_filter import (
     BinaryRequirementFilter,
     align_candidates_with_annotations,
     compute_clause_overlap,
 )
 from ..data.schema import ID2LABEL, REQUIREMENT_TYPES
-from .tender_segmenter import CandidateClause, segment_tender_pdf
+from .atomic_decomposer import decompose_compound_requirement
+from .tender_segmenter import CandidateClause, _CHAPTER_RE, _split_long_unit, segment_tender_pdf
+
+if TYPE_CHECKING:
+    from ..classification import BaseRequirementClassifier
 
 logger = logging.getLogger(__name__)
 
@@ -138,49 +141,82 @@ def normalize_candidate_to_requirement(cand: CandidateClause) -> str:
 def _segment_single_pdf_with_ocr_fallback(
     pdf_path: Path,
     is_addendum: bool = False,
+    ocr_backend: Optional[Any] = None,
 ) -> List[CandidateClause]:
     """
-    Segment a tender or addendum PDF using `segment_tender_pdf`, and if a short
-    addendum/clarification PDF is scanned (0 text candidates extracted), fall back
-    to OCR (`LocalHeuristicOCRBackend`) so scanned addenda are captured.
+    Segment a tender or addendum PDF using `segment_tender_pdf`, and run cached OCR
+    fallback (`LocalHeuristicOCRBackend`) on any image-only scanned pages (both for
+    main tender PDFs and addenda/clarifications) so scanned pages never yield 0 clauses.
     """
+    pdf_path = Path(pdf_path)
     candidates = segment_tender_pdf(pdf_path)
-    if candidates or not is_addendum:
+
+    # Identify pages lacking a searchable text layer that contain embedded scanned images
+    scanned_pages: List[int] = []
+    try:
+        with pymupdf.open(str(pdf_path)) as doc:
+            for page_idx in range(len(doc)):
+                page = doc[page_idx]
+                txt = re.sub(r"\s+", "", page.get_text("text") or "")
+                if len(txt) < 30 and (len(page.get_images(full=True)) > 0 or not candidates):
+                    scanned_pages.append(page_idx + 1)
+    except Exception as exc:
+        logger.warning("Failed to inspect scanned pages in %s: %s", pdf_path, exc)
+        return candidates
+
+    if not scanned_pages:
         return candidates
 
     try:
-        from ..rag.vision import LocalHeuristicOCRBackend
+        if ocr_backend is None:
+            from ..rag.vision import DiskCachedVisionBackend, LocalHeuristicOCRBackend
 
-        ocr_backend = LocalHeuristicOCRBackend(dpi=180)
+            cache_dir = Path(__file__).resolve().parents[2] / "data" / "vision_cache"
+            ocr_backend = DiskCachedVisionBackend(
+                LocalHeuristicOCRBackend(dpi=180),
+                cache_dir=cache_dir,
+            )
+
         doc = pymupdf.open(str(pdf_path))
         doc_name = pdf_path.name
+        default_chapter = "答疑与澄清" if is_addendum else "招标文件（扫描件）"
+        current_chapter = default_chapter
         cand_seq = 0
-        for page_idx in range(len(doc)):
-            page_no = page_idx + 1
-            res = ocr_backend.analyze_page(doc, page_no, existing_text="", heading_hint="答疑与澄清")
+        ocr_candidates: List[CandidateClause] = []
+
+        for page_no in scanned_pages:
+            res = ocr_backend.analyze_page(doc, page_no, existing_text="", heading_hint=current_chapter)
             ocr_text = (res.ocr_text or "").strip()
             if not ocr_text:
                 continue
-            for line in re.split(r"(?<=[。；;\n])", ocr_text):
-                ln = line.strip()
-                if len(re.findall(r"[\u4e00-\u9fff]", ln)) < 6:
-                    continue
+            for ln in ocr_text.splitlines():
+                m_chap = _CHAPTER_RE.match(ln.strip())
+                if m_chap:
+                    current_chapter = f"{m_chap.group(1)} {m_chap.group(2).strip()}".strip()
+                    break
+            for unit in _split_long_unit(ocr_text, min_cjk_len=6):
                 cand_seq += 1
-                candidates.append(
+                prefix = "ADD" if is_addendum else "OCR"
+                sec_label = f"{doc_name} / {'答疑澄清' if is_addendum else current_chapter.split()[0]}"
+                ocr_candidates.append(
                     CandidateClause(
-                        candidate_id=f"ADD_{cand_seq:04d}",
+                        candidate_id=f"{prefix}_{cand_seq:04d}",
                         doc_name=doc_name,
                         page=page_no,
-                        chapter="答疑与澄清",
-                        section=f"{doc_name} / 答疑澄清",
-                        text=ln,
-                        raw_text=ln,
+                        chapter=current_chapter,
+                        section=sec_label,
+                        text=unit,
+                        raw_text=unit,
                         source_type="body",
                     )
                 )
         doc.close()
+
+        if ocr_candidates:
+            candidates.extend(ocr_candidates)
+            candidates.sort(key=lambda c: c.page)
     except Exception as exc:
-        logger.warning("OCR fallback on addendum %s failed: %s", pdf_path, exc)
+        logger.warning("OCR fallback on %s failed: %s", pdf_path, exc)
 
     return candidates
 
@@ -198,15 +234,19 @@ class AutoTenderAnnotator:
         device: Optional[str] = None,
         chapter_aware: bool = True,
         binary_threshold: Optional[float] = None,
+        decompose_atomic: bool = True,
     ) -> None:
         self.binary_model_dir = Path(binary_model_dir)
         self.eight_class_model_dir = Path(eight_class_model_dir)
         self.device = device
         self.chapter_aware = chapter_aware
         self.binary_threshold = binary_threshold
+        self.decompose_atomic = decompose_atomic
+
+        from ..classification import load_classifier
 
         self.binary_filter: BinaryRequirementFilter = BinaryRequirementFilter.load(self.binary_model_dir)
-        self.classifier: BaseRequirementClassifier = load_classifier(self.eight_class_model_dir, device=self.device)
+        self.classifier: "BaseRequirementClassifier" = load_classifier(self.eight_class_model_dir, device=self.device)
 
     def annotate_pdfs(
         self,
@@ -276,25 +316,31 @@ class AutoTenderAnnotator:
                 total_files + 2,
             )
 
-        # Prepare normalized requirement sentences & section context for 8-class classifier
-        normalized_reqs: List[str] = []
+        # Normalize & optionally decompose compound multi-predicate clauses into atomic requirements
+        expanded_pairs: List[Tuple[CandidateClause, float, str]] = []
         cls_inputs: List[Dict[str, str]] = []
-        for cand, _ in retained_pairs:
+        for cand, bin_prob in retained_pairs:
             norm_req = normalize_candidate_to_requirement(cand)
-            normalized_reqs.append(norm_req)
-            cls_inputs.append(
-                {
-                    "Section": cand.section or cand.chapter,
-                    "Requirement": norm_req,
-                }
+            atomic_list = (
+                decompose_compound_requirement(norm_req, section=cand.section or cand.chapter)
+                if self.decompose_atomic
+                else [norm_req]
             )
+            for atom_req in atomic_list:
+                expanded_pairs.append((cand, bin_prob, atom_req))
+                cls_inputs.append(
+                    {
+                        "Section": cand.section or cand.chapter,
+                        "Requirement": atom_req,
+                    }
+                )
 
         probs_8 = self.classifier.predict_proba(cls_inputs)
         items: List[AutoAnnotatedRequirement] = []
         cat_counts: Dict[str, int] = {cat: 0 for cat in REQUIREMENT_TYPES}
 
-        for idx, ((cand, bin_prob), norm_req, prob_vec) in enumerate(
-            zip(retained_pairs, normalized_reqs, probs_8), start=1
+        for idx, ((cand, bin_prob, atom_req), prob_vec) in enumerate(
+            zip(expanded_pairs, probs_8), start=1
         ):
             best_cls_id = int(prob_vec.argmax())
             pred_cat = ID2LABEL[best_cls_id]
@@ -311,7 +357,7 @@ class AutoTenderAnnotator:
                     Page=int(cand.page),
                     Section=section_str,
                     Requirement_Type=pred_cat,
-                    Requirement=norm_req,
+                    Requirement=atom_req,
                     raw_text=cand.raw_text or cand.text,
                     source_type=cand.source_type,
                     binary_prob=bin_prob,

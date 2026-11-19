@@ -238,6 +238,8 @@ def segment_tender_pdf(pdf_path: Path, doc_label: Optional[str] = None) -> List[
 
     last_table_col0 = ""
     last_table_col1 = ""
+    last_table_ncols = 0
+    last_table_page = -1
 
     for page_idx in range(len(doc)):
         page = doc[page_idx]
@@ -256,6 +258,10 @@ def segment_tender_pdf(pdf_path: Path, doc_label: Optional[str] = None) -> List[
                 current_section = ""
                 current_form_title = ""
                 current_clause_no = ""
+                # A new chapter always starts fresh table header context
+                last_table_col0 = ""
+                last_table_col1 = ""
+                last_table_ncols = 0
                 break
 
         # Detect cover page in Chapter 8 / Chapter 9 (e.g. 投标文件（商务文件）... 投标人：（盖单位章）)
@@ -276,12 +282,26 @@ def segment_tender_pdf(pdf_path: Path, doc_label: Optional[str] = None) -> List[
         except Exception:
             tables_list = []
 
-        for tab in tables_list:
+        for t_idx, tab in enumerate(tables_list):
             tbbox = tuple(tab.bbox)
             rows = tab.extract()
             if not rows:
                 continue
             table_bboxes.append(tbbox)
+
+            # Only inherit previous table's merged col0/col1 when this table is a direct
+            # cross-page continuation (first table on page_num == last_table_page + 1)
+            # with the exact same column count and no new header row.
+            first_non_empty_ncols = max((len(r) for r in rows), default=0)
+            is_continuation = (
+                t_idx == 0
+                and last_table_page == page_num - 1
+                and first_non_empty_ncols == last_table_ncols
+                and last_table_ncols > 0
+            )
+            if not is_continuation:
+                last_table_col0 = ""
+                last_table_col1 = ""
 
             for r_idx, row in enumerate(rows):
                 cells = [_clean_whitespace(str(c or "")) for c in row if c is not None and str(c) != "None"]
@@ -294,6 +314,8 @@ def segment_tender_pdf(pdf_path: Path, doc_label: Optional[str] = None) -> List[
                 joined_row = " ".join(non_empty)
                 if r_idx == 0 and any(h in joined_row for h in ("条款号", "评审因素", "评审标准", "序号", "条款名称", "编列内容")):
                     if len(joined_row) < 40:
+                        last_table_col0 = ""
+                        last_table_col1 = ""
                         continue
 
                 if len(pos_cells) >= 3:
@@ -355,6 +377,9 @@ def segment_tender_pdf(pdf_path: Path, doc_label: Optional[str] = None) -> List[
                             bbox=tbbox,
                         )
                     )
+
+            last_table_ncols = first_non_empty_ncols
+            last_table_page = page_num
 
         # 2. Extract non-table body blocks
         blocks = page.get_text("blocks") or []
