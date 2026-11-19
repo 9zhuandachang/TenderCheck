@@ -27,11 +27,10 @@
   - 已修复 `tender_segmenter.py` 中 `last_table_col0/col1` 跨独立表格/跨章节不重置导致的表头串行污染，同时保留合法的跨页同列表格续行继承；
   - 已为 `auto_annotator.py` 主招标文件与混合扫描 PDF 补充按页检测与缓存 OCR 兜底（不再静默输出 0 条）；
   - 已新增确定性复合句拆分器 `src/extraction/atomic_decomposer.py` 并接入 `AutoTenderAnnotator`，将多合一并列要求拆解为独立单约束原子条款（严格保留条件句、`OR` 替代选项、评分档位阶梯及单项目复合业绩，并由 `tests/test_segmenter_and_decomposer.py` 守护）。
-- [ ] **2.3 打通多模态印章与签字证据链 & 合并离线/在线 RAG 双轨代码**：
-  - 修复 `evidence.py` 序列化时丢弃并清空 `has_official_seal` / `seal_company_name` / `has_signature` 的断路问题，将视觉层（红章像素占比 / VLM 识别）提取的印章元数据作为带置信度的视觉辅助信号传递至 `R04` 与前端审查卡片。
-- [ ] **合并离线（`src/rag/`）与在线（`chinese_pipeline.py`）RAG 双轨代码**：
-  - 消除重复的切块与检索封装，统一复用支持跨页表格连续性与本地/HuggingFace 自动权重解析的标准 `src/rag/` 组件。
-- [ ] **实现中文补遗/答疑条款自动覆盖（Addendum Superseding）**：
+- [x] **2.3 打通多模态印章与签字证据链 & 合并离线/在线 RAG 双轨代码**：
+  - 已在 `BidChunk`、`BidEvidenceSlots` 与 `evidence.py` 建立严格的 `visual_seal_verified` 视觉溯源通道：彻底移除文本占位符（如“（盖单位章）”）假造签章的隐患，仅允许经视觉引擎实检的 `has_official_seal` / `seal_company_name` / `has_signature` 传入 `R04`（含印章单位与投标人主体一致性校验）并在前端审查卡片独立展示；
+  - 已将 `chinese_pipeline.py` 的 PDF 解析与混合检索完全收口至 `src/rag/parser.py`（`BidDocumentParser`）与 `src/rag/indexer.py`（`HybridBidIndex` + `resolve_local_or_hf_model`），消除双轨重复实现（由 `tests/test_visual_seal_and_unified_rag.py` 守护）。
+- [ ] **2.4 实现中文补遗/答疑条款自动覆盖（Addendum Superseding）**：
   - 识别补遗中“原招标文件第 X 章/条修改为……”的指向关系，自动将原条款标记为被替代并以补遗新约束入审，避免新旧冲突条款同时生效。
 
 ---

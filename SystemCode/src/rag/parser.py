@@ -21,7 +21,7 @@ import re
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 try:
     import pymupdf as fitz
@@ -70,6 +70,8 @@ class BidChunk:
     has_official_seal: bool = False
     seal_company_name: Optional[str] = None
     has_signature: bool = False
+    visual_seal_verified: bool = False
+    visual_backend: str = ""
     extracted_kv: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -95,6 +97,8 @@ class BidChunk:
             has_official_seal=bool(data.get("has_official_seal", False)),
             seal_company_name=data.get("seal_company_name"),
             has_signature=bool(data.get("has_signature", False)),
+            visual_seal_verified=bool(data.get("visual_seal_verified", False)),
+            visual_backend=str(data.get("visual_backend") or ""),
             extracted_kv=dict(data.get("extracted_kv") or {}),
         )
 
@@ -271,6 +275,8 @@ class BidDocumentParser:
         end_page: Optional[int] = None,
         forced_volume: Optional[str] = None,
         forced_doc_category: Optional[str] = None,
+        progress: Optional[Callable[[str, int, int], None]] = None,
+        label: Optional[str] = None,
     ) -> Tuple[List[BidChunk], List[BidChunk], Dict[str, Any]]:
         """
         Parse a bid PDF into `(parent_chunks, child_chunks, stats_dict)`.
@@ -282,14 +288,44 @@ class BidDocumentParser:
             end_page: 1-indexed end page (inclusive).
             forced_volume: Optional volume override (when parsing sub-chapter files).
             forced_doc_category: Optional category override (when parsing sub-chapter files).
+            progress: Optional progress callback `(message, current_page, total_pages)`.
+            label: Optional human-readable document label for progress reporting.
 
         Returns:
             Tuple of `(parent_chunks, child_chunks, stats_dict)`.
         """
         pdf_path = Path(pdf_path)
         doc_id = document_id or pdf_path.stem
+        display_label = label or pdf_path.name
         self.document_sources[doc_id] = str(pdf_path.resolve())
         doc = fitz.open(pdf_path)
+        try:
+            return self._parse_open_pdf(
+                doc=doc,
+                pdf_path=pdf_path,
+                doc_id=doc_id,
+                display_label=display_label,
+                start_page=start_page,
+                end_page=end_page,
+                forced_volume=forced_volume,
+                forced_doc_category=forced_doc_category,
+                progress=progress,
+            )
+        finally:
+            doc.close()
+
+    def _parse_open_pdf(
+        self,
+        doc: Any,
+        pdf_path: Path,
+        doc_id: str,
+        display_label: str,
+        start_page: int = 1,
+        end_page: Optional[int] = None,
+        forced_volume: Optional[str] = None,
+        forced_doc_category: Optional[str] = None,
+        progress: Optional[Callable[[str, int, int], None]] = None,
+    ) -> Tuple[List[BidChunk], List[BidChunk], Dict[str, Any]]:
         last_page = min(end_page or len(doc), len(doc))
 
         # Pass 1: Extract raw lines & identify repeated running headers/footers
@@ -329,6 +365,8 @@ class BidDocumentParser:
             has_seal: bool = False,
             seal_name: Optional[str] = None,
             has_sig: bool = False,
+            visual_verified: bool = False,
+            visual_backend: str = "",
             kv: Optional[Dict[str, Any]] = None,
         ) -> None:
             nonlocal parent_seq, child_seq
@@ -357,6 +395,8 @@ class BidDocumentParser:
                 has_official_seal=has_seal,
                 seal_company_name=seal_name,
                 has_signature=has_sig,
+                visual_seal_verified=visual_verified,
+                visual_backend=visual_backend,
                 extracted_kv=dict(kv or {}),
             )
             parent_chunks.append(p_chunk)
@@ -385,6 +425,8 @@ class BidDocumentParser:
                         has_official_seal=has_seal,
                         seal_company_name=seal_name,
                         has_signature=has_sig,
+                        visual_seal_verified=visual_verified,
+                        visual_backend=visual_backend,
                         extracted_kv=dict(kv or {}),
                     )
                 )
@@ -428,7 +470,14 @@ class BidDocumentParser:
             nar_has_sig = False
 
         # Pass 2: Stream through pages and route to Vision, Table, or Narrative handler
+        total_pages = last_page - start_page + 1
         for pno in range(start_page, last_page + 1):
+            if progress and (pno == start_page or pno % 25 == 0 or pno == last_page):
+                progress(
+                    f"正在解析投标文件 {display_label} 第 {pno}/{last_page} 页...",
+                    pno - start_page + 1,
+                    total_pages,
+                )
             page = doc[pno - 1]
             lines = [
                 ln
@@ -460,21 +509,42 @@ class BidDocumentParser:
 
             sec_path = " > ".join(headings[k] for k in sorted(headings)) or current_volume
 
-            # Stream A: Scanned page, Certificate page, or Commitment page needing Vision/Seal analysis
-            is_scanned_or_cert = (img_count > 0 and clean_len < 160) or any(
+            # Stream A: Scanned page, Certificate page, or Seal/Commitment page needing Vision/Seal analysis
+            is_scanned_or_cert = (img_count > 0 and clean_len < 160) or clean_len < 40 or any(
                 kw in clean_text
-                for kw in ("营业执照", "资质证书", "安全生产许可证", "注册证书", "投标函", "授权委托书", "投标保证金")
+                for kw in (
+                    "营业执照",
+                    "资质证书",
+                    "安全生产许可证",
+                    "注册证书",
+                    "投标函",
+                    "授权委托书",
+                    "法定代表人身份证明",
+                    "投标保证金",
+                    "承诺书",
+                    "联合体协议书",
+                )
             )
 
             if is_scanned_or_cert:
                 _flush_narrative_buffer()
+                if progress:
+                    progress(
+                        f"正在对扫描件/证书/签章页 ({display_label} 第 {pno}/{last_page} 页) 执行视觉与印章分析...",
+                        pno - start_page + 1,
+                        total_pages,
+                    )
                 vision_res: PageVisionResult = self.vision_backend.analyze_page(
                     doc=doc,
                     pdf_page=pno,
                     existing_text=clean_text,
                     heading_hint=sec_path,
                 )
-                effective_text = vision_res.ocr_text.strip() or clean_text or f"[{sec_path} 扫描件 第{pno}页]"
+                ocr_txt = (vision_res.ocr_text or "").strip()
+                if ocr_txt and ocr_txt not in clean_text:
+                    effective_text = f"{clean_text}\n{ocr_txt}".strip() if clean_text else ocr_txt
+                else:
+                    effective_text = clean_text or ocr_txt or f"[{sec_path} 扫描件 第{pno}页]"
                 doc_cat = forced_doc_category or vision_res.doc_category
                 c_type = "certificate" if img_count > 0 and clean_len < 160 else "commitment"
                 page_type_counts[c_type] += 1
@@ -493,14 +563,16 @@ class BidDocumentParser:
                     p_end=pno,
                     parent_text=effective_text,
                     child_texts=c_spans,
-                    has_seal=vision_res.has_official_seal,
+                    has_seal=bool(vision_res.has_official_seal),
                     seal_name=vision_res.seal_company_name,
-                    has_sig=vision_res.has_signature,
+                    has_sig=bool(vision_res.has_signature),
+                    visual_verified=True,
+                    visual_backend=str(vision_res.backend_name or ""),
                     kv=merged_kv,
                 )
                 continue
 
-            # Stream B: Structured Table extraction
+            # Stream B: Structured Table extraction (text-only: never fabricate visual seal/signature)
             md_tables, row_sentences = _extract_tables_as_markdown_and_rows(page, pno, sec_path)
             if md_tables:
                 _flush_narrative_buffer()
@@ -519,12 +591,13 @@ class BidDocumentParser:
                     parent_text=parent_tbl_text,
                     child_texts=row_sentences if row_sentences else [clean_text],
                     has_seal=False,
-                    has_sig=("签字" in clean_text or "盖章" in clean_text),
+                    has_sig=False,
+                    visual_verified=False,
                     kv=kv,
                 )
                 continue
 
-            # Stream C: Narrative paragraphs (accumulate into parent blocks ~900 chars)
+            # Stream C: Narrative paragraphs (text-only: never fabricate visual seal/signature)
             if not clean_text:
                 continue
 
@@ -532,10 +605,6 @@ class BidDocumentParser:
             if nar_start_page is None:
                 nar_start_page = pno
             nar_end_page = pno
-            if "盖章" in clean_text or "公章" in clean_text:
-                nar_has_seal = True
-            if "签字" in clean_text or "法定代表人" in clean_text:
-                nar_has_sig = True
             nar_buf.append(clean_text)
 
             if len(_compact("\n".join(nar_buf))) >= self.parent_target_chars:

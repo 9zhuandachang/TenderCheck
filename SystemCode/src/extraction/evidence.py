@@ -19,13 +19,29 @@ from src.domain_profiles import is_substantive_consortium_agreement
 
 
 def evidence_context(passages):
-    """Only serialized passages cross this boundary; no cached business facts."""
-    return json.dumps([
-        dict(evidence_id=f'E{i}', document_id=p['document_id'], source_sha256=p['source_sha256'],
-             page_start=p['page_start'], page_end=p['page_end'], section=p.get('section_path',''),
-             text=p['parent_text'])
-        for i, p in enumerate(passages, 1)
-    ], ensure_ascii=False)
+    """Only serialized passages cross this boundary; verified visual seal metadata is preserved."""
+    serialized = []
+    for i, p in enumerate(passages, 1):
+        entry = dict(
+            evidence_id=f'E{i}',
+            document_id=p['document_id'],
+            source_sha256=p['source_sha256'],
+            page_start=p['page_start'],
+            page_end=p['page_end'],
+            section=p.get('section_path', ''),
+            text=p['parent_text'],
+        )
+        if p.get('visual_seal_verified'):
+            entry['visual_seal_verified'] = True
+            entry['visual_backend'] = str(p.get('visual_backend') or '')
+            if isinstance(p.get('has_official_seal'), bool):
+                entry['has_official_seal'] = p['has_official_seal']
+            if p.get('seal_company_name'):
+                entry['seal_company_name'] = str(p['seal_company_name']).strip()
+            if isinstance(p.get('has_signature'), bool):
+                entry['has_signature'] = p['has_signature']
+        serialized.append(entry)
+    return json.dumps(serialized, ensure_ascii=False)
 
 
 def numeric_in_quote(value, quote):
@@ -76,8 +92,44 @@ def ground_extraction(result, context):
         by_field.setdefault(field, []).append(quote)
     b.evidence_references = verified
     b.evidence_pages = sorted({page for r in verified for page in range(r['page_start'], r['page_end']+1)})
-    # Text alone cannot certify the actual image's stamp or signature.
-    b.has_official_seal = b.has_signature = None
+    # Text alone cannot certify the actual image's stamp or signature; only verified visual
+    # metadata attached to cited passages may populate seal/signature slots.
+    b.has_official_seal = None
+    b.has_signature = None
+    b.seal_company_name = ""
+    b.visual_seal_verified = False
+    b.visual_seal_backend = ""
+    b.visual_seal_pages = []
+    cited_eids = {r['evidence_id'] for r in verified}
+    visual_passages = [
+        by_id[eid] for eid in cited_eids
+        if eid in by_id and by_id[eid].get('visual_seal_verified') is True
+    ]
+    if visual_passages:
+        b.visual_seal_verified = True
+        b.visual_seal_pages = sorted({
+            int(p['page_start']) for p in visual_passages if p.get('page_start') is not None
+        })
+        b.visual_seal_backend = next(
+            (str(p.get('visual_backend') or '').strip() for p in visual_passages if p.get('visual_backend')),
+            "",
+        )
+        seal_vals = [p['has_official_seal'] for p in visual_passages if type(p.get('has_official_seal')) is bool]
+        if seal_vals:
+            b.has_official_seal = any(seal_vals)
+        sig_vals = [p['has_signature'] for p in visual_passages if type(p.get('has_signature')) is bool]
+        if sig_vals:
+            b.has_signature = any(sig_vals)
+        seal_names = [
+            str(p['seal_company_name']).strip()
+            for p in visual_passages
+            if isinstance(p.get('seal_company_name'), str) and str(p['seal_company_name']).strip()
+        ]
+        if seal_names:
+            b.seal_company_name = seal_names[0]
+            for sname in seal_names:
+                if sname not in b.observed_seal_parties:
+                    b.observed_seal_parties.append(sname)
     role_support_refs = set()
     for field in ('expected_numeric','expected_unit','secondary_numeric','expected_text','required_domain',
                   'scoring_max_points','scoring_bands','requires_official_seal','requires_signature'):

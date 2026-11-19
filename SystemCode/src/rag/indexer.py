@@ -30,6 +30,16 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-m3"
 DEFAULT_RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
+SYSTEMCODE_DIR = Path(__file__).resolve().parents[2]
+LOCAL_PRETRAINED_DIR = SYSTEMCODE_DIR / "models" / "pretrained"
+
+
+def resolve_local_or_hf_model(local_subdir: str, default_hf_name: str) -> str:
+    """Resolve a pretrained model to its local snapshot under `models/pretrained/` if present, else HuggingFace ID."""
+    candidate = LOCAL_PRETRAINED_DIR / local_subdir
+    if candidate.exists():
+        return str(candidate)
+    return default_hf_name
 
 
 @dataclass
@@ -195,12 +205,17 @@ class HybridBidIndex:
 
         return np.vstack(all_vecs) if all_vecs else np.zeros((0, 768), dtype=np.float32)
 
+    def encode_queries(self, queries: Sequence[str], batch_size: int = 64) -> np.ndarray:
+        """Batch-encode query strings using the dense neural encoder (`bge-m3`)."""
+        return self._encode_neural(queries, batch_size=batch_size)
+
     def build(
         self,
         parent_chunks: Sequence[BidChunk],
         child_chunks: Sequence[BidChunk],
+        build_dense: bool = True,
     ) -> "HybridBidIndex":
-        """Build BM25 and neural Dense vector indices over `child_chunks`."""
+        """Build BM25 and (optionally) neural Dense vector indices over `child_chunks`."""
         self.parent_map = {p.chunk_id: p for p in parent_chunks}
         self.child_chunks = list(child_chunks)
         corpus = [c.embedding_text for c in self.child_chunks]
@@ -208,15 +223,19 @@ class HybridBidIndex:
         logger.info("Building Okapi BM25 sparse index over %d child chunks...", len(corpus))
         self.bm25.fit(corpus)
 
-        if corpus:
+        if corpus and build_dense:
             self.dense_embeddings = self._encode_neural(corpus)
 
         return self
 
-    def _compute_dense_scores(self, query: str) -> np.ndarray:
+    def _compute_dense_scores(
+        self,
+        query: str,
+        precomputed_query_vec: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
         if not self.child_chunks or self.dense_embeddings is None:
             return np.zeros(len(self.child_chunks), dtype=np.float32)
-        q_vec = self._encode_neural([query])[0]
+        q_vec = precomputed_query_vec if precomputed_query_vec is not None else self._encode_neural([query])[0]
         return np.dot(self.dense_embeddings, q_vec).astype(np.float32)
 
     def _rerank_candidates(
@@ -274,6 +293,7 @@ class HybridBidIndex:
         rrf_k: int = 60,
         use_reranker: bool = True,
         candidate_pool_size: Optional[int] = None,
+        precomputed_query_vec: Optional[np.ndarray] = None,
     ) -> List[RetrievedChunkHit]:
         """
         Execute Hybrid Dense + Sparse search with optional metadata filter and
@@ -292,9 +312,10 @@ class HybridBidIndex:
         if len(valid_indices) == 0:
             valid_indices = np.arange(len(self.child_chunks))
 
+        effective_dense_w = dense_weight if self.dense_embeddings is not None else 0.0
         dense_all = (
-            self._compute_dense_scores(query)
-            if dense_weight > 0.0
+            self._compute_dense_scores(query, precomputed_query_vec=precomputed_query_vec)
+            if effective_dense_w > 0.0
             else np.zeros(len(self.child_chunks), dtype=np.float32)
         )
         sparse_all = (
@@ -316,7 +337,7 @@ class HybridBidIndex:
         sparse_ranks[sparse_order] = np.arange(1, len(valid_indices) + 1)
 
         rrf_scores = (
-            dense_weight / (rrf_k + dense_ranks)
+            effective_dense_w / (rrf_k + dense_ranks)
             + sparse_weight / (rrf_k + sparse_ranks)
         )
 

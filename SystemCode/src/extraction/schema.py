@@ -109,7 +109,11 @@ class BidEvidenceSlots:
     entity_secondary: str = ""             # 主体2 (如建造师注册单位 / 清单汇总表报价)
     certificate_valid: Optional[bool] = None
     has_official_seal: Optional[bool] = None
+    seal_company_name: str = ""
     has_signature: Optional[bool] = None
+    visual_seal_verified: bool = False
+    visual_seal_backend: str = ""
+    visual_seal_pages: List[int] = field(default_factory=list)
     prohibition_violated: Optional[bool] = None
     commitment_fulfilled: Optional[bool] = None
     qualitative_match: Optional[bool] = None
@@ -202,7 +206,7 @@ def validate_slot_types(values):
         'requires_official_seal', 'requires_signature', 'conflict_detected',
         'requires_validity_date', 'allow_extension_notice', 'requires_employer_match',
         'length_strict_gt', 'requires_external_verification', 'requires_human_review',
-        'is_long_term', 'employer_matches_bidder', 'consortium_detected',
+        'is_long_term', 'employer_matches_bidder', 'consortium_detected', 'visual_seal_verified',
     }
     numeric = {
         'expected_numeric', 'secondary_numeric', 'scoring_max_points', 'actual_numeric',
@@ -215,7 +219,7 @@ def validate_slot_types(values):
         'subject_bindings', 'conflict_pairs', 'allowed_domains', 'allowed_construction_types',
         'required_scopes', 'required_proof_docs', 'required_seal_parties', 'deduction_fields',
         'observed_seal_parties', 'signature_types', 'personnel_records', 'performance_records',
-        'credit_ratings', 'credit_years',
+        'credit_ratings', 'credit_years', 'visual_seal_pages',
     }
     dicts = {'source_quotes', 'component_amounts', 'credit_score_map'}
     for key, value in values.items():

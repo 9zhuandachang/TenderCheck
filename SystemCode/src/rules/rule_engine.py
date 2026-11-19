@@ -690,9 +690,34 @@ class ComplianceRuleEngine:
                 return unknown("文本检索不能确认图像中的印章状态。")
             if t.requires_signature and b.has_signature is None:
                 return unknown("签字状态尚未确认。")
+            if t.requires_official_seal and b.has_official_seal is False and not t.required_seal_parties:
+                return decide(
+                    False,
+                    f"视觉核验确认材料未加盖单位公章 (visual_verified={b.visual_seal_verified}; backend={b.visual_seal_backend})",
+                )
+            if t.requires_signature and b.has_signature is False:
+                return decide(
+                    False,
+                    f"视觉核验确认材料缺少法定代表人/授权代理人签字 (visual_verified={b.visual_seal_verified}; backend={b.visual_seal_backend})",
+                )
+            if t.requires_official_seal and b.has_official_seal is True and b.seal_company_name:
+                expected_bidder = (b.entity_primary or b.employer_name or "").strip()
+                if expected_bidder:
+                    norm_fn = lambda x: re.sub(r"\s+", "", x).replace("（", "(").replace("）", ")")
+                    norm_seal = norm_fn(b.seal_company_name)
+                    norm_bidder = norm_fn(expected_bidder)
+                    if norm_seal and norm_bidder and (norm_seal not in norm_bidder and norm_bidder not in norm_seal):
+                        return decide(
+                            False,
+                            f"视觉识别公章单位({b.seal_company_name})与投标人主体({expected_bidder})不一致",
+                        )
             seal_ok = (not t.requires_official_seal or b.has_official_seal is True or bool(t.required_seal_parties))
             sig_ok = (not t.requires_signature or b.has_signature is True)
-            return decide(seal_ok and sig_ok, f"seal={b.has_official_seal}; parties={b.observed_seal_parties}; signature={b.has_signature}")
+            return decide(
+                seal_ok and sig_ok,
+                f"seal={b.has_official_seal}; seal_company={b.seal_company_name}; parties={b.observed_seal_parties}; "
+                f"signature={b.has_signature}; visual_verified={b.visual_seal_verified}; backend={b.visual_seal_backend}",
+            )
 
         # ------------------------------------------------------------------
         # R05: Prohibition, Commitment & External Verification Boundary

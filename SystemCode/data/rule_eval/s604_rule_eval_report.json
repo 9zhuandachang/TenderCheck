@@ -602,7 +602,7 @@
       "triggered_rule_id": "R04_DOCUMENT_AND_SEAL",
       "rule_id_match": true,
       "case_passed": true,
-      "symbolic_trace": "seal=True; parties=['建设单位', '设计单位', '监理单位', '施工单位']; signature=None"
+      "symbolic_trace": "seal=True; seal_company=; parties=['建设单位', '设计单位', '监理单位', '施工单位']; signature=None; visual_verified=False; backend="
     },
     {
       "case_id": "R04_NEG_01_MISSING_PARTY_SEAL",
@@ -692,7 +692,7 @@
       "triggered_rule_id": "R04_DOCUMENT_AND_SEAL",
       "rule_id_match": true,
       "case_passed": true,
-      "symbolic_trace": "seal=None; parties=[]; signature=True"
+      "symbolic_trace": "seal=None; seal_company=; parties=[]; signature=True; visual_verified=False; backend="
     },
     {
       "case_id": "R05_POS_01",

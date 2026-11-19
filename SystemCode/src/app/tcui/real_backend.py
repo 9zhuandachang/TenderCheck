@@ -390,7 +390,7 @@ def _build_fields_comparison(
         else:
             act_parts.append("未在检索段落中定位到完整单据")
         if b.get("observed_seal_parties"):
-            act_parts.append("文字载明签章方: " + "、".join(b["observed_seal_parties"]))
+            act_parts.append("载明/识别签章方: " + "、".join(b["observed_seal_parties"]))
         rows.append(
             {
                 "field": "单据存在性与签章版式",
@@ -399,6 +399,37 @@ def _build_fields_comparison(
                 "result": ui_verdict,
             }
         )
+        if t.get("requires_official_seal") or t.get("requires_signature") or b.get("visual_seal_verified"):
+            vis_parts: List[str] = []
+            if b.get("visual_seal_verified"):
+                seal_flag = b.get("has_official_seal")
+                sig_flag = b.get("has_signature")
+                seal_txt = "已加盖" if seal_flag is True else ("未加盖" if seal_flag is False else "未确认")
+                sig_txt = "已签字" if sig_flag is True else ("未签字" if sig_flag is False else "未确认")
+                vis_parts.append(f"公章: {seal_txt}")
+                if b.get("seal_company_name"):
+                    vis_parts.append(f"印章单位: {b['seal_company_name']}")
+                vis_parts.append(f"签字: {sig_txt}")
+                if b.get("visual_seal_backend"):
+                    vis_parts.append(f"视觉引擎: {b['visual_seal_backend']}")
+                if b.get("visual_seal_pages"):
+                    pages_str = ",".join(f"P.{p}" for p in b["visual_seal_pages"])
+                    vis_parts.append(f"核验页: {pages_str}")
+            else:
+                vis_parts.append("未获取视觉印章/签字核验结果（仅凭文本不可放行，需人工复核）")
+            rows.append(
+                {
+                    "field": "多模态印章与签字核验",
+                    "required": " · ".join(
+                        p for p in [
+                            "单位公章" if t.get("requires_official_seal") else "",
+                            "法定代表人/授权人签字" if t.get("requires_signature") else "",
+                        ] if p
+                    ) or "视觉签章核验",
+                    "actual": " · ".join(vis_parts),
+                    "result": ui_verdict,
+                }
+            )
     elif ctype == "PROHIBITION_AND_COMMITMENT":
         refs = rule_dict.get("evidence_references") or b.get("evidence_references") or []
         q_preview = refs[0].get("quote", "").replace("\n", " ").strip() if refs else (b.get("actual_text") or "")

@@ -60,3 +60,15 @@
   2. 对联合体投标设定明确安全边界：识别实质性《联合体协议书》（自动忽略独立投标人“无/不适用”占位页）；若招标明确“不接受联合体”则直接判 `NON_COMPLIANT`；若允许联合体，则将涉及多成员分工与主体绑定的 `R02/R03/R07/R08` 条款统一路由至 `INSUFFICIENT_EVIDENCE` 交人工核验。
 - **放弃方案**：在未建立完整联合体分工协议解析器前强行用单一主体逻辑去套联合体多方证书（原因：极易将牵头人与成员方资质混绑导致误判）。
 - **影响范围**：`src/domain_profiles/`、`src/rules/rule_engine.py`、`src/extraction/global_context.py`、`tests/test_domain_generalization.py`
+
+---
+
+## ADR-006: 多模态签章视觉溯源门禁与 RAG 单一主干合流（Phase 2.3）
+- **日期**：2026-11-19
+- **状态**：Accepted
+- **背景**：此前视觉层（`src/rag/vision.py`）已输出印章与签字识别结果，但 `evidence.py` 序列化与 `ground_extraction` 会将其一律清空导致 `R04` 断路；与此同时，`chinese_pipeline.py` 与 `src/rag/parser.py` 在纯文本段落/表格中存在靠正则匹配“盖章/签字”文字就置 `True` 的假放行隐患，且离线 `src/rag/` 与在线 `chinese_pipeline.py` 各自维护了一套 PDF 解析与 BM25/RRF 检索代码。
+- **决策**：
+  1. 在 `BidChunk`、`BidEvidenceSlots`、`evidence.py` 全链路引入 `visual_seal_verified` 门禁：纯文本/表格流禁止通过文字占位符生成 `has_official_seal` 或 `has_signature`；`ground_extraction` 始终清空 LLM 猜测值，仅机械透传引用页上的已核验视觉元数据至 `R04`（含视觉无章拒审与公章单位错配拦截）和前端审查卡片。
+  2. 将 `chinese_pipeline.py` 彻底重构为薄适配层，解析统一委托给 `BidDocumentParser`，检索统一委托给 `HybridBidIndex`（含 `resolve_local_or_hf_model` 与 `precomputed_query_vec` 批量查询支持），面向 GPU + PyTorch 完整模型栈保持单一真实主干。
+- **放弃方案**：在纯文本流或无视觉核验页上通过关键词正则/LLM 推理放行签章条款，或为纯 CPU 场景另建一套降级检索主干（原因：违背零假放行与单一主干红线）。
+- **影响范围**：`src/rag/parser.py`、`src/rag/indexer.py`、`src/extraction/schema.py`、`src/extraction/evidence.py`、`src/extraction/chinese_pipeline.py`、`src/rules/rule_engine.py`、`src/app/tcui/real_backend.py`、`tests/test_visual_seal_and_unified_rag.py`
