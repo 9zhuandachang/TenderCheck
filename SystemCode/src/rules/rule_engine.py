@@ -15,6 +15,15 @@ import operator
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from src.domain_profiles import (
+    ROLE_ALIAS_MAP,
+    all_market_directory_keywords,
+    canonical_role,
+    extract_qualification_specialty,
+    match_safety_cert_level,
+    parse_credit_scoring_spec,
+    related_title_domains_for,
+)
 from src.extraction.schema import (
     BidEvidenceSlots,
     StructuredExtractionResult,
@@ -22,81 +31,16 @@ from src.extraction.schema import (
 )
 from src.extraction.semantics import objective_target
 
-
-ROLE_ALIAS_MAP = {
-    "bidder": "bidder",
-    "投标人": "bidder",
-    "投标单位": "bidder",
-    "project_manager": "project_manager",
-    "项目经理": "project_manager",
-    "项目负责人": "project_manager",
-    "chief_engineer": "chief_engineer",
-    "项目总工": "chief_engineer",
-    "总工程师": "chief_engineer",
-    "项目总工程师": "chief_engineer",
-    "road_engineer": "road_engineer",
-    "道路工程师": "road_engineer",
-    "bridge_engineer": "bridge_engineer",
-    "桥梁工程师": "bridge_engineer",
-    "contract_engineer": "contract_engineer",
-    "合同工程师": "contract_engineer",
-    "safety_officer": "safety_officer",
-    "专职安全员": "safety_officer",
-    "安全员": "safety_officer",
-    "survey_engineer": "survey_engineer",
-    "测量工程师": "survey_engineer",
-    "test_engineer": "test_engineer",
-    "试验工程师": "test_engineer",
-    "construction_officer": "construction_officer",
-    "施工员": "construction_officer",
-    "other_personnel": "other_personnel",
-    "其他人员": "other_personnel",
-}
-
-HIGHWAY_RELATED_TITLE_DOMAINS = {
-    "公路工程",
-    "桥梁",
-    "桥梁工程",
-    "公路与桥梁",
-    "公路与桥梁工程",
-    "路桥",
-    "路桥工程",
-    "道路与桥梁",
-    "道路与桥梁工程",
-    "道桥",
-    "交通土建",
-    "交通土建工程",
-    "隧道",
-    "隧道工程",
-    "地下结构",
-    "隧道（地下结构）",
-    "隧道(地下结构)",
-    "道路工程",
-    "道路",
-    "工程测量",
-    "道路测量",
-    "测绘工程",
-    "测量",
-    "公路桥梁",
-    "交通工程",
-    "公路工程相关专业",
-}
-
 TIME_BOUNDED_CERT_FAMILIES = {
     "enterprise_qual",
     "constructor",
+    "cost_engineer",
     "safety_license",
+    "safety_a",
     "safety_b",
     "safety_c",
     "business_license",
 }
-
-
-def canonical_role(role_text: str) -> str:
-    cleaned = re.sub(r"\s+", "", str(role_text or ""))
-    cleaned = re.sub(r"^(?:拟派|拟任|拟委任)", "", cleaned)
-    cleaned = re.sub(r"[0-9]+$", "", cleaned)
-    return ROLE_ALIAS_MAP.get(cleaned, cleaned)
 
 
 def parse_iso_date(date_str: str) -> Optional[date]:
@@ -207,45 +151,73 @@ def normalize_rmb_upper_text(text: str) -> str:
 
 def parse_qualification_rank(text: str) -> Tuple[str, int]:
     """
-    Map Chinese qualification / constructor / title / safety license / highway grade string
+    Map Chinese qualification / constructor / title / safety license / position certificate /
+    highway grade string across Highway, Water Conservancy, Municipal, and Building domains
     to `(family, rank_int)` where a higher integer represents a strictly higher level.
     """
     t = str(text or "").strip()
     if not t:
         return ("generic_cert", 0)
 
-    # 1. Safety Production License (企业安全生产许可证, T0005/T0063/T0192)
+    # 1. Safety Production License (企业安全生产许可证)
     if "安全生产许可证" in t:
         return ("safety_license", 1)
 
-    # 2. Project Manager Safety B-Certificate (安全生产考核合格证书 / 交安B证, T0009)
-    if "安全生产考核合格" in t or "交安B" in t or "安考B" in t or re.search(r"B类|B证", t):
+    # 2. Safety Assessment Certificates A / B / C (交安 / 建安 / 水安 A, B, C 证)
+    safety_fam = match_safety_cert_level(t)
+    if safety_fam == "safety_a":
+        return ("safety_a", 1)
+    if safety_fam == "safety_b":
         return ("safety_b", 1)
-
-    # 3. Safety Officer C-Certificate (专职安全员C证 / 交安C证, T0081)
-    if "安全员C证" in t or "交安C" in t or "安考C" in t or re.search(r"C类|C证", t):
-        if any(w in t for w in ("省级", "交通运输厅", "交通厅", "交通运输主管部门")):
+    if safety_fam == "safety_c":
+        if any(
+            w in t
+            for w in (
+                "省级",
+                "交通运输厅",
+                "交通厅",
+                "交通运输主管部门",
+                "水行政主管部门",
+                "水利厅",
+                "水利部",
+                "住房和城乡建设厅",
+                "建设行政主管部门",
+            )
+        ):
             return ("safety_c", 2)
         return ("safety_c", 1)
 
-    # 4. Test & Inspection Engineer Certificate (试验检测工程师 / 试验检测师, T0083)
+    # 3. Test & Inspection Engineer Certificate (试验检测工程师 / 试验检测师)
     if "试验检测" in t:
         if "试验检测师" in t or "试验检测工程师" in t:
             return ("test_engineer_cert", 2)
         if "试验检测员" in t or "检测员" in t:
             return ("test_engineer_cert", 1)
 
-    # 5. Business License & Independent Legal Person (独立法人资格 / 营业执照, T0003/T0061/T0191)
+    # 4. Registered Cost Engineer (一级造价工程师 > 二级造价工程师 / 水利造价工程师)
+    if "造价工程师" in t or "造价师" in t:
+        if "一级" in t or "壹级" in t or "甲级" in t:
+            return ("cost_engineer", 2)
+        return ("cost_engineer", 1)
+
+    # 5. Site Officer Position Certificates (施工员/质检员/质量员/材料员/资料员岗位证 & 小型水利施工负责人考核证)
+    if (
+        re.search(r"(?:施工员|质检员|质量员|材料员|资料员|测量员|试验员|机械员|劳务员|标准员).*(?:岗位证|上岗证|考核合格证|证书)", t)
+        or "小型水利工程施工负责人考核合格证" in t
+    ):
+        return ("position_cert", 1)
+
+    # 6. Business License & Independent Legal Person (独立法人资格 / 营业执照)
     if any(w in t for w in ("独立法人", "营业执照", "有限责任公司", "股份有限公司", "企业法人")):
         if any(w in t for w in ("分公司", "分支机构", "个体工商户", "不具有独立法人")):
             return ("business_license", -1)
         return ("business_license", 1)
 
-    # 6. Highway Construction Directory Admission (公路工程施工资质企业名录, T0032/T0105)
-    if "企业名录" in t or "信用信息管理系统" in t:
+    # 7. Official Construction Market Directory / Credit Platform Admission (公路/水利/住建四库一平台名录)
+    if any(kw in t for kw in all_market_directory_keywords()):
         return ("highway_directory", 1)
 
-    # 7. Highway Technical Grade (高速公路 > 一级公路 > 二级公路 > 三级公路 > 四级公路, T0011/T0216)
+    # 8. Highway Technical Grade (高速公路 > 一级公路 > 二级公路 > 三级公路 > 四级公路)
     if "公路" in t and "总承包" not in t and "专业承包" not in t and "建造师" not in t and "职称" not in t and "工程师" not in t:
         if "高速" in t:
             return ("highway_grade", 4)
@@ -258,27 +230,27 @@ def parse_qualification_rank(text: str) -> Tuple[str, int]:
         if "四级" in t or "肆级" in t:
             return ("highway_grade", 0)
 
-    # 8. Construction enterprise qualification: 特级(4) > 一级(3) > 二级(2) > 三级(1)
+    # 9. Construction / Design Enterprise Qualification: 特级/综合甲级(4) > 一级/甲级(3) > 二级/乙级(2) > 三级/丙级(1)
     if "总承包" in t or "专业承包" in t or "资质" in t:
-        if "特级" in t:
+        if "特级" in t or "综合甲级" in t:
             return ("enterprise_qual", 4)
-        if "一级" in t or "壹级" in t:
+        if "一级" in t or "壹级" in t or "甲级" in t:
             return ("enterprise_qual", 3)
-        if "二级" in t or "贰级" in t:
+        if "二级" in t or "贰级" in t or "乙级" in t:
             return ("enterprise_qual", 2)
-        if "三级" in t or "叁级" in t:
+        if "三级" in t or "叁级" in t or "丙级" in t:
             return ("enterprise_qual", 1)
         if "资质证书" in t:
             return ("enterprise_qual", 1)
 
-    # 9. Registered Constructor: 一级注册建造师(2) > 二级注册建造师(1)
+    # 10. Registered Constructor: 一级注册建造师(2) > 二级注册建造师(1)
     if "建造师" in t:
         if "一级" in t or "壹级" in t:
             return ("constructor", 2)
         if "二级" in t or "贰级" in t:
             return ("constructor", 1)
 
-    # 10. Technical title: 正高级(4) > 高级工程师(3) > 中级工程师/工程师(2) > 助理/初级(1)
+    # 11. Technical title: 正高级(4) > 高级工程师(3) > 中级工程师/工程师(2) > 助理/初级(1)
     if "职称" in t or "工程师" in t or "技术员" in t or t in {"正高级", "高级", "副高级", "中级", "初级"}:
         if "正高" in t or "研究员" in t or "教授级" in t:
             return ("title", 4)
@@ -292,6 +264,13 @@ def parse_qualification_rank(text: str) -> Tuple[str, int]:
     return ("generic_cert", 0)
 
 
+def _canon_domain_token(s: str) -> str:
+    cleaned = re.sub(r"\s+", "", str(s or ""))
+    cleaned = re.sub(r"(?:相关)?专业$", "", cleaned)
+    cleaned = re.sub(r"工程$", "", cleaned)
+    return cleaned
+
+
 def is_domain_compatible(
     required_domain: str,
     actual_domain: str,
@@ -299,7 +278,7 @@ def is_domain_compatible(
     allowed_domains: Optional[List[str]] = None,
     requirement_text: str = "",
 ) -> Optional[bool]:
-    """Check whether `actual_domain` satisfies `required_domain` / `allowed_domains`."""
+    """Check whether `actual_domain` satisfies `required_domain` / `allowed_domains` across engineering sectors."""
     req_dom = str(required_domain or "").strip()
     act_dom = str(actual_domain or "").strip()
     allowed = [str(d).strip() for d in (allowed_domains or []) if str(d).strip()]
@@ -309,17 +288,28 @@ def is_domain_compatible(
     if not act_dom:
         return None
     if allowed:
-        return act_dom in allowed
-    if family in {"title", "test_engineer_cert", "generic_cert"} and (
+        canon_allowed = {_canon_domain_token(a) for a in allowed}
+        return act_dom in allowed or _canon_domain_token(act_dom) in canon_allowed
+
+    related_set = related_title_domains_for(req_dom, requirement_text)
+    if family in {"title", "test_engineer_cert", "position_cert", "cost_engineer", "generic_cert"} and (
         "相关专业" in (req_dom + str(requirement_text or ""))
-        or req_dom in {"公路工程相关专业", "公路工程专业"}
+        or re.search(r"工程类(?:相关)?专业", req_dom + str(requirement_text or ""))
+        or req_dom.endswith("专业")
     ):
-        return act_dom in HIGHWAY_RELATED_TITLE_DOMAINS
+        if related_set:
+            canon_related = {_canon_domain_token(x) for x in related_set}
+            return act_dom in related_set or _canon_domain_token(act_dom) in canon_related
+
     if any(sep in req_dom for sep in ("、", "，", ",", "/", "或")):
         parts = {p.strip() for p in re.split(r"[、，,/或]", req_dom) if p.strip()}
-        if act_dom in parts or (parts & HIGHWAY_RELATED_TITLE_DOMAINS and act_dom in HIGHWAY_RELATED_TITLE_DOMAINS):
+        canon_parts = {_canon_domain_token(p) for p in parts}
+        if act_dom in parts or _canon_domain_token(act_dom) in canon_parts:
             return True
-    return req_dom == act_dom
+        if related_set and (parts & related_set) and act_dom in related_set:
+            return True
+
+    return req_dom == act_dom or _canon_domain_token(req_dom) == _canon_domain_token(act_dom)
 
 
 def evaluate_certificate_timeliness(
@@ -473,6 +463,16 @@ class ComplianceRuleEngine:
                 "该条款属于主观技术评分或版式字体视觉核查，须转交人工评审，不自动给出合规结论或分值。",
             )
 
+        if b.consortium_detected:
+            if re.search(r"不接受联合体|不允许联合体|禁止联合体", str(extracted.requirement_text or "")):
+                return decide(False, "招标条款明确不接受联合体投标，但投标文件检出实质性联合体协议。")
+            if rule in {
+                "QUALIFICATION_LEVEL",
+                "ENTITY_CONSISTENCY",
+                "STAFFING_COUNT_AND_QUALIFICATION",
+                "PERFORMANCE_CHAIN_AND_SCORING",
+            }:
+                return unknown("检测到联合体投标材料，当前阶段仅对独立投标人执行自动主体归属核验，已安全转交人工复核。")
         if extracted.extraction_issues:
             return unknown("; ".join(extracted.extraction_issues))
         if b.evidence_found is not True:
@@ -596,7 +596,7 @@ class ComplianceRuleEngine:
                 if b.employer_matches_bidder is False:
                     return decide(False, "证书注册/聘用单位与投标人名称不一致。")
 
-            # Domain compatibility
+            # Domain compatibility & cross-sector qualification specialty guard
             domain_ok = is_domain_compatible(
                 t.required_domain,
                 b.actual_domain,
@@ -606,6 +606,11 @@ class ComplianceRuleEngine:
             )
             if domain_ok is None:
                 return unknown("缺少实际专业。")
+            if domain_ok and required_family in {"enterprise_qual", "constructor"}:
+                req_spec = extract_qualification_specialty(t.expected_text) or extract_qualification_specialty(extracted.requirement_text)
+                act_spec = extract_qualification_specialty(b.actual_text) or extract_qualification_specialty(b.actual_domain)
+                if req_spec and act_spec and req_spec != act_spec:
+                    domain_ok = False
 
             # Certificate Timeliness & Validity against review_reference_date
             valid_ok, valid_trace = evaluate_certificate_timeliness(
@@ -706,29 +711,88 @@ class ComplianceRuleEngine:
             return decide(True, "已提取出对应禁止事项与承诺的明确响应。")
 
         # ------------------------------------------------------------------
-        # R06: Qualitative Target, Interval Bracket & Multi-Year Credit Scoring
+        # R06: Qualitative Target, Interval Bracket & Parameterized Credit Scoring
         # ------------------------------------------------------------------
         if rule == "QUALITATIVE_OR_SCORING":
-            if t.scoring_mode == "CREDIT_MULTI_YEAR":
+            if t.scoring_mode in {"CREDIT_MULTI_YEAR", "CREDIT_SINGLE_GRADE"}:
                 if not b.credit_ratings:
-                    return unknown("缺少多年度公路施工信用等级评价数据。")
-                required_years = {2019, 2020, 2021}
-                by_year = {}
+                    return unknown("缺少信用等级评价记录数据。")
+
+                spec = parse_credit_scoring_spec(extracted.requirement_text, t.review_reference_date)
+                prefer_national = bool(
+                    re.search(r"优先(?:采用|使用)?(?:全国|交通部|交通运输部|水利部|住建部)", extracted.requirement_text or "")
+                )
+
+                def _effective_grade(entry: Dict[str, Any]) -> str:
+                    explicit_g = str(entry.get("grade") or "").strip()
+                    if explicit_g:
+                        return explicit_g
+                    prov = str(entry.get("provincial_grade") or "").strip()
+                    nat = str(entry.get("national_grade") or "").strip()
+                    has_bad = bool(entry.get("has_bad_record", False))
+                    first, second = (nat, prov) if prefer_national else (prov, nat)
+                    return first if first else second if second else ("C" if has_bad else "A")
+
+                # Single-grade credit scoring (e.g., 水利/市政信用等级 AAA得3分、AA得2分、A得1分)
+                if t.scoring_mode == "CREDIT_SINGLE_GRADE" or (
+                    not t.credit_years and spec.get("scheme") == "single_grade_map"
+                ):
+                    raw_gmap = dict(t.credit_score_map) if t.credit_score_map else dict(spec.get("grade_score_map") or {})
+                    if not raw_gmap:
+                        return unknown("缺少信用等级与分值的对应规则，无法自动计分。")
+                    latest_entry = max(
+                        (item for item in b.credit_ratings if isinstance(item, dict)),
+                        key=lambda item: int(item.get("year") or 0),
+                        default=None,
+                    )
+                    if latest_entry is None:
+                        return unknown("信用等级记录格式无效。")
+                    grade_str = _effective_grade(latest_entry)
+                    if grade_str not in raw_gmap:
+                        return unknown(f"信用等级({grade_str})未在评分档位{sorted(raw_gmap.keys())}中定义。")
+                    pts = float(raw_gmap[grade_str])
+                    if t.scoring_max_points is not None:
+                        pts = min(pts, float(t.scoring_max_points))
+                    return report("SCORED", f"credit_grade={grade_str}, score={pts}", pts)
+
+                # Multi-year target-grade count scoring (dynamically parameterized years & score map)
+                req_years = sorted({int(y) for y in (t.credit_years or spec.get("years") or [])})
+                if not req_years:
+                    return unknown("招标条款未指明信用评价考核年度且缺少评审基准日，无法核验多年度信用记录。")
+                required_year_set = set(req_years)
+
+                raw_cmap: Dict[int, float] = {}
+                if t.credit_score_map:
+                    for k, v in t.credit_score_map.items():
+                        if str(k).isdigit():
+                            raw_cmap[int(k)] = float(v)
+                if not raw_cmap:
+                    raw_cmap = dict(spec.get("count_score_map") or {})
+                if not raw_cmap:
+                    return unknown("缺少多年度信用等级年数与分值的映射规则。")
+
+                target_grade = str(t.credit_target_grade or spec.get("target_grade") or "AA").strip()
+                by_year: Dict[int, str] = {}
                 for item in b.credit_ratings:
-                    if not isinstance(item, dict) or item.get("year") not in required_years:
+                    if not isinstance(item, dict) or item.get("year") not in required_year_set:
                         continue
-                    # Priority rule (T0220): 安徽省交通厅等级优先，无省等级用交通部等级
-                    prov = str(item.get("provincial_grade") or "").strip()
-                    nat = str(item.get("national_grade") or "").strip()
-                    has_bad = item.get("has_bad_record", False)
-                    eff = prov if prov else nat if nat else ("C" if has_bad else "A")
-                    by_year[int(item["year"])] = eff
-                if set(by_year.keys()) != required_years:
-                    return unknown(f"缺少完整年度信用等级记录，已提取年度={sorted(by_year.keys())}")
-                aa_count = sum(1 for y in required_years if by_year[y] == "AA")
-                score_map = {3: 5.0, 2: 4.0, 1: 3.0, 0: 0.0}
-                pts = score_map[aa_count]
-                return report("SCORED", f"2019-2021信用等级={by_year}, AA年数={aa_count}, 得分={pts}", pts)
+                    by_year[int(item["year"])] = _effective_grade(item)
+
+                if set(by_year.keys()) != required_year_set:
+                    return unknown(f"缺少完整年度信用等级记录，要求年度={req_years}，已提取年度={sorted(by_year.keys())}")
+
+                hit_count = sum(1 for y in req_years if by_year[y] == target_grade)
+                if hit_count not in raw_cmap:
+                    return unknown(f"命中{target_grade}年数({hit_count})未在赋分表{raw_cmap}中覆盖。")
+                pts = float(raw_cmap[hit_count])
+                if t.scoring_max_points is not None:
+                    pts = min(pts, float(t.scoring_max_points))
+                span_label = f"{req_years[0]}-{req_years[-1]}" if len(req_years) > 1 else str(req_years[0])
+                return report(
+                    "SCORED",
+                    f"{span_label}信用等级={by_year}, {target_grade}年数={hit_count}, 得分={pts}",
+                    pts,
+                )
 
             if t.operator == "SCORE_BRACKET":
                 if not t.scoring_bands or b.actual_numeric is None or not b.actual_unit or b.actual_unit != t.expected_unit:
@@ -840,6 +904,12 @@ class ComplianceRuleEngine:
                 if dom_ok is False:
                     disqualified_reasons.append(f"{name}:专业不符({rec.get('domain')})")
                     continue
+                if req_fam in {"enterprise_qual", "constructor"}:
+                    req_spec = extract_qualification_specialty(t.expected_text) or extract_qualification_specialty(extracted.requirement_text)
+                    act_spec = extract_qualification_specialty(qual_text) or extract_qualification_specialty(str(rec.get("domain") or ""))
+                    if req_spec and act_spec and req_spec != act_spec:
+                        disqualified_reasons.append(f"{name}:资质专业类别不符({act_spec}!={req_spec})")
+                        continue
 
                 valid_ok, valid_msg = evaluate_certificate_timeliness(
                     family=req_fam,
@@ -951,7 +1021,14 @@ class ComplianceRuleEngine:
                     if not perf_role:
                         incomplete_projects.append(f"{pname}:缺少历史项目中担任的职务")
                         continue
-                    if perf_role != req_role:
+                    allow_pm_ce_both = bool(
+                        re.search(
+                            r"(?:项目经理|项目负责人)或(?:项目总工|总工程师|技术负责人)|(?:项目总工|总工程师|技术负责人)或(?:项目经理|项目负责人)",
+                            str(extracted.requirement_text or ""),
+                        )
+                    )
+                    allowed_perf_roles = {"project_manager", "chief_engineer"} if allow_pm_ce_both else {req_role}
+                    if perf_role not in allowed_perf_roles:
                         disqualified_projects.append(
                             f"{pname}:历史担任职务不符({perf_role}!={req_role})"
                         )

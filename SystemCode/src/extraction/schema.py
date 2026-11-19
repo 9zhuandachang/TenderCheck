@@ -65,9 +65,12 @@ class TenderConstraintSlots:
     required_proof_docs: List[str] = field(default_factory=list)         # e.g. ["合同", "中标通知书", "交工验收证明"]
     required_seal_parties: List[str] = field(default_factory=list)       # e.g. ["建设单位", "设计单位", "监理单位", "施工单位"]
     min_project_count: Optional[int] = None
-    scoring_mode: str = ""                 # "", "BRACKET", "BASE_QUAL_SCORE", "SINGLE_PROJECT_BONUS", "PER_PROJECT_ADDITIVE", "CREDIT_MULTI_YEAR"
+    scoring_mode: str = ""                 # "", "BRACKET", "BASE_QUAL_SCORE", "SINGLE_PROJECT_BONUS", "PER_PROJECT_ADDITIVE", "CREDIT_MULTI_YEAR", "CREDIT_SINGLE_GRADE"
     points_per_project: Optional[float] = None
     baseline_deduct_count: int = 0
+    credit_years: List[int] = field(default_factory=list)
+    credit_target_grade: str = ""
+    credit_score_map: Dict[str, float] = field(default_factory=dict)
 
     # 4. Formula-Based Net Base & Ratio Calculation
     formula_type: str = ""                 # "NET_BASE_RATIO" | "GROSS_RATIO"
@@ -138,6 +141,7 @@ class BidEvidenceSlots:
     performance_records: List[Dict[str, Any]] = field(default_factory=list)
     component_amounts: Dict[str, float] = field(default_factory=dict)
     credit_ratings: List[Dict[str, Any]] = field(default_factory=list)
+    consortium_detected: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -198,7 +202,7 @@ def validate_slot_types(values):
         'requires_official_seal', 'requires_signature', 'conflict_detected',
         'requires_validity_date', 'allow_extension_notice', 'requires_employer_match',
         'length_strict_gt', 'requires_external_verification', 'requires_human_review',
-        'is_long_term', 'employer_matches_bidder',
+        'is_long_term', 'employer_matches_bidder', 'consortium_detected',
     }
     numeric = {
         'expected_numeric', 'secondary_numeric', 'scoring_max_points', 'actual_numeric',
@@ -211,9 +215,9 @@ def validate_slot_types(values):
         'subject_bindings', 'conflict_pairs', 'allowed_domains', 'allowed_construction_types',
         'required_scopes', 'required_proof_docs', 'required_seal_parties', 'deduction_fields',
         'observed_seal_parties', 'signature_types', 'personnel_records', 'performance_records',
-        'credit_ratings',
+        'credit_ratings', 'credit_years',
     }
-    dicts = {'source_quotes', 'component_amounts'}
+    dicts = {'source_quotes', 'component_amounts', 'credit_score_map'}
     for key, value in values.items():
         if key in boolean:
             if value is not None and type(value) is not bool:
@@ -227,9 +231,9 @@ def validate_slot_types(values):
         elif key in dicts:
             if not isinstance(value, dict):
                 raise ValueError(f'{key} must be an object')
-            if key == 'component_amounts':
+            if key in {'component_amounts', 'credit_score_map'}:
                 for k, v in value.items():
                     if type(v) not in (float, int) or not math.isfinite(v):
-                        raise ValueError(f'component_amounts[{k}] must be a finite number')
+                        raise ValueError(f'{key}[{k}] must be a finite number')
         elif not isinstance(value, str):
             raise ValueError(f'{key} must be a string')

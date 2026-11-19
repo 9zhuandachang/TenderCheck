@@ -183,11 +183,17 @@ class DeepSeekSlotExtractor:
 
     def _inject_reference_date(self, result: StructuredExtractionResult, review_reference_date: str = '') -> StructuredExtractionResult:
         ref_date = str(review_reference_date or self.review_reference_date or '').strip()
-        if ref_date and result.tender_slots.constraint_type in {
-            'QUALIFICATION_LEVEL',
-            'STAFFING_COUNT_AND_QUALIFICATION',
-            'PERFORMANCE_CHAIN_AND_SCORING',
-        }:
+        if ref_date and (
+            result.tender_slots.constraint_type in {
+                'QUALIFICATION_LEVEL',
+                'STAFFING_COUNT_AND_QUALIFICATION',
+                'PERFORMANCE_CHAIN_AND_SCORING',
+            }
+            or (
+                result.tender_slots.constraint_type == 'QUALITATIVE_OR_SCORING'
+                and result.tender_slots.scoring_mode in {'CREDIT_MULTI_YEAR', 'CREDIT_SINGLE_GRADE'}
+            )
+        ):
             result.tender_slots.review_reference_date = ref_date
         return result
 
@@ -214,7 +220,7 @@ class DeepSeekSlotExtractor:
 
         # 1. Define schema-active slots per constraint_type to eliminate cross-type slot pollution
         active_t = {'constraint_type', 'target_field', 'operator', 'source_quotes'}
-        active_b = {'evidence_found', 'evidence_summary', 'conflict_detected', 'evidence_references'}
+        active_b = {'evidence_found', 'evidence_summary', 'conflict_detected', 'evidence_references', 'consortium_detected'}
 
         if ctype == 'NUMERIC_BOUND':
             active_t |= {'expected_numeric', 'expected_unit', 'secondary_numeric'}
@@ -290,10 +296,10 @@ class DeepSeekSlotExtractor:
                     elif b.prohibition_violated is False and b.commitment_fulfilled is None:
                         b.commitment_fulfilled = True
         elif ctype == 'QUALITATIVE_OR_SCORING':
-            active_t |= {'expected_unit', 'scoring_mode', 'requires_human_review', 'scoring_max_points', 'scoring_bands'}
+            active_t |= {'expected_unit', 'scoring_mode', 'requires_human_review', 'scoring_max_points', 'scoring_bands', 'credit_years', 'credit_target_grade', 'credit_score_map', 'review_reference_date'}
             if t.requires_human_review:
                 active_b |= {'actual_text'}
-            elif t.scoring_mode == 'CREDIT_MULTI_YEAR':
+            elif t.scoring_mode in {'CREDIT_MULTI_YEAR', 'CREDIT_SINGLE_GRADE'}:
                 active_b |= {'actual_text', 'credit_ratings'}
             else:
                 active_b |= {'actual_numeric', 'actual_unit'}

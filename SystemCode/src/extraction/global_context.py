@@ -14,9 +14,19 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from src.domain_profiles import (
+    NATIONWIDE_SAFETY_CERT_RE,
+    all_market_directory_keywords,
+    extract_qualification_specialty,
+    is_substantive_consortium_agreement,
+)
 from src.evaluation.evidence import compact
 from .evidence import ground_extraction, numeric_in_quote, original_quote_span, unit_in_quote
 from .semantics import explicit_numeric_operator, has_document_body, qualification_owned_by, role_names
+
+_ENTERPRISE_QUAL_RE = re.compile(
+    r"([\u4e00-\u9fff]{2,14}工程(?:施工总承包|专业承包)(?:特级|综合甲级|一级|二级|三级|壹级|贰级|叁级|甲级|乙级|丙级))"
+)
 
 
 @dataclass
@@ -65,6 +75,7 @@ class ProjectGlobalContext:
     tech_schedule_chapter: Optional[GlobalPassageAnchor] = None
     org_personnel_by_name: Dict[str, Dict[str, str]] = field(default_factory=dict)
     safety_certs_by_name: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    is_consortium_bid: bool = False
 
 
 def _num_val(raw: str) -> float:
@@ -300,31 +311,37 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
                     meta={"extension_date_iso": iso_dt},
                 )
 
-        # 2f. Enterprise Qualification Certificate (公路工程施工总承包特级/一级资质证书)
+        if not ctx.is_consortium_bid and is_substantive_consortium_agreement(txt):
+            ctx.is_consortium_bid = True
+
+        # 2f. Enterprise Qualification Certificate (跨行业建筑业企业资质证书：水利水电/公路/市政/房建/机电等)
         if (
             ctx.enterprise_qual_cert is None
-            and "建筑业企业资质证书" in txt
-            and re.search(r"公路工程施工总承包(?:特级|一级|壹级)", txt)
+            and "资质证书" in txt
+            and _ENTERPRISE_QUAL_RE.search(txt)
         ):
             m_holder = re.search(r"企业名称\s*[:：]\s*([^\n\s]+)", txt)
             m_valid = re.search(r"有效期\s*[:：]\s*(\d{4})[-年./](\d{1,2})[-月./](\d{1,2})日?", txt)
-            m_qual = re.search(r"公路工程施工总承包(?:特级|一级|壹级)", txt)
+            m_qual = _ENTERPRISE_QUAL_RE.search(txt)
             if m_holder and m_qual:
                 valid_iso = (
                     f"{int(m_valid.group(1)):04d}-{int(m_valid.group(2)):02d}-{int(m_valid.group(3)):02d}"
                     if m_valid
                     else ""
                 )
+                qual_text = m_qual.group(1)
+                qual_domain = extract_qualification_specialty(qual_text)
                 ctx.enterprise_qual_cert = GlobalPassageAnchor(
                     passage=p,
                     quotes={
                         "full_text": txt,
-                        "qual_span": _verified_span(txt, r"公路工程施工总承包(?:特级|一级|壹级)") or m_qual.group(0),
-                        "domain_span": _verified_span(txt, r"公路工程") or "公路工程",
+                        "qual_span": _verified_span(txt, re.escape(qual_text)) or qual_text,
+                        "domain_span": (_verified_span(txt, re.escape(qual_domain)) or qual_domain) if qual_domain else qual_text,
                     },
                     meta={
                         "holder": m_holder.group(1).strip(),
-                        "qual_text": m_qual.group(0),
+                        "qual_text": qual_text,
+                        "domain": qual_domain,
                         "valid_to": valid_iso,
                     },
                 )
@@ -333,9 +350,10 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
         if ctx.business_license_scan is None and "营业执照" in txt and "统一社会信用代码" in txt and "经营范围" in txt:
             ctx.business_license_scan = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
 
-        # 2f-3. Highway Credit System Directory Webpage Screenshot (全国公路建设市场信用信息管理系统名录网页截图)
-        if ctx.highway_directory_page is None and "全国公路建设市场信用信息管理系统" in txt and "主项资质" in txt:
-            ctx.highway_directory_page = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
+        # 2f-3. Official Market Credit / Directory Screenshot (公路/水利/住建监管平台截图)
+        if ctx.highway_directory_page is None and any(kw in txt for kw in all_market_directory_keywords()):
+            if any(marker in txt for marker in ("主项资质", "资质等级", "统一社会信用代码", "项目时间", "信用等级")):
+                ctx.highway_directory_page = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
 
         # 2f-4. Social Security Payment Proof (单位参保证明 / 社保缴费证明)
         if ctx.social_security_cert is None and ("单位参保证明" in txt or "社会保险" in txt) and "缴费时段" in txt:
@@ -347,8 +365,8 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
                 meta={"unit_name": m_unit.group(1).strip() if m_unit else ""},
             )
 
-        # 2f-5. Project Manager Level-1 Constructor Electronic Certificate (一级建造师注册证书)
-        if ctx.pm_constructor_cert is None and "一级建造师注册证书" in txt and "聘用企业" in txt:
+        # 2f-5. Project Manager Constructor Certificate (一级/二级建造师注册证书)
+        if ctx.pm_constructor_cert is None and "建造师注册证书" in txt and "聘用企业" in txt:
             m_emp = re.search(r"聘用企业\s*[:：]\s*([^\n\s]+)", txt)
             m_name = re.search(r"姓\s*名\s*[:：]\s*([\u4e00-\u9fff]{2,4})", txt)
             m_val = re.search(r"有效期\s*[:：]\s*(\d{4}-\d{2}-\d{2})\s*至\s*(\d{4}-\d{2}-\d{2})", txt)
@@ -364,11 +382,12 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
                 },
             )
 
-        # 2f-6. Chief Engineer Safety/Registration Certificate (项目总工证书载明企业名称)
+        # 2f-6. Chief Engineer / Technical Leader Safety B-Certificate (全国各省交安/建安/水安B证)
+        m_safety_code = NATIONWIDE_SAFETY_CERT_RE.search(txt)
         if (
             ctx.chief_engineer_cert is None
             and "安全生产考核合格证书" in txt
-            and "皖交安B" in txt
+            and ((m_safety_code and m_safety_code.group(1).upper() == "B") or re.search(r"B(?:类|证)", txt))
             and re.search(r"企业名称\s*[:：]\s*([^\n\s]+)", txt)
         ):
             m_emp = re.search(r"企业名称\s*[:：]\s*([^\n\s]+)", txt)
@@ -388,7 +407,8 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
             if bnames:
                 bname = next(iter(bnames))
                 sp_bname = _verified_span(txt, re.escape(bname))
-                sp_qual = _verified_span(txt, r"公路工程施工总承包(?:特级|一级|壹级)")
+                m_tab_qual = _ENTERPRISE_QUAL_RE.search(txt)
+                sp_qual = _verified_span(txt, re.escape(m_tab_qual.group(1))) if m_tab_qual else None
                 ctx.bidder_info_table = GlobalPassageAnchor(
                     passage=p,
                     quotes={
@@ -421,14 +441,19 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
                             "major_quote": sp,
                         }
 
-        # 2i. Safety Officer C-Certificates (安全生产考核合格证书)
-        if "安全生产考核合格证书" in txt and "皖交安C" in txt:
+        # 2i. Safety Officer C-Certificates (全国各省交安/建安/水安C证)
+        if "安全生产考核合格证书" in txt and (
+            (m_safety_code and m_safety_code.group(1).upper() == "C") or re.search(r"专职安全.*[CＣ](?:类|证)|[CＣ]类安全", txt)
+        ):
             m_name = re.search(r"姓\s*名\s*[:：]\s*([\u4e00-\u9fff]{2,4})", txt)
             m_val = re.search(r"有效期\s*[:：]\s*(\d{4}-\d{2}-\d{2})\s*至\s*(\d{4}-\d{2}-\d{2})", txt)
-            m_dept = re.search(r"考核部门\s*[:：]\s*([^\n\s]+(?:交通运输厅|交通厅|交通运输主管部门))", txt)
+            m_dept = re.search(
+                r"(?:考核部门|发证机关)\s*[:：]\s*([^\n\s]+(?:交通运输厅|交通厅|交通运输主管部门|水利厅|水行政主管部门|住房和城乡建设厅|建设行政主管部门))",
+                txt,
+            )
             if m_name and m_val:
                 name_str = m_name.group(1)
-                dept_str = m_dept.group(1) if m_dept else "省级交通运输主管部门"
+                dept_str = m_dept.group(1) if m_dept else "省级行业主管部门"
                 ctx.safety_certs_by_name[name_str] = {
                     "valid_from": m_val.group(1),
                     "valid_to": m_val.group(2),
@@ -441,44 +466,43 @@ def build_project_global_context(cases: List[Dict[str, Any]]) -> ProjectGlobalCo
         pm_cert_name = ctx.pm_constructor_cert.meta.get("name", "") if ctx.pm_constructor_cert else ""
         if (
             ctx.pm_title_cert is None
-            and "资格名称" in txt
-            and "高级工程师" in txt
+            and ("资格名称" in txt or "专业技术资格" in txt or "职称" in txt)
+            and re.search(r"正高级工程师|高级工程师|工程师", txt)
             and ("工程技术人员" in txt or (pm_cert_name and pm_cert_name in txt))
         ):
             ctx.pm_title_cert = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
 
-        # 2k. Other Management & Technical Personnel Summary & Resume Tables (表七汇总表 & 表八简历表)
-        if ctx.other_personnel_summary_table is None and "拟委任的其他管理和技术人员汇总表" in txt:
+        # 2k. Other Management & Technical Personnel Summary & Resume Tables
+        if ctx.other_personnel_summary_table is None and re.search(r"拟委任的其他管理和技术人员汇总表|项目管理机构.*人员组成表", txt):
             ctx.other_personnel_summary_table = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
 
-        if ctx.other_personnel_resume_table is None and "拟委任的其他管理和技术人员简历表" in txt:
-            m_rname = re.search(r"姓\s*名\s*([\u4e00-\u9fff]{2,4})", txt)
+        if ctx.other_personnel_resume_table is None and re.search(r"拟委任的其他管理和技术人员简历表|主要人员简历表", txt):
+            m_rname = re.search(r"姓\s*名\s*[:：|]?\s*([\u4e00-\u9fff]{2,4})", txt)
             if m_rname:
                 rname = m_rname.group(1).strip()
-                sp_rname = _verified_span(txt, r"姓\s*名\s*" + re.escape(rname))
+                sp_rname = _verified_span(txt, r"姓\s*名\s*[:：|]?\s*" + re.escape(rname))
                 ctx.other_personnel_resume_table = GlobalPassageAnchor(
                     passage=p,
                     quotes={"full_text": txt, "name_span": sp_rname or rname},
                     meta={"name": rname},
                 )
 
-        # 2l. Technical Bid (施工组织设计) Core Chapter & Schedule Anchors
+        # 2l. Technical Bid (施工组织设计) Core Chapter & Schedule Anchors (跨行业通用语义标题，不硬编码章节号)
         if not txt.lstrip().startswith("目录"):
-            if ctx.tech_org_plan_chapter is None and "第一章总体施工组织布置及规划" in txt:
+            head_snippet = txt[:240]
+            if ctx.tech_org_plan_chapter is None and re.search(r"总体施工组织布置|施工组织设计(?:总说明|概述|编制说明)", head_snippet):
                 ctx.tech_org_plan_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
-            if ctx.tech_method_chapter is None and ("第七节桥梁工程施工方案" in txt or "交通导改方案" in txt):
+            if ctx.tech_method_chapter is None and re.search(r"主要工程项目的?施工方案|施工方案[、与及]?施工方法|施工导流|度汛方案|交通导改方案", head_snippet):
                 ctx.tech_method_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
-            if ctx.tech_quality_chapter is None and "第四章工程质量管理体系及保证措施" in txt:
+            if ctx.tech_quality_chapter is None and re.search(r"质量(?:管理|保证)体系[及与]?保证措施", head_snippet):
                 ctx.tech_quality_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
-            if ctx.tech_emergency_chapter is None and (
-                "第八章项目风险预测与防范、事故应急预案" in txt or "第二节项目事故应急预案" in txt
-            ):
+            if ctx.tech_emergency_chapter is None and re.search(r"事故应急预案|风险预测与防范|应急救援预案", head_snippet):
                 ctx.tech_emergency_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
-            if ctx.tech_resource_chapter is None and "第九章资源配备计划" in txt:
+            if ctx.tech_resource_chapter is None and re.search(r"资源配备计划|劳动力.*计划|拟投入本标段的主要施工设备", head_snippet):
                 ctx.tech_resource_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
-            if ctx.tech_site_layout_chapter is None and ("第四节施工场地布置" in txt or "施工现场平面布置图" in txt):
+            if ctx.tech_site_layout_chapter is None and re.search(r"施工(?:现场|总)?平面布置|施工场地布置", head_snippet):
                 ctx.tech_site_layout_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
-            if ctx.tech_schedule_chapter is None and ("第三节施工进度计划" in txt or "3.1 施工进度计划表" in txt):
+            if ctx.tech_schedule_chapter is None and re.search(r"施工进度计划|进度计划网络图|施工总进度", head_snippet):
                 ctx.tech_schedule_chapter = GlobalPassageAnchor(passage=p, quotes={"full_text": txt})
 
     return ctx
@@ -516,6 +540,9 @@ def hydrate_with_global_context(
     req = str(result.requirement_text or "")
     ctype = t.constraint_type
     needs_reground = False
+
+    if global_ctx.is_consortium_bid:
+        b.consortium_detected = True
 
     # 0a. Distinguish objective chapter-presence requirements ("须编制...") from subjective scoring ("优良/一般/差/分")
     if (
@@ -621,7 +648,7 @@ def hydrate_with_global_context(
                 )
             modified_bid = True
 
-        # 1d. Highway directory entry when Top-K missed enterprise qualification certificate
+        # 1d. Official directory entry when Top-K missed enterprise qualification certificate
         if (
             not b.evidence_found
             and "名录" in req
@@ -631,12 +658,15 @@ def hydrate_with_global_context(
             cert_anchor = global_ctx.enterprise_qual_cert
             role_anchor = global_ctx.bidder_info_table
             holder = cert_anchor.meta["holder"]
-            if compact(holder) == compact(role_anchor.meta.get("bidder_name", "")):
+            cert_dom = cert_anchor.meta.get("domain", "")
+            req_spec = extract_qualification_specialty(t.required_domain or req)
+            domain_matches = not req_spec or not cert_dom or req_spec == cert_dom
+            if compact(holder) == compact(role_anchor.meta.get("bidder_name", "")) and domain_matches:
                 cert_eid = _append_global_passage(passages, cert_anchor.passage)
                 role_eid = _append_global_passage(passages, role_anchor.passage)
                 b.evidence_found = True
                 b.actual_text = cert_anchor.meta["qual_text"]
-                b.actual_domain = "公路工程"
+                b.actual_domain = cert_dom
                 b.subject_role = "bidder"
                 b.certificate_holder = holder
                 b.valid_to = cert_anchor.meta["valid_to"]
@@ -646,9 +676,9 @@ def hydrate_with_global_context(
                 b.evidence_references = [
                     {"field": "actual_text", "evidence_id": cert_eid, "quote": cert_anchor.quotes["qual_span"]},
                 ]
-                if t.required_domain:
-                    t.required_domain = "公路工程"
-                    t.source_quotes["required_domain"] = "公路工程"
+                if t.required_domain and cert_dom and cert_dom in req:
+                    t.required_domain = cert_dom
+                    t.source_quotes["required_domain"] = cert_dom
                     b.evidence_references.append(
                         {"field": "actual_domain", "evidence_id": cert_eid, "quote": cert_anchor.quotes["domain_span"]}
                     )
@@ -663,7 +693,7 @@ def hydrate_with_global_context(
                         "role_quote": role_anchor.passage["text"],
                     }
                 ]
-                if t.required_domain:
+                if t.required_domain and cert_dom and cert_dom in req:
                     b.subject_bindings.append(
                         {
                             "field": "actual_domain",
@@ -747,12 +777,16 @@ def hydrate_with_global_context(
                 chosen_anchor = global_ctx.price_bid_letter
                 chosen_quote = chosen_anchor.quotes.get("cost_review") or chosen_anchor.quotes.get("price_span")
             elif (
-                re.search(r"真实|挂靠|串标|围标|关联|利害关系|监理|代建|代理机构|附属机构", req)
+                re.search(r"真实|挂靠|串标|围标|关联|利害关系|监理|代建|代理机构|附属机构|转包|违法分包", req)
                 and global_ctx.integrity_commitment_letter
             ):
                 chosen_anchor = global_ctx.integrity_commitment_letter
                 chosen_quote = chosen_anchor.quotes.get("commitment_span") or chosen_anchor.quotes.get("full_text")
-            elif global_ctx.commercial_bid_letter:
+            elif (
+                re.search(r"完全响应|实质性要求|不偏离|履行合同|完成合同规定的全部义务|接受招标文件|响应工期|响应质量", req)
+                and not re.search(r"在建|不良(?:行为|记录)|农民工工资|专户|专项承诺|行贿|失信|诉讼|仲裁|业绩", req)
+                and global_ctx.commercial_bid_letter
+            ):
                 chosen_anchor = global_ctx.commercial_bid_letter
                 chosen_quote = chosen_anchor.quotes.get("general_acceptance") or chosen_anchor.quotes.get("full_text")
 
@@ -810,21 +844,21 @@ def hydrate_with_global_context(
                 target_anchor = global_ctx.pm_constructor_cert
             elif re.search(r"项目经理职称资格证书扫描件", req) and global_ctx.pm_title_cert:
                 target_anchor = global_ctx.pm_title_cert
-            elif re.search(r"按第九章格式编写", req) and global_ctx.commercial_bid_letter:
+            elif re.search(r"按第[一二三四五六七八九十0-9]+章.*格式编写|投标文件格式须符合", req) and global_ctx.commercial_bid_letter:
                 target_anchor = global_ctx.commercial_bid_letter
-            elif re.search(r"编制总体施工组织布置规划", req) and global_ctx.tech_org_plan_chapter:
+            elif re.search(r"编制.*总体施工组织|编制.*施工组织设计", req) and global_ctx.tech_org_plan_chapter:
                 target_anchor = global_ctx.tech_org_plan_chapter
-            elif re.search(r"编制主要工程施工方案、方法及技术措施", req) and global_ctx.tech_method_chapter:
+            elif re.search(r"编制.*施工方案|技术措施|导流|度汛", req) and global_ctx.tech_method_chapter:
                 target_anchor = global_ctx.tech_method_chapter
-            elif re.search(r"编制质量管理体系及保证措施", req) and global_ctx.tech_quality_chapter:
+            elif re.search(r"编制.*质量(?:管理|保证)体系", req) and global_ctx.tech_quality_chapter:
                 target_anchor = global_ctx.tech_quality_chapter
-            elif re.search(r"编制事故应急预案", req) and global_ctx.tech_emergency_chapter:
+            elif re.search(r"编制.*应急预案|风险.*防范", req) and global_ctx.tech_emergency_chapter:
                 target_anchor = global_ctx.tech_emergency_chapter
-            elif re.search(r"编制资源配备计划", req) and global_ctx.tech_resource_chapter:
+            elif re.search(r"编制.*资源配备计划|劳动力.*计划", req) and global_ctx.tech_resource_chapter:
                 target_anchor = global_ctx.tech_resource_chapter
-            elif re.search(r"递交一份施工总平面图|绘临时设施布置图表", req) and global_ctx.tech_site_layout_chapter:
+            elif re.search(r"递交.*施工总平面图|临时设施布置图|施工平面布置", req) and global_ctx.tech_site_layout_chapter:
                 target_anchor = global_ctx.tech_site_layout_chapter
-            elif re.search(r"若附分项工程(?:进度率计划|生产率及施工周期表)", req) and global_ctx.tech_schedule_chapter:
+            elif re.search(r"进度率计划|生产率及施工周期表|施工进度计划|进度网络图", req) and global_ctx.tech_schedule_chapter:
                 target_anchor = global_ctx.tech_schedule_chapter
             elif re.search(r"投标预算书须包含", req) and (global_ctx.priced_boq_instructions or global_ctx.priced_boq_100):
                 target_anchor = global_ctx.priced_boq_instructions or global_ctx.priced_boq_100

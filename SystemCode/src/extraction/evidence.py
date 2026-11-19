@@ -15,6 +15,7 @@ from .semantics import (
     manager_performance_linked,
 )
 from .conflicts import verify_conflict_pairs
+from src.domain_profiles import is_substantive_consortium_agreement
 
 
 def evidence_context(passages):
@@ -236,5 +237,7 @@ def ground_extraction(result, context):
         issues.append('Relevant evidence claimed without any valid citation')
     if not evidence:
         b.evidence_found = False
+    elif any(is_substantive_consortium_agreement(p.get('text', '')) for p in evidence):
+        b.consortium_detected = True
     result.extraction_issues = sorted(set(result.extraction_issues + issues))
     return result

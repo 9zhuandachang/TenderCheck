@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "province_Abbreviations": [
+    "京", "津", "沪", "渝", "冀", "豫", "云", "辽", "黑", "湘", "皖", "鲁",
+    "新", "苏", "浙", "赣", "鄂", "桂", "甘", "晋", "蒙", "陕", "吉", "闽",
+    "贵", "粤", "青", "藏", "川", "宁", "琼"
+  ],
+  "role_aliases": {
+    "bidder": ["bidder", "投标人", "投标单位", "投标人名称"],
+    "enterprise_leader": ["enterprise_leader", "企业主要负责人", "法定代表人", "企业负责人"],
+    "authorized_agent": ["authorized_agent", "委托代理人", "授权委托人", "授权代理人"],
+    "project_manager": ["project_manager", "项目经理", "项目负责人", "建造师"],
+    "chief_engineer": ["chief_engineer", "项目总工", "总工程师", "项目总工程师", "技术负责人", "项目技术负责人"],
+    "design_leader": ["design_leader", "设计负责人", "项目设计负责人"],
+    "road_engineer": ["road_engineer", "道路工程师"],
+    "bridge_engineer": ["bridge_engineer", "桥梁工程师"],
+    "contract_engineer": ["contract_engineer", "合同工程师", "造价工程师", "造价人员", "造价员"],
+    "safety_officer": ["safety_officer", "专职安全员", "安全员", "安全管理人员", "安全负责人"],
+    "quality_officer": ["quality_officer", "专职质检员", "质检员", "质量员", "质量负责人", "质量管理人员", "终检工程师"],
+    "construction_officer": ["construction_officer", "施工员"],
+    "material_officer": ["material_officer", "材料员"],
+    "document_officer": ["document_officer", "资料员"],
+    "survey_engineer": ["survey_engineer", "测量工程师", "测量员"],
+    "test_engineer": ["test_engineer", "试验工程师", "试验员", "试验检测师", "试验检测工程师"],
+    "finance_officer": ["finance_officer", "财务负责人"],
+    "other_personnel": ["other_personnel", "其他人员", "其他管理和技术人员"]
+  },
+  "qualification_specialties": [
+    {"canonical": "水利水电工程", "aliases": ["水利水电工程", "水利水电", "水利工程"]},
+    {"canonical": "公路工程", "aliases": ["公路工程"]},
+    {"canonical": "市政公用工程", "aliases": ["市政公用工程", "市政公用", "市政工程"]},
+    {"canonical": "建筑工程", "aliases": ["建筑工程", "房屋建筑工程", "房屋建筑"]},
+    {"canonical": "机电工程", "aliases": ["机电工程", "机电安装工程", "水利水电机电安装工程", "建筑机电安装工程"]},
+    {"canonical": "港口与航道工程", "aliases": ["港口与航道工程", "航道工程"]},
+    {"canonical": "电力工程", "aliases": ["电力工程", "输变电工程"]},
+    {"canonical": "环保工程", "aliases": ["环保工程"]},
+    {"canonical": "河湖整治工程", "aliases": ["河湖整治工程", "河湖整治"]},
+    {"canonical": "水工金属结构制作与安装工程", "aliases": ["水工金属结构制作与安装工程", "水工金属结构"]},
+    {"canonical": "桥梁工程", "aliases": ["桥梁工程"]},
+    {"canonical": "隧道工程", "aliases": ["隧道工程"]},
+    {"canonical": "公路路面工程", "aliases": ["公路路面工程"]},
+    {"canonical": "公路路基工程", "aliases": ["公路路基工程"]},
+    {"canonical": "公路交通工程", "aliases": ["公路交通工程"]},
+    {"canonical": "地基基础工程", "aliases": ["地基基础工程"]},
+    {"canonical": "钢结构工程", "aliases": ["钢结构工程"]},
+    {"canonical": "建筑装修装饰工程", "aliases": ["建筑装修装饰工程"]},
+    {"canonical": "城市及道路照明工程", "aliases": ["城市及道路照明工程"]},
+    {"canonical": "电子与智能化工程", "aliases": ["电子与智能化工程"]},
+    {"canonical": "消防设施工程", "aliases": ["消防设施工程"]},
+    {"canonical": "防水防腐保温工程", "aliases": ["防水防腐保温工程"]},
+    {"canonical": "古建筑工程", "aliases": ["古建筑工程"]}
+  ],
+  "domains": {
+    "highway": {
+      "label": "公路工程",
+      "trigger_keywords": ["公路", "路基", "路面", "桥涵", "桥梁", "隧道", "交通工程", "交安"],
+      "related_title_domains": [
+        "公路工程", "桥梁", "桥梁工程", "公路与桥梁", "公路与桥梁工程",
+        "路桥", "路桥工程", "道路与桥梁", "道路与桥梁工程", "道桥",
+        "交通土建", "交通土建工程", "隧道", "隧道工程", "地下结构",
+        "隧道（地下结构）", "隧道(地下结构)", "道路工程", "道路",
+        "工程测量", "道路测量", "测绘工程", "测量", "公路桥梁",
+        "交通工程", "公路工程相关专业"
+      ],
+      "market_directories": [
+        "全国公路建设市场信用信息管理系统",
+        "全国公路建设市场监督管理系统",
+        "公路工程施工资质企业名录"
+      ]
+    },
+    "water_conservancy": {
+      "label": "水利水电工程",
+      "trigger_keywords": ["水利", "水电", "防洪", "堤防", "水库", "灌区", "泵站", "节制闸", "河道", "水工", "水安"],
+      "related_title_domains": [
+        "水利水电", "水利水电工程", "水利工程", "水利水电建筑工程",
+        "水工结构", "水工结构工程", "河川枢纽及水电站建筑物",
+        "水文与水资源", "水文与水资源工程", "农田水利", "农田水利工程",
+        "农业水利工程", "机电排灌", "排灌工程", "港口航道与海岸工程",
+        "给水排水", "给排水", "工程测量", "测绘工程", "水利工程施工",
+        "水利工程管理", "水利水电相关专业", "水利相关专业"
+      ],
+      "market_directories": [
+        "全国水利建设市场监管服务平台",
+        "全国水利建设市场监管平台",
+        "水利建设市场信用信息平台",
+        "水利建设市场信用信息管理系统"
+      ]
+    },
+    "municipal": {
+      "label": "市政公用工程",
+      "trigger_keywords": ["市政", "给水", "排水", "污水", "雨污", "管网", "供水", "燃气", "热力", "环境工程", "水环境", "风景园林"],
+      "related_title_domains": [
+        "市政工程", "市政公用", "市政公用工程", "给水排水", "给排水",
+        "给排水工程", "环境工程", "市政道路", "城市道路", "道路与桥梁",
+        "道路工程", "桥梁工程", "城市燃气", "供热通风与空调工程",
+        "风景园林", "园林绿化", "机电工程", "机电安装", "工程测量",
+        "土木工程", "市政相关专业", "市政工程相关专业"
+      ],
+      "market_directories": [
+        "全国建筑市场监管公共服务平台",
+        "四库一平台"
+      ]
+    },
+    "building": {
+      "label": "建筑工程",
+      "trigger_keywords": ["房屋建筑", "建筑工程", "房建", "工民建", "结构工程", "装配式"],
+      "related_title_domains": [
+        "建筑工程", "房屋建筑", "房屋建筑工程", "工业与民用建筑", "工民建",
+        "土木工程", "结构工程", "建筑学", "建筑施工", "给排水", "暖通空调",
+        "建筑电气", "机电工程", "工程管理", "工程造价", "建筑工程相关专业"
+      ],
+      "market_directories": [
+        "全国建筑市场监管公共服务平台",
+        "四库一平台"
+      ]
+    }
+  }
+}

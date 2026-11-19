@@ -534,7 +534,15 @@ class RepositoryHygieneTests(unittest.TestCase):
         )
 
     def test_no_fabricated_fallback_markers_in_src(self) -> None:
-        forbidden_tokens = ("_offline_chinese_slot_fallback", "已核验人员_")
+        forbidden_tokens = (
+            "_offline_chinese_slot_fallback",
+            "已核验人员_",
+            "{2019, 2020, 2021}",
+            "皖交安B",
+            "皖交安C",
+            "第一章总体施工组织布置及规划",
+            "按第九章格式编写",
+        )
         src_dir = SYSTEMCODE_DIR / "src"
         violations = []
         for py_path in src_dir.rglob("*.py"):
@@ -542,7 +550,7 @@ class RepositoryHygieneTests(unittest.TestCase):
             for tok in forbidden_tokens:
                 if tok in content:
                     violations.append(f"{py_path.relative_to(self.REPO_ROOT).as_posix()}: {tok}")
-        self.assertEqual(violations, [], f"Forbidden fake-pass fallback code detected in src/: {violations}")
+        self.assertEqual(violations, [], f"Forbidden fake-pass or single-project hardcoded token detected in src/: {violations}")
 
 
 if __name__ == "__main__":

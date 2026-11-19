@@ -2,8 +2,11 @@
 import re
 from decimal import Decimal
 
+from src.domain_profiles import ROLE_ALIAS_MAP
 from src.evaluation.evidence import compact
 from .semantics import normalized, owner_blocks, role_names
+
+SUPPORTED_CONFLICT_ROLES = set(ROLE_ALIAS_MAP.values()) - {'other_personnel'}
 
 
 def verify_conflict_pairs(pairs, evidence_by_id, requirement):
@@ -16,8 +19,7 @@ def verify_conflict_pairs(pairs, evidence_by_id, requirement):
         role = pair.get('role')
         if (not all(isinstance(s, str) and compact(s) for s in (subject, aspect, period))
                 or compact(aspect) not in compact(requirement)
-                or role not in {'bidder', 'project_manager', 'chief_engineer',
-                                'road_engineer', 'bridge_engineer', 'safety_officer'}):
+                or role not in SUPPORTED_CONFLICT_ROLES):
             issues.append('Conflict requires an explicit subject, requirement aspect and common period')
             continue
         anchor = evidence_by_id.get(pair.get('role_evidence_id'))

@@ -53,21 +53,49 @@ def explicit_numeric_operator(text, value):
 
 
 def required_qualification_role(requirement):
+    # Multi-role joint clauses (e.g. '委托代理人、项目经理、技术负责人、安全员、质检员须...') stay None so single-role binding does not mis-pick one
+    role_hits = []
     for label, role in (
         ('道路工程师', 'road_engineer'),
         ('桥梁工程师', 'bridge_engineer'),
         ('合同工程师', 'contract_engineer'),
+        ('造价工程师', 'contract_engineer'),
+        ('造价人员', 'contract_engineer'),
         ('专职安全员', 'safety_officer'),
+        ('安全员', 'safety_officer'),
+        ('安全管理人员', 'safety_officer'),
+        ('专职质检员', 'quality_officer'),
+        ('质检员', 'quality_officer'),
+        ('质量员', 'quality_officer'),
+        ('终检工程师', 'quality_officer'),
+        ('质量负责人', 'quality_officer'),
+        ('质量管理人员', 'quality_officer'),
         ('测量工程师', 'survey_engineer'),
+        ('测量员', 'survey_engineer'),
         ('试验工程师', 'test_engineer'),
+        ('试验检测工程师', 'test_engineer'),
+        ('试验员', 'test_engineer'),
         ('施工员', 'construction_officer'),
+        ('材料员', 'material_officer'),
+        ('资料员', 'document_officer'),
+        ('财务负责人', 'finance_officer'),
+        ('企业主要负责人', 'enterprise_leader'),
+        ('委托代理人', 'authorized_agent'),
+        ('授权代理人', 'authorized_agent'),
+        ('授权委托人', 'authorized_agent'),
+        ('设计负责人', 'design_leader'),
+        ('项目经理', 'project_manager'),
+        ('项目负责人', 'project_manager'),
+        ('项目总工', 'chief_engineer'),
+        ('总工程师', 'chief_engineer'),
+        ('技术负责人', 'chief_engineer'),
     ):
-        if label in requirement:
-            return role
-    if '项目经理' in requirement:
-        return 'project_manager'
-    if '项目总工' in requirement or '总工程师' in requirement:
-        return 'chief_engineer'
+        if label in requirement and role not in role_hits:
+            role_hits.append(role)
+    if len(role_hits) > 1:
+        return None
+    if len(role_hits) == 1:
+        return role_hits[0]
     if re.search(r'投标人|企业|单位|法人|营业执照|安全生产许可证|总承包|专业承包|资质证书', requirement):
         return 'bidder'
     return None
@@ -77,15 +105,22 @@ def role_names(text, role):
     """Read explicitly labelled identities; never treat 企业名称 as 投标人名称."""
     labels = {
         'bidder': r'投标人(?:名称)?',
-        'project_manager': r'(?:拟派|拟任|拟委任)?项目经理',
-        'chief_engineer': r'(?:拟派|拟任|拟委任)?(?:项目总工|总工程师)',
+        'enterprise_leader': r'(?:企业主要负责人|法定代表人)',
+        'authorized_agent': r'(?:委托代理人|授权代理人|授权委托人)',
+        'project_manager': r'(?:拟派|拟任|拟委任)?(?:项目经理|项目负责人)',
+        'chief_engineer': r'(?:拟派|拟任|拟委任)?(?:项目总工(?:程师)?|总工程师|(?:项目)?技术负责人)',
+        'design_leader': r'(?:拟派|拟任|拟委任)?(?:项目)?设计负责人',
         'road_engineer': r'(?:拟派|拟任|拟委任)?道路工程师',
         'bridge_engineer': r'(?:拟派|拟任|拟委任)?桥梁工程师',
-        'contract_engineer': r'(?:拟派|拟任|拟委任)?合同工程师',
-        'safety_officer': r'(?:拟派|拟任|拟委任)?专职安全员[0-9]*',
-        'survey_engineer': r'(?:拟派|拟任|拟委任)?测量工程师',
-        'test_engineer': r'(?:拟派|拟任|拟委任)?试验工程师',
-        'construction_officer': r'(?:拟派|拟任|拟委任)?施工员[0-9]*',
+        'contract_engineer': r'(?:评分用|拟派|拟任|拟委任)?(?:合同工程师|造价工程师|造价人员|造价员)',
+        'safety_officer': r'(?:评分用|拟派|拟任|拟委任)?(?:专职)?安全(?:员|管理人员|负责人)[0-9]*',
+        'quality_officer': r'(?:评分用|拟派|拟任|拟委任)?(?:(?:专职)?质检员|质量员|终检工程师|质量负责人|质量管理人员)[0-9]*',
+        'survey_engineer': r'(?:评分用|拟派|拟任|拟委任)?(?:测量工程师|测量员)[0-9]*',
+        'test_engineer': r'(?:评分用|拟派|拟任|拟委任)?(?:试验(?:检测)?工程师|试验员)[0-9]*',
+        'construction_officer': r'(?:评分用|拟派|拟任|拟委任)?施工员[0-9]*',
+        'material_officer': r'(?:评分用|拟派|拟任|拟委任)?材料员[0-9]*',
+        'document_officer': r'(?:评分用|拟派|拟任|拟委任)?资料员[0-9]*',
+        'finance_officer': r'(?:拟派|拟任|拟委任)?财务负责人',
     }
     if role not in labels:
         return set()
