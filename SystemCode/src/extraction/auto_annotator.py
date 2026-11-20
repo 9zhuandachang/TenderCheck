@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
@@ -36,6 +36,7 @@ from ..classification.binary_filter import (
     compute_clause_overlap,
 )
 from ..data.schema import ID2LABEL, REQUIREMENT_TYPES
+from .addendum_superseder import apply_addendum_superseding
 from .atomic_decomposer import decompose_compound_requirement
 from .tender_segmenter import CandidateClause, _CHAPTER_RE, _split_long_unit, segment_tender_pdf
 
@@ -64,6 +65,11 @@ class AutoAnnotatedRequirement:
     binary_prob: float = 1.0
     category_confidence: float = 1.0
     doc_name: str = ""
+    is_addendum: bool = False
+    lifecycle_status: str = "ACTIVE"  # "ACTIVE" | "SUPERSEDED" | "CANCELLED" | "DIRECTIVE_ONLY"
+    superseded_by: str = ""
+    supersedes_ids: List[str] = field(default_factory=list)
+    superseding_note: str = ""
 
     def to_v13_dict(self) -> Dict[str, Any]:
         """Return strict v1.3 annotation dictionary (`ID`, `Page`, `Section`, `Requirement Type`, `Requirement`)."""
@@ -76,7 +82,7 @@ class AutoAnnotatedRequirement:
         }
 
     def to_full_dict(self) -> Dict[str, Any]:
-        """Return enriched dictionary including `raw_text`, `binary_prob`, and `category_confidence`."""
+        """Return enriched dictionary including `raw_text`, `binary_prob`, `category_confidence`, and superseding audit fields."""
         d = self.to_v13_dict()
         d.update(
             {
@@ -85,6 +91,11 @@ class AutoAnnotatedRequirement:
                 "binary_prob": round(float(self.binary_prob), 4),
                 "category_confidence": round(float(self.category_confidence), 4),
                 "doc_name": self.doc_name,
+                "is_addendum": self.is_addendum,
+                "lifecycle_status": self.lifecycle_status,
+                "superseded_by": self.superseded_by,
+                "supersedes_ids": list(self.supersedes_ids),
+                "superseding_note": self.superseding_note,
             }
         )
         return d
@@ -275,6 +286,7 @@ class AutoTenderAnnotator:
             cands = _segment_single_pdf_with_ocr_fallback(pdf_path, is_addendum=False)
             all_candidates.extend(cands)
 
+        addendum_doc_names = {p.name for p in addendum_list}
         for idx, pdf_path in enumerate(addendum_list, start=len(tender_list) + 1):
             if progress:
                 progress(f"正在切分答疑/补遗文件 {pdf_path.name} ({idx}/{total_files})", idx - 1, total_files + 2)
@@ -363,8 +375,13 @@ class AutoTenderAnnotator:
                     binary_prob=bin_prob,
                     category_confidence=conf,
                     doc_name=cand.doc_name,
+                    is_addendum=(cand.doc_name in addendum_doc_names),
                 )
             )
+
+        sup_report = None
+        if addendum_list and items:
+            items, sup_report = apply_addendum_superseding(items)
 
         if progress:
             progress("招标条款自动抽取与8分类标注完成", total_files + 2, total_files + 2)
@@ -372,6 +389,10 @@ class AutoTenderAnnotator:
         stats = {
             "total_candidates": len(all_candidates),
             "retained_requirements": len(items),
+            "active_requirements": sup_report.active_count if sup_report else len(items),
+            "superseded_count": sup_report.superseded_count if sup_report else 0,
+            "cancelled_count": sup_report.cancelled_count if sup_report else 0,
+            "unmatched_addenda_count": sup_report.unmatched_addenda_count if sup_report else 0,
             "filtered_noise": len(all_candidates) - len(items),
             "noise_reduction_rate": round(
                 (len(all_candidates) - len(items)) / max(len(all_candidates), 1), 4

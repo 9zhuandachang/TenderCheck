@@ -30,8 +30,9 @@
 - [x] **2.3 打通多模态印章与签字证据链 & 合并离线/在线 RAG 双轨代码**：
   - 已在 `BidChunk`、`BidEvidenceSlots` 与 `evidence.py` 建立严格的 `visual_seal_verified` 视觉溯源通道：彻底移除文本占位符（如“（盖单位章）”）假造签章的隐患，仅允许经视觉引擎实检的 `has_official_seal` / `seal_company_name` / `has_signature` 传入 `R04`（含印章单位与投标人主体一致性校验）并在前端审查卡片独立展示；
   - 已将 `chinese_pipeline.py` 的 PDF 解析与混合检索完全收口至 `src/rag/parser.py`（`BidDocumentParser`）与 `src/rag/indexer.py`（`HybridBidIndex` + `resolve_local_or_hf_model`），消除双轨重复实现（由 `tests/test_visual_seal_and_unified_rag.py` 守护）。
-- [ ] **2.4 实现中文补遗/答疑条款自动覆盖（Addendum Superseding）**：
-  - 识别补遗中“原招标文件第 X 章/条修改为……”的指向关系，自动将原条款标记为被替代并以补遗新约束入审，避免新旧冲突条款同时生效。
+- [x] **2.4 实现中文补遗/答疑条款自动覆盖（Addendum Superseding）**：
+  - 已新增确定性补遗覆盖引擎 `src/extraction/addendum_superseder.py` 并接入 `AutoTenderAnnotator.annotate_pdfs`：支持修改（`MODIFY`）、删除/取消（`DELETE`）、新增补充（`SUPPLEMENT`）三类中文补遗指令，通过条款号 + 规范主题 + 原值提示 + 章节边界门禁实现多轮链式覆盖（如第 2 号补遗覆盖第 1 号补遗）；
+  - 被替代或取消的原条款保留完整审计溯源（`lifecycle_status` / `superseded_by`），匹配模糊的补遗绝不静默删旧，自动标记交人工复核（由 `tests/test_addendum_superseder.py` 守护）。
 
 ---
 
