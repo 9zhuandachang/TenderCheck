@@ -1,11 +1,13 @@
-"""Homepage navigation regression tests for the 3-step Overview workflow."""
+"""Homepage navigation regression tests for the 3-step Overview workflow (real Chinese backend trunk)."""
 
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pymupdf
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
@@ -13,11 +15,20 @@ APP_DIR = Path(__file__).resolve().parents[1] / "src" / "app"
 sys.path.insert(0, str(APP_DIR))
 
 
+def _make_cn_pdf_bytes(text: str) -> bytes:
+    doc = pymupdf.open()
+    page = doc.new_page(width=595, height=842)
+    page.insert_text((50, 80), text, fontsize=11, fontname="china-ss")
+    data = doc.tobytes()
+    doc.close()
+    return data
+
+
 class HomeNavigationTest(unittest.TestCase):
     def setUp(self):
-        from tcui import config, demo, service, store
+        from tcui import config, service, store
 
-        self.config, self.demo, self.service, self.store = config, demo, service, store
+        self.config, self.service, self.store = config, service, store
         self.temp_dir = tempfile.TemporaryDirectory(prefix="tendercheck_home_")
         self.addCleanup(self.temp_dir.cleanup)
         data_dir = Path(self.temp_dir.name)
@@ -29,6 +40,9 @@ class HomeNavigationTest(unittest.TestCase):
             patcher = patch.object(config, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
+        env_patcher = patch.dict(os.environ, {"DEEPSEEK_API_KEY": ""}, clear=False)
+        env_patcher.start()
+        self.addCleanup(env_patcher.stop)
         st.cache_resource.clear()
         self.addCleanup(st.cache_resource.clear)
         store.init_db()
@@ -41,19 +55,31 @@ class HomeNavigationTest(unittest.TestCase):
     def button(self, app, label):
         return next(button for button in app.button if button.label == label)
 
-    def prepare_demo(self):
-        pid = self.demo.create_demo_project()
-        for requirement in self.store.pending_amendments(pid):
-            self.service.decide_amendment(requirement["id"], True, "Ann", "Reviewer")
+    def prepare_chinese_project(self):
+        pid = self.store.create_project("滁河防洪治理工程（导航测试）")
+        tender_pdf = _make_cn_pdf_bytes(
+            "第二章 投标人须知前附表\n1.3.2 计划工期不超过360日历天。\n3.4.1 投标保证金不少于50万元。"
+        )
+        bid_pdf = _make_cn_pdf_bytes(
+            "投标函\n我方承诺本工程计划工期为350日历天。\n投标保证金金额为60万元。"
+        )
+        tdoc_id, _ = self.service.add_document(pid, "tender", "招标文件.pdf", tender_pdf, background=False)
+        self.service.add_document(pid, "bid", "投标文件.pdf", bid_pdf, background=False)
+        self.service.add_requirement(
+            pid, "T0001", "计划工期不超过360日历天。", "Schedule", tdoc_id, 1, "导入测试条款", "Ann", "Reviewer"
+        )
+        self.service.add_requirement(
+            pid, "T0002", "投标保证金不少于50万元。", "Commercial", tdoc_id, 1, "导入测试条款", "Ann", "Reviewer"
+        )
         self.service.confirm_requirements(pid, "Ann", "Reviewer")
         return pid
 
-    def test_landing_and_demo_entry(self):
+    def test_landing_and_create_project(self):
         app = self.app()
         self.assertEqual(app.title[0].value, "TenderCheck")
         subheaders = [item.value for item in app.subheader]
         self.assertIn("New project", subheaders)
-        next(item for item in app.text_input if item.label == "Project name").set_value("Drainage Workspace")
+        next(item for item in app.text_input if item.label == "Project name").set_value("水利工程审标工作区")
         self.button(app, "Create project").click().run()
         self.assertFalse(app.exception)
         self.assertEqual(len(self.store.list_projects()), 1)
@@ -89,7 +115,7 @@ class HomeNavigationTest(unittest.TestCase):
         self.assertEqual(app.title[0].value, "Original project")
 
     def test_overview_three_step_pipeline_and_ready_state(self):
-        pid = self.prepare_demo()
+        pid = self.prepare_chinese_project()
         app = self.app()
         subheaders = [item.value for item in app.subheader]
         self.assertIn("Step 1 · Confirm Project Documents", subheaders)

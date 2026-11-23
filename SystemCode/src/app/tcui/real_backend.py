@@ -1074,14 +1074,16 @@ def extract_chinese_project_requirements(
                 "binary_prob": item.binary_prob,
                 "category_confidence": item.category_confidence,
             }
+            is_active = getattr(item, "lifecycle_status", "ACTIVE") == "ACTIVE"
+            na_reason = "" if is_active else (getattr(item, "superseding_note", "") or f"已被补遗 {getattr(item, 'superseded_by', '')} 替代/取消")
             con.execute(
                 """
                 INSERT INTO requirements (
                     project_id, clause_no, text, category, category_score,
                     constraint_json, source_doc_id, page, origin, original_json,
                     amended_by_doc_id, amendment_page, amendment_text, amendment_status,
-                    applicable, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    applicable, na_reason, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     project_id,
@@ -1098,6 +1100,8 @@ def extract_chinese_project_requirements(
                     int(item.Page) if is_addendum else None,
                     item.Requirement if is_addendum else None,
                     "accepted" if is_addendum else None,
+                    1 if is_active else 0,
+                    na_reason,
                     now_ts,
                 ),
             )

@@ -160,6 +160,7 @@ def is_substantive_consortium_agreement(text: str) -> bool:
         neg in s
         for neg in (
             "不接受联合体",
+            "不采用联合体投标",
             "非联合体投标",
             "独立投标人身份",
             "不以联合体形式",
@@ -167,11 +168,14 @@ def is_substantive_consortium_agreement(text: str) -> bool:
         )
     ):
         return False
-    if re.search(r"_{3,}|（盖单位章）.*_{2,}", s):
+    if re.search(r"_{3,}|（盖单位章）.*_{2,}", s) and not re.search(r"(?:公司|集团|院|局)[、，,与和][^\n_]{2,30}(?:公司|集团|院|局)", s):
         return False
 
     has_agreement_clause = bool(
-        re.search(r"自愿组成联合体|联合体牵头人[:：|][^\n_]{4,}(?:公司|集团|院|局)|联合体成员[:：|][^\n_]{4,}(?:公司|集团|院|局)", str(text or ""))
+        re.search(
+            r"自愿组成.{0,30}联合体|(?:公司|集团|院|局)[^。；]{0,20}自愿组成|联合体牵头人[:：|][^\n_]{4,}(?:公司|集团|院|局)|联合体成员[:：|][^\n_]{4,}(?:公司|集团|院|局)",
+            s,
+        )
     )
     return has_agreement_clause
 

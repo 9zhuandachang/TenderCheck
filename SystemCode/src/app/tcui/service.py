@@ -44,15 +44,10 @@ def add_document(project_id: int, category: str, filename: str, data: bytes,
     path = folder / f"{category}_v{version}_{safe}"
     path.write_bytes(data)
 
-    proj = store.get_project(project_id)
-    is_demo = bool(proj and proj.get("is_demo"))
     supersedes = None
     if category in ("bid", "tender") and same:
         same_name_docs = [d for d in same if d.get("filename") == filename]
-        if is_demo:
-            supersedes = same[-1]["id"]
-            store.execute("UPDATE documents SET selected=0 WHERE project_id=? AND category=?", (project_id, category))
-        elif same_name_docs:
+        if same_name_docs:
             supersedes = same_name_docs[-1]["id"]
             store.execute(
                 "UPDATE documents SET selected=0 WHERE project_id=? AND category=? AND filename=?",
@@ -102,11 +97,6 @@ def _parse_job(progress, doc_id: int) -> Dict[str, Any]:
 
 
 def set_document_selected(doc_id: int, selected: bool) -> None:
-    doc = store.get_document(doc_id)
-    proj = store.get_project(doc["project_id"])
-    if selected and doc["category"] in ("bid", "tender") and bool(proj and proj.get("is_demo")):
-        store.execute("UPDATE documents SET selected=0 WHERE project_id=? AND category=?",
-                      (doc["project_id"], doc["category"]))
     store.update("documents", doc_id, {"selected": int(selected)})
 
 
@@ -126,17 +116,24 @@ def extract_requirements(project_id: int) -> int:
     return jobs.submit(project_id, "extract", _extract_job, project_id)
 
 
+def _default_constraint(category: str) -> Dict[str, Any]:
+    return {
+        "type": "document" if category == "Document" else "presence",
+        "clause_type": category,
+        "field": category,
+    }
+
+
 def _new_requirement(project_id: int, clause_no: str, text: str, origin: str, doc_id: Optional[int],
                      page: Optional[int], category: Optional[str] = None, **extra: Any) -> int:
-    cls = engine.classify(text)
-    category = category if category in config.CATEGORIES else cls["category"]
-    constraint = engine.extract_constraint(text, category)
+    category = category if category in config.CATEGORIES else "Document"
+    constraint = extra.pop("constraint", None) or _default_constraint(category)
     return store.insert("requirements", {
         "project_id": project_id,
         "clause_no": clause_no,
         "text": text,
         "category": category,
-        "category_score": cls["score"],
+        "category_score": 1.0,
         "constraint": constraint,
         "source_doc_id": doc_id,
         "page": page,
@@ -149,54 +146,13 @@ def _new_requirement(project_id: int, clause_no: str, text: str, origin: str, do
 
 def _extract_job(progress, project_id: int) -> Dict[str, Any]:
     tenders = store.list_documents(project_id, "tender", selected_only=True)
-    addenda = store.list_documents(project_id, "addendum", selected_only=True)
     if not tenders:
         raise ServiceError("Upload a tender document first.")
 
     cn_counts = real_backend.extract_chinese_project_requirements(project_id, progress=progress)
-    if cn_counts is not None:
-        return cn_counts
-
-    store.execute("DELETE FROM requirements WHERE project_id=? AND origin IN ('extracted','addendum')", (project_id,))
-    store.execute("DELETE FROM drawings WHERE project_id=? AND source='extracted'", (project_id,))
-
-    docs = tenders + addenda
-    seq = 0
-    counts = {"requirements": 0, "amendments": 0, "drawings": 0}
-    for i, doc in enumerate(docs, start=1):
-        progress(f"Reading {doc['label']} ({i}/{len(docs)})", i - 1, len(docs))
-        texts = engine.load_page_texts(doc["path"])
-        for row in engine.extract_drawing_register(texts):
-            seq += 1
-            store.insert("drawings", {"project_id": project_id, "doc_id": doc["id"], "source": "extracted",
-                                      "seq": seq, **row})
-            counts["drawings"] += 1
-        if doc["category"] == "tender":
-            for item in engine.extract_requirements(texts):
-                _new_requirement(project_id, item["clause_no"], item["text"], "extracted", doc["id"], item["page"])
-                counts["requirements"] += 1
-            continue
-        for change in engine.extract_addendum_changes(texts):
-            target = store.query_one(
-                "SELECT * FROM requirements WHERE project_id=? AND clause_no=? AND origin='extracted'",
-                (project_id, change["clause_no"]),
-            )
-            if change["kind"] == "amend" and target:
-                store.update("requirements", target["id"], {
-                    "amended_by_doc_id": doc["id"],
-                    "amendment_page": change["page"],
-                    "amendment_text": change["text"],
-                    "amendment_status": "pending",
-                })
-            else:
-                _new_requirement(project_id, change["clause_no"], change["text"], "addendum", doc["id"],
-                                 change["page"], amended_by_doc_id=doc["id"], amendment_page=change["page"],
-                                 amendment_text=change["text"], amendment_status="pending")
-            counts["amendments"] += 1
-    store.update("projects", project_id, {"req_confirmed_at": None})
-    progress("Extraction complete", len(docs), len(docs))
-    store.log_action(project_id, "extract_requirements", payload=counts)
-    return counts
+    if cn_counts is None:
+        raise ServiceError("未检测到可解析的中文招标文件正文，请上传包含招标条款的中文 PDF 文件。")
+    return cn_counts
 
 
 def decide_amendment(req_id: int, accept: bool, actor: str, role: str, note: str = "") -> None:
@@ -204,10 +160,8 @@ def decide_amendment(req_id: int, accept: bool, actor: str, role: str, note: str
     if req["amendment_status"] != "pending":
         return
     if accept and req["origin"] != "addendum":
-        constraint = engine.extract_constraint(req["amendment_text"], req["category"])
         store.update("requirements", req_id, {
             "text": req["amendment_text"],
-            "constraint": constraint,
             "amendment_status": "accepted",
         })
     elif accept:
@@ -242,8 +196,6 @@ def update_requirement(req_id: int, changes: Dict[str, Any], reason: str, actor:
         raise ServiceError("Give a reason for the change.")
     if "applicable" in changes and not changes["applicable"] and not (changes.get("na_reason") or req.get("na_reason")):
         raise ServiceError(f"Clause {req['clause_no']}: give a reason for marking it not applicable.")
-    if "text" in changes and "constraint" not in changes:
-        changes["constraint"] = engine.extract_constraint(changes["text"], changes.get("category", req["category"]))
     store.update("requirements", req_id, changes)
     store.log_action(req["project_id"], "edit_requirement", actor, role, reason,
                      {"before": {k: req.get(k) for k in changes}, "after": changes}, requirement_id=req_id)
@@ -280,24 +232,20 @@ def import_requirements(project_id: int, rows: List[Dict[str, Any]], actor: str,
 
 
 def rereview_requirement(round_id: int, req_id: int) -> None:
-    """Re-run the rule for one requirement after a correction, keeping the system's original verdict."""
+    """Re-run the canonical rule engine for one requirement after a correction, keeping the system's original verdict."""
     rnd = store.get_round(round_id)
     req = store.get_requirement(req_id)
     if req["origin"] == "drawing":
         return
     existing = store.result_for(round_id, req_id)
-    if existing and (existing.get("chain") or {}).get("is_real_backend"):
-        out = real_backend.rereview_real_backend_result(req, existing)
-        if out:
-            store.update("results", existing["id"], {
-                "verdict": out["verdict"], "rule_id": out["rule_id"], "explanation": out["explanation"],
-                "fields": out["fields"], "evidence": out["evidence"], "chain": out["chain"],
-                "corrected": 1, "human_status": UNREVIEWED, "updated_at": store.now(),
-            })
-            return
-    bid = store.get_document(rnd["bid_doc_id"])
-    index = engine.BidIndex(engine.load_page_texts(bid["path"]), bid["failed_pages"])
-    out = engine.review_requirement(req, index)
+    if not existing:
+        return
+    out = real_backend.rereview_real_backend_result(req, existing)
+    if out is None:
+        evaluated = real_backend.evaluate_chinese_project_clauses(rnd["project_id"], [req])
+        out = (evaluated or {}).get(req["id"])
+    if out is None:
+        raise ServiceError("无法在当前真实后端主干上重审该条款，请检查投标文件与配置。")
     store.update("results", existing["id"], {
         "verdict": out["verdict"], "rule_id": out["rule_id"], "explanation": out["explanation"],
         "fields": out["fields"], "evidence": out["evidence"], "chain": out["chain"],
@@ -376,35 +324,23 @@ def _review_job(progress, project_id: int) -> Dict[str, Any]:
             return {"round_id": round_id, "previous_round_id": prev["id"] if prev and prev["id"] != round_id else None}
 
         cn_evaluated = real_backend.evaluate_chinese_project_clauses(project_id, reqs, progress=progress)
-        if cn_evaluated is not None:
-            for req in reqs:
-                out = cn_evaluated.get(req["id"])
-                if not out:
-                    continue
-                if out.get("constraint"):
-                    store.update("requirements", req["id"], {"constraint": out["constraint"]})
-                status = CONFIRMED if out["verdict"] == COMPLIANT else UNREVIEWED
-                _insert_result(round_id, req["id"], out, human_status=status)
-            _carry_remediation_state(project_id, round_id)
-            store.update("rounds", round_id, {"status": "done"})
-            progress("Review complete", total, total)
-            return {"round_id": round_id, "previous_round_id": prev["id"] if prev and prev["id"] != round_id else None}
-
-        texts = engine.load_page_texts(bid["path"])
-        index = engine.BidIndex(texts, bid["failed_pages"])
-        for i, req in enumerate(reqs, start=1):
-            progress(f"Checked {i - 1}/{len(reqs)} clauses", i - 1, total)
-            out = engine.review_requirement(req, index)
-            _insert_result(round_id, req["id"], out)
-        progress("Checking drawing references", len(reqs), total)
-        _review_drawings(project_id, round_id, texts)
+        if cn_evaluated is None:
+            raise ServiceError("未检测到可审查的中文招标条款或投标文件，已阻断回退至占位引擎。")
+        for req in reqs:
+            out = cn_evaluated.get(req["id"])
+            if not out:
+                continue
+            if out.get("constraint"):
+                store.update("requirements", req["id"], {"constraint": out["constraint"]})
+            status = CONFIRMED if out["verdict"] == COMPLIANT else UNREVIEWED
+            _insert_result(round_id, req["id"], out, human_status=status)
         _carry_remediation_state(project_id, round_id)
         store.update("rounds", round_id, {"status": "done"})
+        progress("Review complete", total, total)
+        return {"round_id": round_id, "previous_round_id": prev["id"] if prev and prev["id"] != round_id else None}
     except Exception:
         store.update("rounds", round_id, {"status": "failed"})
         raise
-    progress("Review complete", total, total)
-    return {"round_id": round_id, "previous_round_id": prev["id"] if prev else None}
 
 
 def _insert_result(round_id: int, req_id: int, out: Dict[str, Any], human_status: str = UNREVIEWED) -> int:

@@ -42,8 +42,8 @@
   - 已新增 `src/rules/impact_graph.py`（`ClauseImpactGraph`），建立 `(document, page_no) -> [关联结果]` 反向索引（兼容 `evidence` 与 `chain.backend_state.evidence_context` 及路径/文档 ID 别名映射）；
   - 已接入 `service.preview_page_impact`、`service.apply_remediation_edit` 与 `views/remediation.py`：在整改页修改任一投标页面后，自动联动重审所有引用该页的关联条款；若原有合规条款发生回归（如改工期误改投标有效期），自动将其标为 `TO_REMEDIATE`、生成/重开整改项并写入 `impact_reevaluate_clause` 审计日志（由 `tests/test_impact_graph_reeval.py` 守护）。
 - [ ] **3.2 清理早期英文 Demo 遗留 & 非公路真实标书跨行业实测**：
-  - 清理早期英文占位遗留代码（`tcui/engine.py`、`demo.py`）；
-  - 在 `data_extracted/` 选取至少 1–2 套非公路/近年真实项目（水利水电或市政 EPC）完成端到端评测，将跨行业泛化结果记入 `docs/EXPERIMENTS.md` 与 `README.md`。
+  - [x] 已删除早期合成英文 Demo（`tcui/demo.py`），将 `tcui/engine.py` 从 631 行瘦身为纯 PDF/格式/图纸台账工具（移除所有英文占位 NLP/检索/规则分支），`service.py` 彻底收口至单一真实中文主干，并将 `test_review_app.py` / `test_home_navigation.py` 迁移至中文主干闭环测试；同时接入补遗覆盖状态（`applicable=0`）并补强真实联合体协议书识别；
+  - [ ] 选定真实水利非公路标书 **`2024年投标项目/2.1-渡江战役纪念馆附近水毁修复工程`**（211 页主招标 + 2 份文字补遗 + 2 份纯扫描答疑 + 1,078 页独立投标文件）在 GPU 环境完成端到端实测，将跨行业泛化结果记入 `docs/EXPERIMENTS.md` 与 `README.md`。
 - [ ] **（可选延后）多人协作勘误单导出与工程量清单（BoQ）逐行比对**：
   - 整改页行内 Diff + 独立《标书修改勘误单》导出（单人自用阶段暂不投入）；
   - 独立工程量清单与控制价表格级逐行核对（子目编码、项目特征、计量单位、工程量一致性及合价算术复核）。
