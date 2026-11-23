@@ -38,13 +38,12 @@
 
 ## Phase 3：实战提效与竞赛亮点打磨（差异化竞争力）
 
-- [ ] **跨条款影响图与联动重审（Impact-Aware Re-evaluation）**：
-  - 建立 `(document_id, page_no) -> [关联 requirement_ids]` 反向索引；在 `Remediation` 修改投标函等核心页面（如改动报价、工期、项目经理）后，自动重算所有引用该页的关联条款（如 `R03` 跨表一致性），防止“修好一条、改坏三条”。
-- [ ] **《标书修改勘误单》导出与双栏行内 Diff 体验**：
-  - 为 `ui.py` 的 PDF 页面光栅化渲染增加 `@st.cache_data` 缓存消除翻页卡顿；
-  - 在整改界面展示清晰的增删高亮对比（Inline Diff），并支持一键导出面向造价/商务标编制人员的 Word/PDF《标书修改勘误单》（含分册、页码、修改前原文、修改后建议文本）。
-- [ ] **工程量清单（BoQ）结构化专项比对（可选高价值扩展）**：
-  - 针对独立工程量清单与控制价文件，新增表格级结构化核对模块（子目编码、项目特征、计量单位、工程量一致性及合价算术复核）。
-- [ ] **规则插件化（Rule Registry）与多项目泛化基准发布**：
-  - 将每条规则的 Schema、Prompt 片段、Grounding 校验与符号评估解耦为模块化插件，清理早期英文占位遗留代码（`tcui/engine.py`、`demo.py`）；
-  - 在 `data_extracted/` 选取至少 1–2 套非公路/近年真实项目（水利水电或市政 EPC）完成端到端评测，将跨行业泛化结果记入 `docs/EXPERIMENTS.md`。
+- [x] **3.1 跨条款影响图与联动重审（Impact-Aware Re-evaluation）**：
+  - 已新增 `src/rules/impact_graph.py`（`ClauseImpactGraph`），建立 `(document, page_no) -> [关联结果]` 反向索引（兼容 `evidence` 与 `chain.backend_state.evidence_context` 及路径/文档 ID 别名映射）；
+  - 已接入 `service.preview_page_impact`、`service.apply_remediation_edit` 与 `views/remediation.py`：在整改页修改任一投标页面后，自动联动重审所有引用该页的关联条款；若原有合规条款发生回归（如改工期误改投标有效期），自动将其标为 `TO_REMEDIATE`、生成/重开整改项并写入 `impact_reevaluate_clause` 审计日志（由 `tests/test_impact_graph_reeval.py` 守护）。
+- [ ] **3.2 清理早期英文 Demo 遗留 & 非公路真实标书跨行业实测**：
+  - 清理早期英文占位遗留代码（`tcui/engine.py`、`demo.py`）；
+  - 在 `data_extracted/` 选取至少 1–2 套非公路/近年真实项目（水利水电或市政 EPC）完成端到端评测，将跨行业泛化结果记入 `docs/EXPERIMENTS.md` 与 `README.md`。
+- [ ] **（可选延后）多人协作勘误单导出与工程量清单（BoQ）逐行比对**：
+  - 整改页行内 Diff + 独立《标书修改勘误单》导出（单人自用阶段暂不投入）；
+  - 独立工程量清单与控制价表格级逐行核对（子目编码、项目特征、计量单位、工程量一致性及合价算术复核）。

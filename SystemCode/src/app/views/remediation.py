@@ -241,6 +241,26 @@ with cols[1]:
             key=page_key,
         )
 
+        impact_preview = (
+            service.preview_page_impact(
+                round_id,
+                cur_vol["path"],
+                cur_page,
+                exclude_result_id=cur_res["id"],
+            )
+            if cur_vol.get("path")
+            else {"count": 0, "clauses": []}
+        )
+        if impact_preview["count"] > 0:
+            linked_labels = ", ".join(c["clause_no"] for c in impact_preview["clauses"][:8])
+            if impact_preview["count"] > 8:
+                linked_labels += f" 等共 {impact_preview['count']} 条"
+            st.info(
+                f"联动影响提示：修改本页（{cur_vol['label']} p.{cur_page}）将自动联动重审另外 "
+                f"{impact_preview['count']} 条引用该页的条款（{linked_labels}），防止“修好一条、改坏其他”。",
+                icon=":material/hub:",
+            )
+
         modified_text = st.text_area(
             f"Bid content (Page {cur_page} of {max_pages})",
             height=340,
@@ -269,11 +289,21 @@ with cols[1]:
                     page_no=cur_page,
                 )
                 ui.render_page.clear()
-                if outcome.get("passed"):
-                    ui.flash(f"Saved to Bid document and re-evaluated: Clause {cur_res['clause_no']} is now Compliant (✓ Compliant).")
-                else:
+                imp_cnt = int(outcome.get("impacted_count") or 0)
+                regressed = outcome.get("regressed_clauses") or []
+                if regressed:
+                    reg_names = ", ".join(x["clause_no"] for x in regressed)
                     ui.flash(
-                        f"Saved and re-evaluated: Clause {cur_res['clause_no']} still has unresolved issues ({outcome.get('verdict')}).",
+                        f"已保存并重审 {cur_res['clause_no']}（{outcome.get('verdict')}），但联动重审发现 {len(regressed)} 条关联条款出现回归并已自动加入整改：{reg_names}。",
+                        "warning",
+                    )
+                elif outcome.get("passed"):
+                    extra = f"（已同步联动重审 {imp_cnt} 条关联条款，无回归）" if imp_cnt > 0 else ""
+                    ui.flash(f"Saved to Bid document and re-evaluated: Clause {cur_res['clause_no']} is now Compliant (✓ Compliant).{extra}")
+                else:
+                    extra = f"（已联动重审 {imp_cnt} 条关联条款）" if imp_cnt > 0 else ""
+                    ui.flash(
+                        f"Saved and re-evaluated: Clause {cur_res['clause_no']} still has unresolved issues ({outcome.get('verdict')}).{extra}",
                         "warning",
                     )
                 ui.go("workspace", ws_focus_requirement=cur_res["requirement_id"])

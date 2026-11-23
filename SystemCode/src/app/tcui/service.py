@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from . import config, engine, jobs, real_backend, store
 from .config import CLOSED, COMPLIANT, CONFIRMED, INSUFFICIENT, NON_COMPLIANT, TO_REINSPECT, TO_REMEDIATE, UNREVIEWED
+from src.rules.impact_graph import ClauseImpactGraph
 
 
 class ServiceError(Exception):
@@ -744,6 +745,38 @@ def save_draft(rem_id: int, kb_refs: List[str], draft: str, target: str, actor: 
                      requirement_id=item["requirement_id"])
 
 
+def _build_round_impact_graph(project_id: int, round_id: int) -> ClauseImpactGraph:
+    """Build a `ClauseImpactGraph` for all results in `round_id`, resolving document path/ID aliases."""
+    doc_sources = real_backend._load_doc_sources()
+    for d in store.list_documents(project_id):
+        entry = {
+            "filename": d.get("filename") or "",
+            "label": d.get("label") or d.get("filename") or "",
+            "path": d.get("path") or "",
+            "sha256": d.get("sha256") or "",
+            "pages": int(d.get("pages") or 1),
+        }
+        doc_sources[f"D_BID_{d['id']}"] = entry
+        doc_sources[f"bid_doc_{d['id']}"] = entry
+        doc_sources[str(d["id"])] = entry
+    return ClauseImpactGraph(store.list_results(round_id), doc_sources=doc_sources)
+
+
+def preview_page_impact(
+    round_id: int,
+    doc_path: str,
+    page_no: int,
+    *,
+    exclude_result_id: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Preview all other clauses in `round_id` that cite `(doc_path, page_no)`."""
+    rnd = store.get_round(round_id)
+    if not rnd or not doc_path:
+        return {"count": 0, "clauses": []}
+    graph = _build_round_impact_graph(int(rnd["project_id"]), int(round_id))
+    return graph.impact_summary(doc_path, int(page_no), exclude_result_id=exclude_result_id)
+
+
 def apply_remediation_edit(
     rem_id: int,
     result_id: int,
@@ -756,7 +789,7 @@ def apply_remediation_edit(
     doc_path: str = "",
     page_no: int = 1,
 ) -> Dict[str, Any]:
-    """Save in-place modification of bid original text, persist to bid document, and re-run extraction + rule engine."""
+    """Save in-place modification of bid original text, persist to bid document, and cascade re-evaluation across impacted clauses."""
     if not modified_text.strip():
         raise ServiceError("Modified bid text cannot be empty.")
     item = store.query_one("SELECT * FROM remediations WHERE id=?", (rem_id,))
@@ -824,6 +857,128 @@ def apply_remediation_edit(
     }
     _touch(res, res_updates, 0.0)
 
+    # Impact-aware cascade re-evaluation for sibling clauses referencing the same (doc_path, page_no)
+    impacted_outcomes: List[Dict[str, Any]] = []
+    if doc_path:
+        graph = _build_round_impact_graph(project_id, int(res["round_id"]))
+        siblings = graph.impacted_results(doc_path, int(page_no), exclude_result_id=result_id)
+        for sib in siblings:
+            sib_req = store.get_requirement(sib["requirement_id"])
+            if not sib_req:
+                continue
+            prev_verdict = str(sib.get("verdict") or "")
+            sib_reeval = real_backend.reevaluate_clause_with_modified_bid(
+                req=sib_req,
+                existing_result=sib,
+                pdf_path=doc_path,
+                page_no=int(page_no),
+                modified_text=modified_text.strip(),
+            )
+            new_verdict = str(sib_reeval["verdict"])
+            sib_passed = new_verdict == COMPLIANT
+            regressed = (prev_verdict == COMPLIANT) and (not sib_passed)
+
+            sib_human_status = sib.get("human_status") or UNREVIEWED
+            if regressed:
+                sib_human_status = TO_REMEDIATE
+            elif sib_passed and prev_verdict != COMPLIANT:
+                sib_human_status = CONFIRMED
+            elif not sib_passed:
+                sib_human_status = TO_REMEDIATE
+
+            _touch(
+                sib,
+                {
+                    "verdict": new_verdict,
+                    "rule_id": sib_reeval["rule_id"],
+                    "explanation": sib_reeval["explanation"],
+                    "fields": sib_reeval["fields"],
+                    "evidence": sib_reeval["evidence"],
+                    "chain": sib_reeval["chain"],
+                    "corrected": 1,
+                    "human_status": sib_human_status,
+                    "note": f"由 {res['clause_no']} 修改 {target_label} 触发联动重审 ({prev_verdict} -> {new_verdict})",
+                },
+                0.0,
+            )
+
+            existing_sib_rem = store.query_one(
+                "SELECT * FROM remediations WHERE project_id=? AND requirement_id=? ORDER BY id DESC LIMIT 1",
+                (project_id, sib["requirement_id"]),
+            )
+            if regressed:
+                issue_msg = (
+                    f"联动重审发现回归：修改 {target_label} 后，本条款从 {prev_verdict} 变为 {new_verdict}。"
+                    f"{sib_reeval.get('explanation') or ''}"
+                ).strip()
+                if existing_sib_rem:
+                    store.update(
+                        "remediations",
+                        existing_sib_rem["id"],
+                        {
+                            "status": TO_REMEDIATE,
+                            "issue": issue_msg,
+                            "target": target_label,
+                            "closed_round_id": None,
+                            "updated_at": store.now(),
+                        },
+                    )
+                else:
+                    store.insert(
+                        "remediations",
+                        {
+                            "project_id": project_id,
+                            "requirement_id": sib["requirement_id"],
+                            "issue": issue_msg,
+                            "target": target_label,
+                            "status": TO_REMEDIATE,
+                            "draft": "",
+                            "opened_round_id": res["round_id"],
+                            "updated_at": store.now(),
+                        },
+                    )
+            elif sib_passed and resolve and existing_sib_rem and existing_sib_rem.get("status") != CLOSED:
+                store.update(
+                    "remediations",
+                    existing_sib_rem["id"],
+                    {
+                        "status": CLOSED,
+                        "closed_round_id": res["round_id"],
+                        "updated_at": store.now(),
+                    },
+                )
+
+            store.log_action(
+                project_id,
+                "impact_reevaluate_clause",
+                actor,
+                role,
+                f"Cascade re-evaluation triggered by {res['clause_no']} edit on {target_label}",
+                {
+                    "trigger_result_id": result_id,
+                    "trigger_clause_no": res["clause_no"],
+                    "target": target_label,
+                    "prev_verdict": prev_verdict,
+                    "new_verdict": new_verdict,
+                    "regressed": regressed,
+                },
+                res["round_id"],
+                sib["requirement_id"],
+                sib["id"],
+            )
+            impacted_outcomes.append(
+                {
+                    "result_id": int(sib["id"]),
+                    "requirement_id": int(sib["requirement_id"]),
+                    "clause_no": str(sib["clause_no"]),
+                    "prev_verdict": prev_verdict,
+                    "new_verdict": new_verdict,
+                    "regressed": regressed,
+                }
+            )
+
+    regressed_clauses = [x for x in impacted_outcomes if x["regressed"]]
+
     store.log_action(
         project_id,
         "apply_remediation_edit",
@@ -837,12 +992,21 @@ def apply_remediation_edit(
             "after_text": modified_text.strip()[:300],
             "resolved": passed_now,
             "verdict_after_reeval": reeval["verdict"],
+            "impacted_count": len(impacted_outcomes),
+            "regressed_clauses": [x["clause_no"] for x in regressed_clauses],
         },
         res["round_id"],
         res["requirement_id"],
         result_id,
     )
-    return {"verdict": reeval["verdict"], "passed": passed_now, "explanation": reeval["explanation"]}
+    return {
+        "verdict": reeval["verdict"],
+        "passed": passed_now,
+        "explanation": reeval["explanation"],
+        "impacted_count": len(impacted_outcomes),
+        "impacted_clauses": impacted_outcomes,
+        "regressed_clauses": regressed_clauses,
+    }
 
 
 def link_revised_bid(project_id: int, doc_id: int, actor: str, role: str) -> int:
